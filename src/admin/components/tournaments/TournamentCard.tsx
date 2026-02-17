@@ -64,7 +64,9 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onClick, is
       <div className="flex-1 px-4 py-3 min-w-0 flex flex-col justify-center h-full">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-[10px] font-bold text-primary tracking-wider uppercase bg-primary/10 px-1.5 py-0.5 rounded">
-            {tournament.gameId.title}
+            {typeof tournament.gameId === 'object' && tournament.gameId?.title
+              ? tournament.gameId.title
+              : 'Game'}
           </span>
           {isOfficial && (
             <span className="text-[10px] font-bold text-yellow-500 tracking-wider uppercase bg-yellow-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">

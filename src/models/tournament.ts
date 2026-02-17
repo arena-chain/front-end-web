@@ -1,7 +1,6 @@
 // Tournament TypeScript Models and Interfaces
 
-import type { TicketType, Bundle } from './ticket';
-export type { TicketType, Bundle };
+
 
 // Using const objects instead of enums for better TypeScript compatibility
 export const TournamentFormat = {
@@ -20,6 +19,9 @@ export const TournamentStatus = {
     CANCELLED: 'CANCELLED',
 } as const;
 export type TournamentStatus = typeof TournamentStatus[keyof typeof TournamentStatus];
+
+import type { TicketType } from './ticket';
+export type { TicketType };
 
 export const PhaseName = {
     PLAY_IN: 'PLAY_IN',
@@ -79,12 +81,10 @@ export interface Tournament {
     format: TournamentFormat;
     phases: TournamentPhase[];
     status: TournamentStatus;
+    ticketTypes?: TicketType[]; // Array of ticket types for this tournament
     rules?: Record<string, any>;
     bannerImageUrl?: string;
     streamUrl?: string;
-    ticketTypes?: TicketType[];      // For official tournaments with spectator tickets
-    ticketSalesStart?: string;       // When tickets become available
-    type?: 'OFFICIAL' | 'RANKED';    // Tournament type
     createdAt: string;
     updatedAt: string;
 }
@@ -107,9 +107,6 @@ export interface CreateTournamentDto {
     bannerImageUrl?: string; // Made optional
     streamUrl?: string; // Made optional
     registrationOpen: boolean;
-    ticketTypes?: TicketType[];      // For official tournaments
-    ticketSalesStart?: Date;         // When tickets become available
-    type?: 'OFFICIAL' | 'RANKED';    // Tournament type
 }
 
 export interface UpdateTournamentDto {

@@ -13,7 +13,8 @@ import {
     DollarSign,
     Bell,
     ChevronDown,
-    Search
+    Search,
+    Users
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/core';
@@ -32,16 +33,16 @@ export default function PlayerLayout() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-text flex font-sans overflow-hidden">
+        <div className="h-screen bg-black p-4 flex gap-4 overflow-hidden font-sans text-text">
             {/* Left Sidebar */}
             <aside
                 className={cn(
-                    "fixed left-0 bg-[#1A1D21]/95 backdrop-blur-md border-r border-white/5 h-screen z-40 transition-all duration-300 flex flex-col",
+                    "relative flex flex-col shrink-0 h-full bg-[#1A1D21] border border-white/5 rounded-[32px] overflow-hidden transition-all duration-300 z-40",
                     isSidebarOpen ? "w-64" : "w-20"
                 )}
             >
                 {/* Logo Area */}
-                <div className="h-20 flex items-center justify-center border-b border-white/5 relative">
+                <div className="h-24 flex items-center justify-center relative shrink-0">
                     {isSidebarOpen ? (
                         <div className="flex items-center gap-2 animate-fade-in-up">
                             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-black font-black">A</div>
@@ -57,7 +58,7 @@ export default function PlayerLayout() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 py-8 px-3 space-y-2 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 py-4 px-3 space-y-2 overflow-y-auto custom-scrollbar">
                     <NavItem to="/player/dashboard" icon={<Gamepad2 size={20} />} label="Play" isOpen={isSidebarOpen} />
                     <NavItem to="/player/tournaments" icon={<Trophy size={20} />} label="Tournaments" isOpen={isSidebarOpen} />
                     <NavItem to="/player/market" icon={<DollarSign size={20} />} label="Get Tickets" isOpen={isSidebarOpen} />
@@ -71,11 +72,11 @@ export default function PlayerLayout() {
                 </nav>
 
                 {/* Bottom Actions */}
-                <div className="p-4 border-t border-white/5 bg-black/20">
+                <div className="p-4 mt-auto">
                     <Button
                         variant="ghost"
                         onClick={handleLogout}
-                        className={cn("w-full justify-start text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors", !isSidebarOpen && "justify-center px-0")}
+                        className={cn("w-full justify-start text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors rounded-xl", !isSidebarOpen && "justify-center px-0")}
                     >
                         <LogOut size={20} className={cn(isSidebarOpen && "mr-3")} />
                         {isSidebarOpen && <span className="font-medium">Logout</span>}
@@ -84,13 +85,9 @@ export default function PlayerLayout() {
             </aside>
 
             {/* Main Content Area */}
-            <div className={cn(
-                "flex-1 flex flex-col h-screen transition-all duration-300 relative",
-                isSidebarOpen ? "ml-64" : "ml-20",
-                "mr-0 lg:mr-20" // Reserve space for right sidebar
-            )}>
+            <div className="flex-1 flex flex-col h-full bg-[#1A1D21] border border-white/5 rounded-[32px] overflow-hidden relative">
                 {/* Top Header */}
-                <header className="h-20 sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-8">
+                <header className="h-20 shrink-0 sticky top-0 z-30 bg-[#1A1D21]/80 backdrop-blur-md flex items-center justify-between px-8">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={toggleSidebar}
@@ -104,8 +101,8 @@ export default function PlayerLayout() {
                             <Search className="absolute left-4 w-4 h-4 text-text-muted" />
                             <input
                                 type="text"
-                                placeholder="Search tournaments, matches, players..."
-                                className="w-full bg-[#1A1D21] border border-white/5 rounded-full py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors"
+                                placeholder="Search everything..."
+                                className="w-full bg-black/20 border border-white/5 rounded-2xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors"
                             />
                         </div>
                     </div>
@@ -180,52 +177,104 @@ export default function PlayerLayout() {
             </div>
 
             {/* Right Sidebar (Social) */}
-            <aside className="fixed right-0 top-0 h-screen w-20 border-l border-white/5 bg-[#1A1D21]/95 backdrop-blur-md z-30 hidden lg:flex flex-col items-center py-6">
-                {/* Header Icon */}
-                <div className="mb-8 p-3 rounded-xl bg-white/5 text-primary">
-                    <User size={24} />
+            <aside className="shrink-0 w-80 h-full bg-[#1A1D21] border border-white/5 rounded-[32px] hidden xl:flex flex-col py-6 overflow-hidden">
+                {/* Header */}
+                <div className="px-6 mb-6 flex items-center justify-between shrink-0">
+                    <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        Social
+                    </h3>
+                    <div className="flex gap-1">
+                        <button className="p-1.5 hover:bg-white/5 rounded-lg text-text-muted hover:text-white transition-colors">
+                            <Search className="w-4 h-4" />
+                        </button>
+                        <button className="p-1.5 hover:bg-white/5 rounded-lg text-text-muted hover:text-white transition-colors">
+                            <Settings className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Friend List (Avatars Only) */}
-                <div className="flex-1 overflow-y-auto space-y-6 w-full px-4 flex flex-col items-center scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    {MOCK_FRIENDS.map((friend) => (
-                        <div
-                            key={friend.id}
-                            className="relative group cursor-pointer"
-                        >
-                            <div className="w-12 h-12 rounded-full bg-surface border-2 border-transparent group-hover:border-primary/50 transition-all p-0.5">
-                                <img src={friend.avatar} alt={friend.name} className="w-full h-full rounded-full" />
-                            </div>
+                {/* Status Filter Tabs (Mock) */}
+                <div className="px-6 mb-4 flex gap-2 shrink-0">
+                    <button className="text-xs font-bold text-white bg-white/10 px-3 py-1 rounded-full">All</button>
+                    <button className="text-xs font-bold text-text-muted hover:text-white hover:bg-white/5 px-3 py-1 rounded-full transition-colors">Online</button>
+                    <button className="text-xs font-bold text-text-muted hover:text-white hover:bg-white/5 px-3 py-1 rounded-full transition-colors">In-Game</button>
+                </div>
 
-                            {/* Status Dot */}
-                            <div className={cn(
-                                "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-[#1A1D21]",
-                                friend.status === 'online' ? "bg-green-500" :
-                                    friend.status === 'in-game' ? "bg-primary" : "bg-gray-500"
-                            )} />
+                {/* Friend List */}
+                <div className="flex-1 overflow-y-auto px-4 space-y-1 custom-scrollbar">
+                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 mt-2 px-2">Online — {MOCK_FRIENDS.filter(f => f.status !== 'offline').length}</div>
+                    {MOCK_FRIENDS.filter(f => f.status !== 'offline').map((friend) => (
+                        <FriendItem key={friend.id} friend={friend} />
+                    ))}
 
-                            {/* Tooltip on Hover */}
-                            <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1A1D21] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                                <p className="font-bold text-white text-sm">{friend.name}</p>
-                                <p className="text-xs text-text-muted">
-                                    {friend.status === 'in-game' ? 'Playing Valorant' : friend.status === 'online' ? 'Online' : 'Offline'}
-                                </p>
-                            </div>
-                        </div>
+                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 mt-6 px-2">Offline — {MOCK_FRIENDS.filter(f => f.status === 'offline').length}</div>
+                    {MOCK_FRIENDS.filter(f => f.status === 'offline').map((friend) => (
+                        <FriendItem key={friend.id} friend={friend} />
                     ))}
                 </div>
 
-                {/* Bottom - Quick Action Icon */}
-                <div className="mt-4 pt-4 border-t border-white/5 w-full flex justify-center">
-                    <button className="w-12 h-12 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all flex items-center justify-center group relative">
-                        <Trophy size={24} />
-                        {/* Tooltip */}
-                        <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1A1D21] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                            <p className="font-bold text-white text-xs">Get Premium</p>
+                {/* Bottom - Quick Action */}
+                <div className="p-4 mt-auto shrink-0">
+                    <div
+                        onClick={() => navigate('/player/subscription')}
+                        className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 relative overflow-hidden group cursor-pointer hover:border-primary/40 transition-all"
+                    >
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-[30px] -translate-y-1/2 translate-x-1/2" />
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold text-primary mb-1">ARENA PLUS</p>
+                                <p className="text-white font-bold text-sm">Upgrade to Pro</p>
+                            </div>
+                            <div className="w-8 h-8 bg-black/40 rounded-lg flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                <Trophy className="w-4 h-4" />
+                            </div>
                         </div>
-                    </button>
+                    </div>
                 </div>
             </aside>
+        </div>
+    );
+}
+
+function FriendItem({ friend }: { friend: typeof MOCK_FRIENDS[0] }) {
+    const isOnline = friend.status === 'online';
+    const isInGame = friend.status === 'in-game';
+
+    return (
+        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-colors">
+            <div className="relative">
+                <div className={cn(
+                    "w-10 h-10 rounded-full bg-surface border-2 transition-all p-0.5",
+                    isInGame ? "border-primary" : "border-transparent group-hover:border-white/10"
+                )}>
+                    <img src={friend.avatar} alt={friend.name} className="w-full h-full rounded-full" />
+                </div>
+                <div className={cn(
+                    "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1A1D21]",
+                    isOnline ? "bg-green-500" :
+                        isInGame ? "bg-primary" : "bg-gray-500"
+                )} />
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center mb-0.5">
+                    <p className="text-sm font-bold text-white truncate">{friend.name}</p>
+                </div>
+                <p className={cn(
+                    "text-xs truncate",
+                    isInGame ? "text-primary" : "text-text-muted"
+                )}>
+                    {isInGame ? 'Playing Valorant' : isOnline ? 'Online' : 'Offline'}
+                </p>
+            </div>
+
+            {/* Invite Button (Visible on Hover) */}
+            {(isOnline || isInGame) && (
+                <button className="p-1.5 rounded bg-white/10 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-black">
+                    <Gamepad2 className="w-3.5 h-3.5" />
+                </button>
+            )}
         </div>
     );
 }

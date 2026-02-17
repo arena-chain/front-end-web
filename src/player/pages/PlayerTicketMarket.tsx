@@ -63,69 +63,67 @@ export default function PlayerTicketMarket() {
     };
 
     return (
-        <div className="min-h-screen bg-background p-6">
-            <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
-                {/* Header with High Energy Styling */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/20 via-primary/5 to-transparent border border-primary/20 p-8 md:p-12 mb-8">
-                    <div className="relative z-10 max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-sm font-bold mb-4 animate-pulse">
-                            <Ticket className="w-4 h-4" />
-                            <span>TICKET SALES OPEN</span>
-                        </div>
-                        <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white mb-4">
-                            Get Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">Tickets</span>
-                        </h1>
-                        <p className="text-xl text-text-muted mb-8">
-                            Secure your spot at the biggest esports events. Limited seats available for upcoming championships.
-                        </p>
+        <div className="space-y-6 animate-fade-in-up">
+            {/* Header with High Energy Styling */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/20 via-primary/5 to-transparent border border-primary/20 p-8 md:p-12 mb-8">
+                <div className="relative z-10 max-w-2xl">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-sm font-bold mb-4 animate-pulse">
+                        <Ticket className="w-4 h-4" />
+                        <span>TICKET SALES OPEN</span>
                     </div>
-                    {/* Decorative Background Elements */}
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 blur-[100px] rounded-full mix-blend-screen" />
+                    <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white mb-4">
+                        Get Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">Tickets</span>
+                    </h1>
+                    <p className="text-xl text-text-muted mb-8">
+                        Secure your spot at the biggest esports events. Limited seats available for upcoming championships.
+                    </p>
                 </div>
-
-                {/* Filters */}
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                        <Input
-                            placeholder="Search available tickets..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-11 bg-surface border-white/5"
-                        />
-                    </div>
-                </div>
-
-                {/* Grid */}
-                {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="bg-surface border border-white/5 rounded-xl h-96 animate-pulse" />
-                        ))}
-                    </div>
-                ) : filteredTournaments.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredTournaments.map((tournament) => (
-                            <MarketCard
-                                key={tournament._id}
-                                tournament={tournament}
-                                minPrice={getMinPrice(tournament)}
-                                onClick={() => navigate(`/player/tournaments/${tournament._id}/tickets`)}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-20 bg-surface/30 rounded-3xl border border-white/5">
-                        <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Ticket className="w-12 h-12 text-text-muted opacity-50" />
-                        </div>
-                        <h3 className="text-2xl font-bold text-white mb-2">No Tickets Available</h3>
-                        <p className="text-text-muted max-w-md mx-auto">
-                            There are no tournaments currently open for registration. Check back later or browse upcoming tournaments in the schedule.
-                        </p>
-                    </div>
-                )}
+                {/* Decorative Background Elements */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 blur-[100px] rounded-full mix-blend-screen" />
             </div>
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <Input
+                        placeholder="Search available tickets..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-11 bg-surface border-white/5"
+                    />
+                </div>
+            </div>
+
+            {/* Grid */}
+            {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="bg-surface border border-white/5 rounded-xl h-96 animate-pulse" />
+                    ))}
+                </div>
+            ) : filteredTournaments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredTournaments.map((tournament) => (
+                        <MarketCard
+                            key={tournament._id}
+                            tournament={tournament}
+                            minPrice={getMinPrice(tournament)}
+                            onClick={() => navigate(`/player/tournaments/${tournament._id}/tickets`)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-20 bg-surface/30 rounded-3xl border border-white/5">
+                    <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Ticket className="w-12 h-12 text-text-muted opacity-50" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">No Tickets Available</h3>
+                    <p className="text-text-muted max-w-md mx-auto">
+                        There are no tournaments currently open for registration. Check back later or browse upcoming tournaments in the schedule.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }
@@ -152,7 +150,11 @@ function MarketCard({ tournament, minPrice, onClick }: { tournament: Tournament,
                 <div className="absolute inset-0 bg-gradient-to-t from-[#1A1D21] via-transparent to-transparent" />
 
                 <div className="absolute bottom-4 left-4 right-4">
-                    <span className="text-xs font-bold text-primary tracking-wider uppercase mb-1 block">{tournament.gameId.title}</span>
+                    <span className="text-xs font-bold text-primary tracking-wider uppercase mb-1 block">
+                        {typeof tournament.gameId === 'object' && tournament.gameId?.title
+                            ? tournament.gameId.title
+                            : 'Game'}
+                    </span>
                     <h3 className="text-2xl font-black text-white leading-tight mb-2 shadow-black drop-shadow-md">
                         {tournament.name}
                     </h3>

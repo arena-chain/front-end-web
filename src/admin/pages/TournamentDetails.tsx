@@ -139,7 +139,9 @@ export default function TournamentDetails() {
                         <p className="text-sm text-text-muted mb-1">Game</p>
                         <p className="text-white font-semibold flex items-center gap-2">
                             <img src={tournament.gameId.coverImageUrl} className="w-6 h-6 rounded object-cover" alt="" />
-                            {tournament.gameId.title}
+                            {typeof tournament.gameId === 'object' && tournament.gameId?.title
+                                ? tournament.gameId.title
+                                : 'Game'}
                         </p>
                     </div>
                     <div>
@@ -409,7 +411,9 @@ export default function TournamentDetails() {
                                     {tournament.status.replace('_', ' ')}
                                 </Badge>
                                 <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/20">
-                                    {tournament.gameId.title}
+                                    {typeof tournament.gameId === 'object' && tournament.gameId?.title
+                                        ? tournament.gameId.title
+                                        : 'Game'}
                                 </span>
                             </div>
                             <h1 className="text-5xl font-black text-white leading-tight shadow-black drop-shadow-xl">{tournament.name}</h1>

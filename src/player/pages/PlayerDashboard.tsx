@@ -31,7 +31,7 @@ export default function PlayerDashboard() {
                             className="border-white/10 hover:border-white/30 hover:bg-white/5 text-white font-bold uppercase tracking-wider px-8 py-6"
                         >
                             <Clock className="mr-2 h-5 w-5" />
-                            Scrims
+                            Scheduled
                         </Button>
                     </div>
                 </div>

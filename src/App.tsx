@@ -17,6 +17,7 @@ import Matches from './admin/pages/Matches';
 import Channels from './admin/pages/Channels';
 import Settings from './admin/pages/Settings';
 import Reservations from './admin/pages/Reservations';
+import Tickets from './admin/pages/Tickets';
 
 // Player Imports
 import PlayerLayout from './player/layout/PlayerLayout';
@@ -30,6 +31,8 @@ import BookingHistory from './player/pages/BookingHistory';
 import TicketDetails from './player/pages/TicketDetails';
 import TicketBooking from './player/pages/TicketBooking';
 import MyTickets from './player/pages/MyTickets';
+import PlayerSubscription from './player/pages/PlayerSubscription';
+import PlayerPayment from './player/pages/PlayerPayment';
 
 // Manager Imports
 import ManagerLayout from './manager/layout/ManagerLayout';
@@ -59,6 +62,7 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="tournaments" element={<Tournaments />} />
           <Route path="tournaments/:id" element={<TournamentDetails />} />
+          <Route path="tickets" element={<Tickets />} />
           <Route path="reservations" element={<Reservations />} />
           <Route path="games" element={<Games />} />
           <Route path="matches" element={<Matches />} />
@@ -66,7 +70,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
 
-        {/* Player Routes */}
+        {/* Player Routes with Layout */}
         <Route path="/player" element={<PlayerLayout />}>
           <Route index element={<Navigate to="/player/dashboard" replace />} />
           <Route path="dashboard" element={<PlayerDashboard />} />
@@ -79,6 +83,8 @@ function App() {
           <Route path="tickets" element={<BookingHistory />} />
           <Route path="tickets/:id" element={<TicketDetails />} />
           <Route path="matches" element={<PlayerMatches />} />
+          <Route path="subscription" element={<PlayerSubscription />} />
+          <Route path="payment" element={<PlayerPayment />} />
         </Route>
 
         {/* Manager Routes */}

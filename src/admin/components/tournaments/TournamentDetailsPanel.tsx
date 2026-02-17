@@ -111,7 +111,11 @@ const TournamentDetailsPanel: React.FC<TournamentDetailsPanelProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <p className="text-sm text-text-muted mb-1">Game</p>
-                        <p className="text-white font-semibold">{tournament.gameId.title}</p>
+                        <p className="text-white font-semibold">
+                            {typeof tournament.gameId === 'object' && tournament.gameId?.title
+                                ? tournament.gameId.title
+                                : 'Game'}
+                        </p>
                     </div>
                     <div>
                         <p className="text-sm text-text-muted mb-1">Format</p>
@@ -411,7 +415,9 @@ const TournamentDetailsPanel: React.FC<TournamentDetailsPanelProps> = ({
                             {tournament.status.replace('_', ' ')}
                         </Badge>
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/20">
-                            {tournament.gameId.title}
+                            {typeof tournament.gameId === 'object' && tournament.gameId?.title
+                                ? tournament.gameId.title
+                                : 'Game'}
                         </span>
                     </div>
                     <h2 className="text-3xl font-black text-white leading-tight shadow-black drop-shadow-lg">{tournament.name}</h2>

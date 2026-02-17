@@ -34,49 +34,47 @@ export default function MyTickets() {
     }
 
     return (
-        <div className="min-h-screen bg-background text-white pt-24 pb-12 px-6">
-            <div className="container mx-auto max-w-6xl">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
-                    <div>
-                        <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">My Tickets</h1>
-                        <p className="text-text-muted">Manage your upcoming event tickets and bookings</p>
-                    </div>
-                    {/* Stats or Filter could go here */}
-                    <div className="flex gap-4">
-                        <div className="bg-surface border border-white/10 px-4 py-2 rounded-lg text-center">
-                            <span className="block text-2xl font-bold text-primary">{tickets.length}</span>
-                            <span className="text-xs text-text-muted uppercase font-bold">Total Tickets</span>
-                        </div>
+        <div className="space-y-8 animate-fade-in-up">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+                <div>
+                    <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">My Tickets</h1>
+                    <p className="text-text-muted">Manage your upcoming event tickets and bookings</p>
+                </div>
+                {/* Stats or Filter could go here */}
+                <div className="flex gap-4">
+                    <div className="bg-surface border border-white/10 px-4 py-2 rounded-lg text-center">
+                        <span className="block text-2xl font-bold text-primary">{tickets.length}</span>
+                        <span className="text-xs text-text-muted uppercase font-bold">Total Tickets</span>
                     </div>
                 </div>
-
-                {error && (
-                    <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500">
-                        {error}
-                    </div>
-                )}
-
-                {tickets.length === 0 && !error ? (
-                    <div className="text-center py-20 bg-surface border border-white/5 rounded-2xl border-dashed">
-                        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <TicketIcon className="w-10 h-10 text-white/20" />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2">No Tickets Yet</h3>
-                        <p className="text-text-muted max-w-md mx-auto mb-8">
-                            You haven't booked any tickets yet. Explore upcoming tournaments to find events to attend.
-                        </p>
-                        <Button onClick={() => window.location.href = '/player/tournaments'}>
-                            Browse Tournaments
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {tickets.map((ticket) => (
-                            <TicketCard key={ticket._id} ticket={ticket} />
-                        ))}
-                    </div>
-                )}
             </div>
+
+            {error && (
+                <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500">
+                    {error}
+                </div>
+            )}
+
+            {tickets.length === 0 && !error ? (
+                <div className="text-center py-20 bg-surface border border-white/5 rounded-2xl border-dashed">
+                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <TicketIcon className="w-10 h-10 text-white/20" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">No Tickets Yet</h3>
+                    <p className="text-text-muted max-w-md mx-auto mb-8">
+                        You haven't booked any tickets yet. Explore upcoming tournaments to find events to attend.
+                    </p>
+                    <Button onClick={() => window.location.href = '/player/tournaments'}>
+                        Browse Tournaments
+                    </Button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {tickets.map((ticket) => (
+                        <TicketCard key={ticket._id} ticket={ticket} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

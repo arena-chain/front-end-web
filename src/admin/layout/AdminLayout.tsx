@@ -52,6 +52,7 @@ export default function AdminLayout() {
                     <NavItem to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Overview" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/users" icon={<Users size={20} />} label="Users" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/tournaments" icon={<Trophy size={20} />} label="Tournaments" isOpen={isSidebarOpen} />
+                    <NavItem to="/admin/tickets" icon={<Ticket size={20} />} label="Tickets" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/reservations" icon={<Ticket size={20} />} label="Reservations" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/games" icon={<Gamepad2 size={20} />} label="Games Catalog" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/matches" icon={<Swords size={20} />} label="Matches" isOpen={isSidebarOpen} />

@@ -70,7 +70,11 @@ const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <p className="text-sm text-text-muted mb-1">Game</p>
-                        <p className="text-white font-semibold">{tournament.gameId.title}</p>
+                        <p className="text-white font-semibold">
+                            {typeof tournament.gameId === 'object' && tournament.gameId?.title
+                                ? tournament.gameId.title
+                                : 'Game'}
+                        </p>
                     </div>
                     <div>
                         <p className="text-sm text-text-muted mb-1">Format</p>
@@ -373,7 +377,11 @@ const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
                                 {tournament.status.replace('_', ' ')}
                             </Badge>
                             <h1 className="text-4xl font-black text-white mb-2">{tournament.name}</h1>
-                            <p className="text-text-muted">{tournament.gameId.title}</p>
+                            <p className="text-text-muted">
+                                {typeof tournament.gameId === 'object' && tournament.gameId?.title
+                                    ? tournament.gameId.title
+                                    : 'Game'}
+                            </p>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="text-right">

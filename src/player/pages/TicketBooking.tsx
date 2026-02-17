@@ -4,7 +4,8 @@ import { Ticket, Calendar, MapPin, Trophy, Shield, Check, CreditCard, ArrowLeft 
 import { Button } from '../../components/ui/core';
 import tournamentService from '../../services/tournamentService';
 import ticketService from '../../services/ticketService';
-import type { Tournament, TicketType } from '../../models/tournament';
+import type { Tournament } from '../../models/tournament';
+import type { TicketType } from '../../models/ticket';
 
 export default function TicketBooking() {
     const { id } = useParams();
@@ -23,13 +24,32 @@ export default function TicketBooking() {
 
     const fetchTournament = async () => {
         try {
-            const data = await tournamentService.fetchTournamentById(id!);
-            setTournament(data);
-            if (data.ticketTypes && data.ticketTypes.length > 0) {
-                setSelectedTicket(data.ticketTypes[0]);
+            const [tournamentData, ticketsData] = await Promise.all([
+                tournamentService.fetchTournamentById(id!),
+                ticketService.getAvailableTickets(id!)
+            ]);
+
+            setTournament(tournamentData);
+
+            // Handle tickets data structure
+            let tickets: TicketType[] = [];
+            if (ticketsData.availableTickets) {
+                tickets = ticketsData.availableTickets;
+            } else if (Array.isArray(ticketsData)) {
+                tickets = ticketsData;
+            } else if (tournamentData.ticketTypes && typeof tournamentData.ticketTypes[0] === 'object') {
+                // Fallback to tournament data if populated
+                tickets = tournamentData.ticketTypes;
+            }
+
+            // Update tournament object with fetched tickets to ensure UI renders them
+            setTournament(prev => prev ? { ...prev, ticketTypes: tickets } : { ...tournamentData, ticketTypes: tickets });
+
+            if (tickets.length > 0) {
+                setSelectedTicket(tickets[0]);
             }
         } catch (error) {
-            console.error('Failed to fetch tournament:', error);
+            console.error('Failed to fetch tournament details:', error);
         } finally {
             setLoading(false);
         }

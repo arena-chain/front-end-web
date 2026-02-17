@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Globe, Search } from 'lucide-react';
 import { Button, Input, Select } from '../../components/ui/core';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import SuccessModal from '../../components/ui/SuccessModal';
 import type { Tournament, CreateTournamentDto } from '../../models/tournament';
 import { TournamentStatus } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
@@ -36,6 +37,17 @@ export default function Tournaments() {
     });
     const [isConfirming, setIsConfirming] = useState(false);
 
+    // Success Modal State
+    const [successModal, setSuccessModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+    });
+
     // Fetch tournaments
     useEffect(() => {
         fetchTournaments();
@@ -55,9 +67,17 @@ export default function Tournaments() {
 
     const handleCreateTournament = async (data: CreateTournamentDto) => {
         try {
-            await tournamentService.createTournament(data);
+            const createdTournament = await tournamentService.createTournament(data);
+
             await fetchTournaments();
             setIsCreateModalOpen(false);
+
+            // Show success message
+            setSuccessModal({
+                isOpen: true,
+                title: '🎉 Tournament Created!',
+                message: `"${createdTournament.name}" has been successfully created and is now live.`,
+            });
         } catch (error) {
             console.error('Failed to create tournament:', error);
             throw error;
@@ -109,11 +129,15 @@ export default function Tournaments() {
 
     // Filter tournaments
     const filteredTournaments = tournaments.filter((tournament) => {
+        // Safe access to gameId properties  
+        const gameTitle = typeof tournament.gameId === 'object' && tournament.gameId?.title
+            ? tournament.gameId.title
+            : '';
+
         const matchesSearch = tournament.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            tournament.gameId.title.toLowerCase().includes(searchQuery.toLowerCase());
+            gameTitle.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || tournament.status === statusFilter;
-        const isOfficial = tournament.type !== 'RANKED';
-        return matchesSearch && matchesStatus && isOfficial;
+        return matchesSearch && matchesStatus;
     });
 
     // Handle status update from panel - update state dynamically
@@ -233,6 +257,13 @@ export default function Tournaments() {
                 confirmText={confirmation.type === 'delete' ? 'Delete' : 'Cancel Tournament'}
                 variant={confirmation.type === 'delete' ? 'danger' : 'warning'}
                 isLoading={isConfirming}
+            />
+
+            <SuccessModal
+                isOpen={successModal.isOpen}
+                onClose={() => setSuccessModal(prev => ({ ...prev, isOpen: false }))}
+                title={successModal.title}
+                message={successModal.message}
             />
         </div>
     );

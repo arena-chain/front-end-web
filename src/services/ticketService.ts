@@ -38,6 +38,44 @@ const ticketService = {
     },
 
     /**
+     * Add ticket types to a tournament
+     * @param tournamentId - Tournament ID
+     * @param ticketTypes - Array of ticket types
+     */
+    async addTicketTypesToTournament(tournamentId: string, ticketTypes: any[]): Promise<any> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/tournements/${tournamentId}/tickets`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ ticketTypes }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to add ticket types');
+        }
+
+        return response.json();
+    },
+
+    /**
+     * Get available ticket types for a specific tournament
+     * @param tournamentId - Tournament ID
+     */
+    async getAvailableTickets(tournamentId: string): Promise<any> {
+        const response = await fetch(`${API_URL}/tournements/${tournamentId}/available-tickets`);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to fetch available tickets');
+        }
+        return response.json();
+    },
+
+
+    /**
      * Book a new ticket
      * @param tournamentId - Tournament ID
      * @param ticketType - Type of ticket (VIP, Standard)

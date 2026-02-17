@@ -21,11 +21,9 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
         maxTeams: 16,
         format: TournamentFormat.SINGLE_ELIMINATION,
         registrationOpen: true,
-        type: 'OFFICIAL', // Default to official tournament
     });
-    const [ticketTypes, setTicketTypes] = useState<any[]>([]); // Ticket types for official tournaments
 
-    const totalSteps = 6; // Increased to 6 to include ticket configuration
+    const totalSteps = 5;
 
 
     // Fetch games when the modal opens
@@ -79,13 +77,6 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                 formDataObj.append('thirdPlace', (formData.thirdPlace || 0).toString());
                 formDataObj.append('registrationOpen', String(formData.registrationOpen ?? true));
                 if (formData.streamUrl) formDataObj.append('streamUrl', formData.streamUrl);
-                if (formData.type) formDataObj.append('type', formData.type);
-                if (formData.ticketSalesStart) formDataObj.append('ticketSalesStart', formData.ticketSalesStart.toString());
-
-                // Append ticket types if any
-                if (ticketTypes.length > 0) {
-                    formDataObj.append('ticketTypes', JSON.stringify(ticketTypes));
-                }
 
                 // Append file
                 formDataObj.append('file', bannerFile); // Backend expects 'file'
@@ -123,17 +114,6 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                 }
                 if (formData.streamUrl?.trim()) {
                     cleanData.streamUrl = formData.streamUrl.trim();
-                }
-                if (formData.type) {
-                    cleanData.type = formData.type;
-                }
-                if (formData.ticketSalesStart) {
-                    cleanData.ticketSalesStart = formData.ticketSalesStart;
-                }
-
-                // Add ticket types if any
-                if (ticketTypes.length > 0) {
-                    cleanData.ticketTypes = ticketTypes;
                 }
 
                 payload = cleanData;
@@ -398,151 +378,7 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                     </div>
                 );
 
-            case 6:
-                return (
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white mb-4">Ticket Types (Optional)</h3>
-                        <p className="text-sm text-text-muted mb-4">
-                            Configure ticket types for spectators. Leave empty if this is a players-only tournament.
-                        </p>
 
-                        {ticketTypes.map((ticketType, index) => (
-                            <div key={index} className="p-4 bg-white/5 border border-white/10 rounded-lg space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <h4 className="text-sm font-bold text-white">Ticket Type #{index + 1}</h4>
-                                    <button
-                                        type="button"
-                                        onClick={() => setTicketTypes(ticketTypes.filter((_, i) => i !== index))}
-                                        className="text-xs text-red-400 hover:text-red-300"
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-medium text-text-muted mb-1">Name</label>
-                                        <Input
-                                            placeholder="VIP, Standard..."
-                                            value={ticketType.name || ''}
-                                            onChange={(e) => {
-                                                const updated = [...ticketTypes];
-                                                updated[index].name = e.target.value;
-                                                setTicketTypes(updated);
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-text-muted mb-1">Price ($)</label>
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            placeholder="50"
-                                            value={ticketType.price || ''}
-                                            onChange={(e) => {
-                                                const updated = [...ticketTypes];
-                                                updated[index].price = parseFloat(e.target.value);
-                                                setTicketTypes(updated);
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-text-muted mb-1">Capacity</label>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            placeholder="500"
-                                            value={ticketType.capacity || ''}
-                                            onChange={(e) => {
-                                                const updated = [...ticketTypes];
-                                                updated[index].capacity = parseInt(e.target.value);
-                                                setTicketTypes(updated);
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Bundles */}
-                                <div className="mt-2">
-                                    <label className="block text-xs font-medium text-text-muted mb-1">
-                                        Bundle Discounts (Optional)
-                                    </label>
-                                    {(ticketType.bundles || []).map((bundle: any, bundleIndex: number) => (
-                                        <div key={bundleIndex} className="flex gap-2 items-center mb-2">
-                                            <Input
-                                                type="number"
-                                                min="2"
-                                                placeholder="Qty"
-                                                value={bundle.quantity || ''}
-                                                onChange={(e) => {
-                                                    const updated = [...ticketTypes];
-                                                    updated[index].bundles[bundleIndex].quantity = parseInt(e.target.value);
-                                                    setTicketTypes(updated);
-                                                }}
-                                                className="w-24"
-                                            />
-                                            <span className="text-text-muted text-xs">for</span>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                placeholder="Price"
-                                                value={bundle.price || ''}
-                                                onChange={(e) => {
-                                                    const updated = [...ticketTypes];
-                                                    updated[index].bundles[bundleIndex].price = parseFloat(e.target.value);
-                                                    setTicketTypes(updated);
-                                                }}
-                                                className="w-28"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const updated = [...ticketTypes];
-                                                    updated[index].bundles = updated[index].bundles.filter((_: any, i: number) => i !== bundleIndex);
-                                                    setTicketTypes(updated);
-                                                }}
-                                                className="text-red-400 hover:text-red-300 text-xs"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const updated = [...ticketTypes];
-                                            if (!updated[index].bundles) updated[index].bundles = [];
-                                            updated[index].bundles.push({ quantity: 2, price: 0 });
-                                            setTicketTypes(updated);
-                                        }}
-                                        className="text-xs text-primary hover:text-primary/80"
-                                    >
-                                        + Add Bundle
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-
-                        <button
-                            type="button"
-                            onClick={() => setTicketTypes([...ticketTypes, { name: '', price: 0, capacity: 0, bundles: [] }])}
-                            className="w-full py-3 border-2 border-dashed border-white/10 rounded-lg text-sm text-text-muted hover:border-primary/50 hover:text-primary transition-colors"
-                        >
-                            + Add Ticket Type
-                        </button>
-
-                        <div className="mt-4">
-                            <label className="block text-sm font-medium text-text-muted mb-2">Ticket Sales Start Date</label>
-                            <Input
-                                type="date"
-                                value={formData.ticketSalesStart && !isNaN(new Date(formData.ticketSalesStart).getTime())
-                                    ? new Date(formData.ticketSalesStart).toISOString().split('T')[0]
-                                    : ''}
-                                onChange={(e) => updateField('ticketSalesStart', e.target.value ? new Date(e.target.value) : undefined)}
-                            />
-                        </div>
-                    </div>
-                );
 
             default:
                 return null;
@@ -555,10 +391,10 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                 {/* Progress Indicator */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">
-                        {[1, 2, 3, 4, 5, 6].map((step) => (
+                        {[1, 2, 3, 4, 5].map((step) => (
                             <div
                                 key={step}
-                                className={`flex-1 h-1 ${step <= currentStep ? 'bg-primary' : 'bg-white/10'} ${step !== 6 ? 'mr-2' : ''
+                                className={`flex-1 h-1 ${step <= currentStep ? 'bg-primary' : 'bg-white/10'} ${step !== 5 ? 'mr-2' : ''
                                     }`}
                             />
                         ))}

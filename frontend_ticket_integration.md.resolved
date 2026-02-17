@@ -1,0 +1,224 @@
+# Frontend Ticket Implementation Guide
+
+This guide outlines how to integrate the backend ticket system into your frontend application (React/Next.js).
+
+## 1. Interfaces (DTOs)
+
+Define these TypeScript interfaces to match your backend data structures.
+
+```typescript
+// src/types/ticket.ts
+
+export enum TicketStatus {
+  VALID = 'VALID',
+  USED = 'USED',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED'
+}
+
+export interface Bundle {
+  quantity: number;
+  price: number; // Total price for the bundle
+}
+
+export interface TicketTypeDefinition {
+  _id?: string; // Optional for creation
+  name: string; // e.g., "Standard", "VIP"
+  price: number;
+  capacity: number;
+  description?: string;
+  bundles: Bundle[];
+}
+
+export interface Ticket {
+  _id: string;
+  ticketNumber: string;
+  qrCode: string; // Base64 Data URL
+  purchaseDate: string; // ISO Date
+  tournament: string | { _id: string; name: string; startDate: string; endDate: string };
+  user: string | { _id: string; username: string; email: string };
+  type: string; // The NAME of the ticket type (e.g., "Standard")
+  status: TicketStatus;
+  price: number;
+  usedAt?: string;
+}
+
+export interface CreateTicketDto {
+  tournament: string; // Tournament ID
+  user: string;       // User ID
+  type: string;       // Ticket Type NAME (e.g., "Standard") - IMPORTANT: Send Name, NOT ID
+  quantity: number;
+  status?: TicketStatus;
+}
+
+export interface AddTicketTypesDto {
+  ticketTypes: TicketTypeDefinition[];
+}
+```
+
+---
+
+## 2. API Service Methods
+
+These functions handle communication with your backend endpoints.
+
+```typescript
+// src/services/ticketService.ts
+import axios from 'axios';
+import { CreateTicketDto, AddTicketTypesDto, Ticket } from '../types/ticket';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+// ==========================================
+// FOR ORGANIZERS (Tournament Management)
+// ==========================================
+
+/**
+ * Add or update ticket types for a tournament
+ * Endpoint: POST /tournements/:id/tickets
+ */
+export const addTicketTypesToTournament = async (tournamentId: string, data: AddTicketTypesDto) => {
+  const response = await axios.post(\`\${API_URL}/tournements/\${tournamentId}/tickets\`, data);
+  return response.data;
+};
+
+// ==========================================
+// FOR USERS (Booking Flow)
+// ==========================================
+
+/**
+ * Get available ticket types for a specific tournament
+ * Endpoint: GET /tournements/:id/available-tickets
+ */
+export const getAvailableTickets = async (tournamentId: string) => {
+  const response = await axios.get(\`\${API_URL}/tournements/\${tournamentId}/available-tickets\`);
+  // Returns: { tournament: {...}, availableTickets: [...] }
+  return response.data;
+};
+
+/**
+ * Book a ticket
+ * Endpoint: POST /tickets
+ */
+export const bookTicket = async (ticketData: CreateTicketDto) => {
+  const response = await axios.post(\`\${API_URL}/tickets\`, ticketData);
+  return response.data; // Returns created tickets array
+};
+
+/**
+ * Get current user's tickets
+ * Endpoint: GET /tickets/my-tickets
+ */
+export const getMyTickets = async (userId: string) => {
+  const response = await axios.get(\`\${API_URL}/tickets/my-tickets\`, {
+    params: { userId }
+  });
+  return response.data;
+};
+
+/**
+ * Get a specific ticket by ID
+ */
+export const getTicketById = async (ticketId: string) => {
+  const response = await axios.get(\`\${API_URL}/tickets/\${ticketId}\`);
+  return response.data;
+};
+```
+
+---
+
+## 3. Component Implementation Logic
+
+### A. Organizer View: Adding Tickets to Tournament
+
+Use this when creating or editing a tournament.
+
+```javascript
+/* Logic Snippet for "Add Ticket Type" Form */
+
+const [ticketTypes, setTicketTypes] = useState([]);
+
+const handleAddTicketType = () => {
+  // Example data structure for a new type
+  const newType = {
+    name: "VIP",
+    price: 150,
+    capacity: 50,
+    description: "VIP Access + Merch",
+    bundles: [
+      { quantity: 2, price: 280 } // Discounted bundle
+    ]
+  };
+  
+  // Add to local state first
+  setTicketTypes([...ticketTypes, newType]);
+};
+
+const handleSaveToBackend = async () => {
+  try {
+    await addTicketTypesToTournament(tournamentId, { ticketTypes });
+    alert("Ticket types saved successfully!");
+  } catch (error) {
+    console.error("Failed to save ticket types", error);
+  }
+};
+```
+
+### B. User View: Booking a Ticket
+
+1.  **Fetch Available Tickets**:
+    Calls [getAvailableTickets(tournamentId)](file:///Users/khalilmouscou/Documents/_Esprit/projet%20Integr%C3%A9/Backend%20Nest/arena_chain/src/tournements/tournements.service.ts#265-309) on page load.
+2.  **Select Type**:
+    User selects a [TicketTypeDefinition](file:///Users/khalilmouscou/Documents/_Esprit/projet%20Integr%C3%A9/Backend%20Nest/arena_chain/src/tickets/schemas/ticket-type.schema.ts#16-42) (e.g., "Standard").
+3.  **Determine Price**:
+    *   Check if selected quantity matches a `bundle`.
+    *   If yes, use `bundle.price`.
+    *   If no, use `type.price * quantity`.
+4.  **Submit Booking**:
+
+```javascript
+/* Logic Snippet for Booking Button */
+
+const handleBookTicket = async () => {
+  const bookingData = {
+    tournament: tournamentId,
+    user: currentUser._id,
+    type: selectedType.name, // IMPORTANT: Send the NAME ("Standard"), not the ID
+    quantity: selectedQuantity,
+    status: 'VALID'
+  };
+
+  try {
+    const tickets = await bookTicket(bookingData);
+    // tickets[0].qrCode contains the QR code image data
+    // Redirect to confirmation page or show modal
+    router.push(\`/tickets/confirmation/\${tickets[0]._id}\`);
+  } catch (error) {
+    alert(error.response?.data?.message || "Booking failed");
+  }
+};
+```
+
+### C. Displaying the Ticket (QR Code)
+
+The backend returns the QR code as a Base64 Data URI string. You can render it directly in an `<img>` tag.
+
+```jsx
+/* TicketDisplay Component */
+
+const TicketDisplay = ({ ticket }) => {
+  return (
+    <div className="ticket-card">
+      <h3>{ticket.type} Ticket</h3>
+      <p>Tournament: {ticket.tournament.name}</p>
+      
+      <div className="qr-code-container">
+        {/* Render Base64 QR Code directly */}
+        <img src={ticket.qrCode} alt="Ticket QR Code" />
+      </div>
+      
+      <p>Ticket #: {ticket.ticketNumber}</p>
+    </div>
+  );
+};
+```
