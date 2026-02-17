@@ -16,13 +16,13 @@ import Games from './admin/pages/Games';
 import Matches from './admin/pages/Matches';
 import Channels from './admin/pages/Channels';
 import Settings from './admin/pages/Settings';
-import Reservations from './admin/pages/Reservations';
-import Tickets from './admin/pages/Tickets';
 
 // Player Imports
 import PlayerLayout from './player/layout/PlayerLayout';
 import PlayerDashboard from './player/pages/PlayerDashboard';
 import PlayerMatches from './player/pages/PlayerMatches';
+import PlayerLeagues from './player/pages/PlayerLeagues';
+import PlayerProfile from './player/pages/PlayerProfile';
 import PlayerTournaments from './player/pages/PlayerTournaments';
 import PlayerTicketMarket from './player/pages/PlayerTicketMarket';
 import PlayerTournamentDetails from './player/pages/PlayerTournamentDetails';
@@ -61,6 +61,7 @@ function App() {
           <Route path="dashboard" element={<Overview />} />
           <Route path="users" element={<Users />} />
           <Route path="tournaments" element={<Tournaments />} />
+          <Route path="leagues" element={<AdminLeagues />} />
           <Route path="tournaments/:id" element={<TournamentDetails />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="reservations" element={<Reservations />} />
@@ -83,6 +84,8 @@ function App() {
           <Route path="tickets" element={<BookingHistory />} />
           <Route path="tickets/:id" element={<TicketDetails />} />
           <Route path="matches" element={<PlayerMatches />} />
+          <Route path="leagues" element={<PlayerLeagues />} />
+          <Route path="profile" element={<PlayerProfile />} />
           <Route path="subscription" element={<PlayerSubscription />} />
           <Route path="payment" element={<PlayerPayment />} />
         </Route>

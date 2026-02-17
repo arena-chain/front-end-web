@@ -51,6 +51,7 @@ export default function AdminLayout() {
                 <nav className="flex-1 py-6 px-3 space-y-2">
                     <NavItem to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Overview" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/users" icon={<Users size={20} />} label="Users" isOpen={isSidebarOpen} />
+                    <NavItem to="/admin/leagues" icon={<Trophy size={20} />} label="Leagues" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/tournaments" icon={<Trophy size={20} />} label="Tournaments" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/tickets" icon={<Ticket size={20} />} label="Tickets" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/reservations" icon={<Ticket size={20} />} label="Reservations" isOpen={isSidebarOpen} />

@@ -8,20 +8,10 @@ export default function Users() {
     const [activeTab, setActiveTab] = useState<'players' | 'managers' | 'referees' | 'admins'>('players');
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState<'all' | 'player' | 'team_manager' | 'referee' | 'admin'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
 
-    // Form State
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        nickname: '',
-        role: 'player',
-        // Role specific fields
-        organizationName: '',
-        level: '',
-        adminLevel: 1
-    });
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -134,10 +124,20 @@ export default function Users() {
     };
 
     // Filter users based on search
-    const filteredUsers = users.filter(user =>
-        user.userId?.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.userId?.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredUsers = users.filter(user => {
+        const matchesSearch =
+            user.nickname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user._id.includes(searchQuery);
+
+        const matchesTab = activeTab === 'all' || (user.role || 'player') === activeTab;
+
+        const matchesStatus =
+            statusFilter === 'all' ? true :
+                statusFilter === 'active' ? user.isActive : !user.isActive;
+
+        return matchesSearch && matchesTab && matchesStatus;
+    });
 
     return (
         <div className="space-y-6 animate-fade-in-up">
@@ -145,9 +145,13 @@ export default function Users() {
                 <div>
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">User Management</h1>
                     <p className="text-text-muted">Manage all users and administrative roles.</p>
+                    <p className="text-text-muted">Manage all users, roles, and account statuses.</p>
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={() => setIsAddModalOpen(true)}>Add New User</Button>
+                    <Button onClick={fetchUsers} variant="outline" size="sm" className="gap-2">
+                        Refresh List
+                    </Button>
                 </div>
             </div>
 
@@ -157,6 +161,36 @@ export default function Users() {
                 <TabButton active={activeTab === 'managers'} onClick={() => setActiveTab('managers')} icon={<Shield size={16} />} label="Team Managers" />
                 <TabButton active={activeTab === 'referees'} onClick={() => setActiveTab('referees')} icon={<Gavel size={16} />} label="Referees" />
                 <TabButton active={activeTab === 'admins'} onClick={() => setActiveTab('admins')} icon={<Crown size={16} />} label="Admins" />
+                <TabButton
+                    active={activeTab === 'all'}
+                    onClick={() => setActiveTab('all')}
+                    icon={<UsersIcon size={16} />}
+                    label="All Users"
+                />
+                <TabButton
+                    active={activeTab === 'player'}
+                    onClick={() => setActiveTab('player')}
+                    icon={<UserIcon size={16} />}
+                    label="Players"
+                />
+                <TabButton
+                    active={activeTab === 'team_manager'}
+                    onClick={() => setActiveTab('team_manager')}
+                    icon={<Shield size={16} />}
+                    label="Managers"
+                />
+                <TabButton
+                    active={activeTab === 'referee'}
+                    onClick={() => setActiveTab('referee')}
+                    icon={<Gavel size={16} />}
+                    label="Referees"
+                />
+                <TabButton
+                    active={activeTab === 'admin'}
+                    onClick={() => setActiveTab('admin')}
+                    icon={<Crown size={16} />}
+                    label="Admins"
+                />
             </div>
 
             {/* Filters & Search */}
@@ -165,10 +199,22 @@ export default function Users() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <Input
                         className="pl-10 bg-black/20 border-white/5"
-                        placeholder="Search by name, email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search by name, email, or ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                     />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-text-muted" />
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value as any)}
+                        className="bg-black/20 border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                    >
+                        <option value="all">Tous les Statuts</option>
+                        <option value="active">Actif</option>
+                        <option value="blocked">Bloqué</option>
+                    </select>
                 </div>
             </div>
 
@@ -198,20 +244,22 @@ export default function Users() {
                                     <tr key={profile._id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold">
-                                                    {profile.userId?.nickname?.[0]?.toUpperCase() || 'U'}
+                                                <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
+                                                    {user.avatar ? (
+                                                        <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+                                                    ) : (
+                                                        <UserIcon className="w-5 h-5 text-primary" />
+                                                    )}
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-white">{profile.userId?.nickname}</div>
-                                                    <div className="text-xs text-text-muted">{profile.userId?.email}</div>
+                                                    <div className="font-bold text-white capitalize">
+                                                        {user.nickname}
+                                                    </div>
+                                                    <div className="text-xs text-text-muted lowercase">
+                                                        {user.email}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </td>
-                                        <td className="p-4 text-sm text-text-muted">
-                                            {activeTab === 'players' && `Elo: ${profile.elo || 0}`}
-                                            {activeTab === 'managers' && `Org: ${profile.organizationName || 'N/A'}`}
-                                            {activeTab === 'referees' && `Level: ${profile.level || 'Junior'}`}
-                                            {activeTab === 'admins' && `Level: ${profile.adminLevel || 1}`}
                                         </td>
                                         <td className="p-4">
                                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${profile.userId?.isActive
@@ -220,6 +268,12 @@ export default function Users() {
                                                 }`}>
                                                 {profile.userId?.isActive ? 'Active' : 'Blocked'}
                                             </span>
+                                        </td>
+                                        <td className="p-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                                            {user.role}
+                                        </td>
+                                        <td className="p-4 text-xs text-text-muted">
+                                            {new Date(user.createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -282,6 +336,8 @@ export default function Users() {
         </div>
     );
 }
+
+const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
 
 function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
     return (

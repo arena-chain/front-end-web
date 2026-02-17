@@ -5,9 +5,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 // Base User entity from backend
 export interface User {
     _id: string;
-    email: string;
     nickname: string;
-    passwordHash?: string;
+    email: string;
+    role: string;
     isActive: boolean;
     refreshToken?: string;
     createdAt: string;
@@ -52,6 +52,8 @@ export interface AdminProfile {
     adminLevel: number;
     permissions: string[];
     createdAt: string;
+    avatar?: string;
+    region?: string;
     updatedAt: string;
 }
 
@@ -149,13 +151,24 @@ export const UserService = {
         });
         if (!response.ok) throw new Error('Failed to unblock user');
         return response.json();
+
+        if (!response.ok) {
+            throw new Error('Failed to unblock user');
+        }
     },
 
-    async deleteUser(userId: string): Promise<void> {
-        const response = await fetch(`${API_URL}/users/${userId}`, {
+    async deleteUser(id: string): Promise<void> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/users/${id}`, {
             method: 'DELETE',
-            headers: getHeaders()
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
         });
         if (!response.ok) throw new Error('Failed to delete user');
+
+        if (!response.ok) {
+            throw new Error('Failed to delete user');
+        }
     }
 };

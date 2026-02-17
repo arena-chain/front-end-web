@@ -377,11 +377,6 @@ const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
                                 {tournament.status.replace('_', ' ')}
                             </Badge>
                             <h1 className="text-4xl font-black text-white mb-2">{tournament.name}</h1>
-                            <p className="text-text-muted">
-                                {typeof tournament.gameId === 'object' && tournament.gameId?.title
-                                    ? tournament.gameId.title
-                                    : 'Game'}
-                            </p>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="text-right">

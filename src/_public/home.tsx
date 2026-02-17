@@ -34,24 +34,22 @@ export default function Home() {
                             <span className="text-sm font-medium text-primary tracking-wider uppercase">Next Gen Gaming</span>
                         </div>
 
-
-                        <div className="min-h-[300px] flex items-center justify-center mb-6">
-                            <h1 className="text-6xl md:text-8xl font-black tracking-tighter uppercase leading-none text-center">
-                                <TypewriterText
-                                    lines={["Collaborate", "Elevate", "Tournaments"]}
-                                    className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-primary bg-300% animate-gradient"
-                                    typingSpeed={70}
-                                    deletingSpeed={30}
-                                    pauseDuration={2000}
-                                />
-                            </h1>
-                        </div>
+                        <h1 className="text-6xl md:text-8xl font-black tracking-tighter uppercase mb-6 leading-none">
+                            Collaborate <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-primary bg-300% animate-gradient">
+                                Elevate
+                            </span> <br />
+                            Tournaments
+                        </h1>
 
                         <p className="max-w-2xl mx-auto text-text-muted text-lg md:text-xl mb-10 leading-relaxed">
                             Join the ultimate competitive ecosystem. Book matches, participate in global tournaments, and rise through the ranks to become a legend.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Button size="lg" className="min-w-[200px] shadow-[0_0_20px_rgba(0,255,0,0.3)] shadow-primary/20">
+                                Play Now
+                            </Button>
                             <Link to="/login">
                                 <Button size="lg" className="min-w-[200px] shadow-[0_0_20px_rgba(0,255,0,0.3)] shadow-primary/20">
                                     Play Now
@@ -65,6 +63,7 @@ export default function Home() {
                 </section>
 
                 {/* 2. About / Features Section */}
+                <section id="about" className="py-24 bg-surface/50 border-y border-white/5 relative">
                 <section id="about" className="min-h-screen flex flex-col justify-center py-24 bg-surface/50 border-y border-white/5 relative">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
@@ -92,6 +91,8 @@ export default function Home() {
                     </div>
                 </section>
 
+                {/* 3. Partners Section */}
+                <section id="partners" className="py-24 bg-black relative overflow-hidden">
                 {/* 3. Tournaments Section */}
                 <HomeTournaments />
 
@@ -100,11 +101,13 @@ export default function Home() {
                     <div className="container mx-auto px-6 text-center">
                         <h2 className="text-sm font-bold uppercase tracking-widest text-text-muted mb-12">Trusted by Industry Leaders</h2>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-[1800px] mx-auto px-6">
                             <PartnerCard
                                 title="Riot Games"
                                 image={riotLogo}
                                 type="logo"
+                                className="hover:shadow-[0_0_30px_rgba(211,41,54,0.3)] hover:border-[#D32936]/50" /* Riot Red Glow on Hover */
                                 className="h-96 hover:shadow-[0_0_50px_rgba(211,41,54,0.4)] hover:border-[#D32936]/50" /* Riot Red Glow on Hover */
                             />
                             <PartnerCard
@@ -123,12 +126,15 @@ export default function Home() {
                                 title="Steam"
                                 image={steamLogo}
                                 type="logo"
+                                className="hover:shadow-[0_0_30px_rgba(23,26,33,0.5)] hover:border-[#171a21]/50" /* Steam Blue-ish Glow on Hover */
                                 className="h-96 hover:shadow-[0_0_50px_rgba(23,26,33,0.6)] hover:border-[#171a21]/50" /* Steam Blue-ish Glow on Hover */
                             />
                         </div>
                     </div>
                 </section>
 
+                {/* 4. Support Section */}
+                <section id="support" className="py-24 relative">
                 {/* 5. News Section */}
                 <NewsSection />
 

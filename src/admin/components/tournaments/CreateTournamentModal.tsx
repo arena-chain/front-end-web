@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { CreateTournamentDto } from '../../../models/tournament';
 import { TournamentFormat } from '../../../models/tournament';
 import { Button, Input, Textarea, Select, Modal } from '../../../components/ui/core';
@@ -98,30 +99,47 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                     thirdPlace: formData.thirdPlace || 0,
                     registrationOpen: formData.registrationOpen ?? true,
                 };
+            // Clean up and serialize the data properly
+            const cleanData: any = {
+                name: formData.name,
+                gameId: formData.gameId,
+                organizerId: formData.organizerId,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                maxTeams: formData.maxTeams || 16,
+                format: formData.format,
+                prizePool: formData.prizePool || 0,
+                firstPlace: formData.firstPlace || 0,
+                secondPlace: formData.secondPlace || 0,
+                thirdPlace: formData.thirdPlace || 0,
+                registrationOpen: formData.registrationOpen ?? true,
+            };
 
-                // Add optional fields only if they have values
-                if (formData.description?.trim()) {
-                    cleanData.description = formData.description.trim();
-                }
-                if (formData.registrationStart) {
-                    cleanData.registrationStart = formData.registrationStart;
-                }
-                if (formData.registrationEnd) {
-                    cleanData.registrationEnd = formData.registrationEnd;
-                }
-                if (formData.bannerImageUrl?.trim()) {
-                    cleanData.bannerImageUrl = formData.bannerImageUrl.trim();
-                }
-                if (formData.streamUrl?.trim()) {
-                    cleanData.streamUrl = formData.streamUrl.trim();
-                }
+            // Add optional fields only if they have values
+            if (formData.description?.trim()) {
+                cleanData.description = formData.description.trim();
+            }
+            if (formData.registrationStart) {
+                cleanData.registrationStart = formData.registrationStart;
+            }
+            if (formData.registrationEnd) {
+                cleanData.registrationEnd = formData.registrationEnd;
+            }
+            if (formData.bannerImageUrl?.trim()) {
+                cleanData.bannerImageUrl = formData.bannerImageUrl.trim();
+            }
+            if (formData.streamUrl?.trim()) {
+                cleanData.streamUrl = formData.streamUrl.trim();
+            }
 
                 payload = cleanData;
             }
 
             console.log('Submitting tournament data...');
             await onSubmit(payload as any); // Cast to any to bypass strict type check for now since onSubmit expects DTO
+            console.log('Submitting tournament data:', cleanData);
 
+            await onSubmit(cleanData as CreateTournamentDto);
             onClose();
             // Reset form
             setFormData({ maxTeams: 16, format: TournamentFormat.SINGLE_ELIMINATION, registrationOpen: true });
@@ -160,6 +178,8 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                         <div>
                             <label className="block text-sm font-medium text-text-muted mb-2">Game *</label>
                             <Select
+                            <Input
+                                placeholder="Game ID"
                                 value={formData.gameId || ''}
                                 onChange={(e) => updateField('gameId', e.target.value)}
                             >
@@ -171,6 +191,8 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                                 ))}
                             </Select>
                             <p className="text-xs text-text-muted mt-1">Select the game from the catalog</p>
+                            />
+                            <p className="text-xs text-text-muted mt-1">Enter the game database ID</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-text-muted mb-2">Organizer ID *</label>

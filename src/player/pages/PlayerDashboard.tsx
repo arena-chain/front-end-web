@@ -20,27 +20,22 @@ export default function PlayerDashboard() {
                         </p>
                     </div>
                     <div className="flex gap-4">
-                        <Button
-                            className="bg-primary hover:bg-primary/90 text-black font-black uppercase tracking-wider px-8 py-6 shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] transition-all transform hover:scale-105 border-none"
-                        >
+                        <Button size="lg" className="px-8 shadow-lg shadow-primary/20">
                             <Swords className="mr-2 h-5 w-5" />
                             Find Match
                         </Button>
-                        <Button
-                            variant="outline"
-                            className="border-white/10 hover:border-white/30 hover:bg-white/5 text-white font-bold uppercase tracking-wider px-8 py-6"
-                        >
+                        <Button variant="outline" size="lg">
                             <Clock className="mr-2 h-5 w-5" />
-                            Scheduled
+                            Scheduled Scrims
                         </Button>
                     </div>
                 </div>
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-3 gap-4 shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
-                    icon={<Trophy className="w-5 h-5 text-yellow-500" />}
+                    icon={<Trophy className="w-6 h-6 text-yellow-500" />}
                     label="Current Rank"
                     value="Diamond II"
                     subtext="Top 5%"
@@ -52,7 +47,6 @@ export default function PlayerDashboard() {
                     subtext="Win Rate: 68%"
                 />
                 <StatCard
-                    icon={<Clock className="w-5 h-5 text-blue-500" />}
                     label="Hours Played"
                     value="840h"
                     subtext="Last session: 2h ago"

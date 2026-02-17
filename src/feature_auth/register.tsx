@@ -18,6 +18,7 @@ export default function Register() {
         password: '',
         confirmPassword: '',
         nickname: '',
+        region: 'EUROPE',
         // Role specific fields
         organizationName: '',
         level: ''
@@ -43,6 +44,7 @@ export default function Register() {
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
+                    region: formData.region,
                     isPro: false // Default
                 });
             } else if (selectedRole === 'team_manager') {
@@ -50,6 +52,7 @@ export default function Register() {
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
+                    region: formData.region,
                     organizationName: formData.organizationName
                 });
             } else if (selectedRole === 'referee') {
@@ -57,6 +60,7 @@ export default function Register() {
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
+                    region: formData.region,
                     level: formData.level || 'Junior'
                 });
             }
@@ -144,6 +148,23 @@ export default function Register() {
                                 required
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-text-muted ml-1">Region</label>
+                        <select
+                            name="region"
+                            value={formData.region}
+                            onChange={(e: any) => handleChange(e)}
+                            className="w-full px-4 py-3 bg-surface border border-white/10 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all duration-200 text-white text-sm appearance-none cursor-pointer"
+                            required
+                        >
+                            <option value="EUROPE">EUROPE</option>
+                            <option value="AFRICA">AFRIQUE</option>
+                            <option value="ASIA">ASIE</option>
+                            <option value="AMERICAS">AMÉRIQUES</option>
+                            <option value="OCEANIA">OCÉANIE</option>
+                        </select>
                     </div>
 
                     {/* Dynamic Fields based on Role */}

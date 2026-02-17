@@ -22,7 +22,6 @@ import { Button } from '../../components/ui/core';
 export default function PlayerLayout() {
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth > 1024);
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -171,110 +170,10 @@ export default function PlayerLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-8 overflow-y-auto scroll-smooth scrollbar-none">
+                <main className="flex-1 p-6 overflow-auto">
                     <Outlet />
                 </main>
             </div>
-
-            {/* Right Sidebar (Social) */}
-            <aside className="shrink-0 w-80 h-full bg-[#1A1D21] border border-white/5 rounded-[32px] hidden xl:flex flex-col py-6 overflow-hidden">
-                {/* Header */}
-                <div className="px-6 mb-6 flex items-center justify-between shrink-0">
-                    <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary" />
-                        Social
-                    </h3>
-                    <div className="flex gap-1">
-                        <button className="p-1.5 hover:bg-white/5 rounded-lg text-text-muted hover:text-white transition-colors">
-                            <Search className="w-4 h-4" />
-                        </button>
-                        <button className="p-1.5 hover:bg-white/5 rounded-lg text-text-muted hover:text-white transition-colors">
-                            <Settings className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Status Filter Tabs (Mock) */}
-                <div className="px-6 mb-4 flex gap-2 shrink-0">
-                    <button className="text-xs font-bold text-white bg-white/10 px-3 py-1 rounded-full">All</button>
-                    <button className="text-xs font-bold text-text-muted hover:text-white hover:bg-white/5 px-3 py-1 rounded-full transition-colors">Online</button>
-                    <button className="text-xs font-bold text-text-muted hover:text-white hover:bg-white/5 px-3 py-1 rounded-full transition-colors">In-Game</button>
-                </div>
-
-                {/* Friend List */}
-                <div className="flex-1 overflow-y-auto px-4 space-y-1 custom-scrollbar">
-                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 mt-2 px-2">Online — {MOCK_FRIENDS.filter(f => f.status !== 'offline').length}</div>
-                    {MOCK_FRIENDS.filter(f => f.status !== 'offline').map((friend) => (
-                        <FriendItem key={friend.id} friend={friend} />
-                    ))}
-
-                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 mt-6 px-2">Offline — {MOCK_FRIENDS.filter(f => f.status === 'offline').length}</div>
-                    {MOCK_FRIENDS.filter(f => f.status === 'offline').map((friend) => (
-                        <FriendItem key={friend.id} friend={friend} />
-                    ))}
-                </div>
-
-                {/* Bottom - Quick Action */}
-                <div className="p-4 mt-auto shrink-0">
-                    <div
-                        onClick={() => navigate('/player/subscription')}
-                        className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 relative overflow-hidden group cursor-pointer hover:border-primary/40 transition-all"
-                    >
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-[30px] -translate-y-1/2 translate-x-1/2" />
-                        <div className="relative z-10 flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-bold text-primary mb-1">ARENA PLUS</p>
-                                <p className="text-white font-bold text-sm">Upgrade to Pro</p>
-                            </div>
-                            <div className="w-8 h-8 bg-black/40 rounded-lg flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                                <Trophy className="w-4 h-4" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-        </div>
-    );
-}
-
-function FriendItem({ friend }: { friend: typeof MOCK_FRIENDS[0] }) {
-    const isOnline = friend.status === 'online';
-    const isInGame = friend.status === 'in-game';
-
-    return (
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-colors">
-            <div className="relative">
-                <div className={cn(
-                    "w-10 h-10 rounded-full bg-surface border-2 transition-all p-0.5",
-                    isInGame ? "border-primary" : "border-transparent group-hover:border-white/10"
-                )}>
-                    <img src={friend.avatar} alt={friend.name} className="w-full h-full rounded-full" />
-                </div>
-                <div className={cn(
-                    "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1A1D21]",
-                    isOnline ? "bg-green-500" :
-                        isInGame ? "bg-primary" : "bg-gray-500"
-                )} />
-            </div>
-
-            <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-0.5">
-                    <p className="text-sm font-bold text-white truncate">{friend.name}</p>
-                </div>
-                <p className={cn(
-                    "text-xs truncate",
-                    isInGame ? "text-primary" : "text-text-muted"
-                )}>
-                    {isInGame ? 'Playing Valorant' : isOnline ? 'Online' : 'Offline'}
-                </p>
-            </div>
-
-            {/* Invite Button (Visible on Hover) */}
-            {(isOnline || isInGame) && (
-                <button className="p-1.5 rounded bg-white/10 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-black">
-                    <Gamepad2 className="w-3.5 h-3.5" />
-                </button>
-            )}
         </div>
     );
 }
@@ -291,20 +190,15 @@ function NavItem({ to, icon, label, isOpen }: NavItemProps) {
         <NavLink
             to={to}
             className={({ isActive }) => cn(
-                "flex items-center p-3 rounded-xl transition-all duration-200 group relative overflow-hidden mb-1",
+                "flex items-center p-3 rounded-lg transition-all duration-200 group relative overflow-hidden",
                 isActive
-                    ? "bg-primary text-black shadow-[0_0_20px_rgba(0,255,136,0.2)]"
                     : "text-text-muted hover:text-white hover:bg-white/5"
             )}
         >
             {({ isActive }) => (
                 <>
-                    <span className={cn("z-10 transition-transform duration-200 block", isActive ? "scale-100" : "group-hover:scale-110")}>
-                        {/* Clone icon to apply specific active classes */}
-                        {React.cloneElement(icon as React.ReactElement<{ size?: number | string; strokeWidth?: number | string; className?: string }>, {
-                            size: 22,
-                            strokeWidth: isActive ? 2.5 : 2
-                        })}
+                    <span className={cn("z-10 transition-transform duration-200", isActive && "scale-110")}>
+                        {icon}
                     </span>
 
                     <span className={cn(
@@ -313,6 +207,11 @@ function NavItem({ to, icon, label, isOpen }: NavItemProps) {
                     )}>
                         {label}
                     </span>
+
+                    {/* Active Glow Effect */}
+                    {isActive && (
+                        <div className="absolute inset-0 bg-primary/5 blur-md" />
+                    )}
                 </>
             )}
         </NavLink>
