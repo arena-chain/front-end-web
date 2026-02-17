@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# React + TypeScript + Vite
+# Arena Chain - Front End Web
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
@@ -72,6 +71,3 @@ export default defineConfig([
   },
 ])
 ```
-=======
-# front-end-web
->>>>>>> 9fd8d8394d3cdb7a59f6b6d9ee6db9fbf5c50ae9
