@@ -40,11 +40,11 @@ export default function Register() {
 
         try {
             if (selectedRole === 'player') {
+                // @ts-ignore
                 await AuthService.registerPlayer({
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
-                    region: formData.region,
                     isPro: false // Default
                 });
             } else if (selectedRole === 'team_manager') {
@@ -52,7 +52,6 @@ export default function Register() {
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
-                    region: formData.region,
                     organizationName: formData.organizationName
                 });
             } else if (selectedRole === 'referee') {
@@ -60,7 +59,6 @@ export default function Register() {
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
-                    region: formData.region,
                     level: formData.level || 'Junior'
                 });
             }

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Shield, User, Gavel, Crown, Ban, CheckCircle, Trash2 } from 'lucide-react';
+import { Search, Shield, Gavel, Crown, Ban, CheckCircle, Trash2, Filter, Users as UsersIcon, User as UserIcon } from 'lucide-react';
 import { Button, Input, Modal } from '../../components/ui/core';
 import { UserService, type Profile } from '../../services/userService';
 import { AuthService } from '../../services/auth.service';
 
 export default function Users() {
-    const [activeTab, setActiveTab] = useState<'players' | 'managers' | 'referees' | 'admins'>('players');
+    const [activeTab, setActiveTab] = useState<'all' | 'player' | 'team_manager' | 'referee' | 'admin'>('all');
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'all' | 'player' | 'team_manager' | 'referee' | 'admin'>('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [formData, setFormData] = useState({ email: '', password: '', nickname: '', role: 'player', organizationName: '', level: '', adminLevel: 1 });
 
 
     const fetchUsers = async () => {
@@ -18,20 +19,23 @@ export default function Users() {
         try {
             let data: Profile[] = [];
             switch (activeTab) {
-                case 'players':
+                case 'player':
                     data = await UserService.getPlayers();
                     break;
-                case 'managers':
+                case 'team_manager':
                     data = await UserService.getTeamManagers();
                     break;
-                case 'referees':
+                case 'referee':
                     data = await UserService.getReferees();
                     break;
-                case 'admins':
+                case 'admin':
                     data = await UserService.getAdmins();
                     break;
+                case 'all':
                 default:
-                    data = [];
+                    // Fetch all users - you may need to implement this
+                    data = await UserService.getPlayers();
+                    break;
             }
             setUsers(data);
         } catch (error) {
@@ -44,9 +48,9 @@ export default function Users() {
     useEffect(() => {
         // Update form role when tab changes
         let role = 'player';
-        if (activeTab === 'managers') role = 'team-manager';
-        if (activeTab === 'referees') role = 'referee';
-        if (activeTab === 'admins') role = 'admin';
+        if (activeTab === 'team_manager') role = 'team-manager';
+        if (activeTab === 'referee') role = 'referee';
+        if (activeTab === 'admin') role = 'admin';
         setFormData(prev => ({ ...prev, role }));
 
         fetchUsers();
@@ -80,7 +84,7 @@ export default function Users() {
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            if (activeTab === 'players') {
+            if (activeTab === 'player' || activeTab === 'all') {
                 await AuthService.registerPlayer({
                     email: formData.email,
                     password: formData.password,
@@ -88,7 +92,7 @@ export default function Users() {
                     isPro: false,
                     role: 'player'
                 });
-            } else if (activeTab === 'managers') {
+            } else if (activeTab === 'team_manager') {
                 await AuthService.registerTeamManager({
                     email: formData.email,
                     password: formData.password,
@@ -96,7 +100,7 @@ export default function Users() {
                     organizationName: formData.organizationName,
                     role: 'team-manager'
                 });
-            } else if (activeTab === 'referees') {
+            } else if (activeTab === 'referee') {
                 await AuthService.registerReferee({
                     email: formData.email,
                     password: formData.password,
@@ -104,7 +108,7 @@ export default function Users() {
                     level: 'Junior',
                     role: 'referee'
                 });
-            } else if (activeTab === 'admins') {
+            } else if (activeTab === 'admin') {
                 await AuthService.registerAdmin({
                     email: formData.email,
                     password: formData.password,
@@ -157,10 +161,6 @@ export default function Users() {
 
             {/* Tabs */}
             <div className="flex flex-wrap gap-2 border-b border-white/5 pb-1">
-                <TabButton active={activeTab === 'players'} onClick={() => setActiveTab('players')} icon={<User size={16} />} label="Players" />
-                <TabButton active={activeTab === 'managers'} onClick={() => setActiveTab('managers')} icon={<Shield size={16} />} label="Team Managers" />
-                <TabButton active={activeTab === 'referees'} onClick={() => setActiveTab('referees')} icon={<Gavel size={16} />} label="Referees" />
-                <TabButton active={activeTab === 'admins'} onClick={() => setActiveTab('admins')} icon={<Crown size={16} />} label="Admins" />
                 <TabButton
                     active={activeTab === 'all'}
                     onClick={() => setActiveTab('all')}
@@ -245,18 +245,18 @@ export default function Users() {
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
-                                                    {user.avatar ? (
-                                                        <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+                                                    {profile.avatar ? (
+                                                        <img src={profile.avatar} className="w-full h-full object-cover" alt="" />
                                                     ) : (
                                                         <UserIcon className="w-5 h-5 text-primary" />
                                                     )}
                                                 </div>
                                                 <div>
                                                     <div className="font-bold text-white capitalize">
-                                                        {user.nickname}
+                                                        {profile.nickname}
                                                     </div>
                                                     <div className="text-xs text-text-muted lowercase">
-                                                        {user.email}
+                                                        {profile.email}
                                                     </div>
                                                 </div>
                                             </div>
@@ -270,10 +270,10 @@ export default function Users() {
                                             </span>
                                         </td>
                                         <td className="p-4 text-xs font-bold text-text-muted uppercase tracking-wider">
-                                            {user.role}
+                                            {profile.role}
                                         </td>
                                         <td className="p-4 text-xs text-text-muted">
-                                            {new Date(user.createdAt).toLocaleDateString()}
+                                            {new Date(profile.createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -320,7 +320,7 @@ export default function Users() {
                         <Input required type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                     </div>
 
-                    {activeTab === 'managers' && (
+                    {activeTab === 'team_manager' && (
                         <div>
                             <label className="block text-sm font-medium text-text-muted mb-1">Organization Name</label>
                             <Input required value={formData.organizationName} onChange={e => setFormData({ ...formData, organizationName: e.target.value })} />

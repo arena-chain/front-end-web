@@ -46,11 +46,6 @@ export default function PlayerDashboard() {
                     value="142"
                     subtext="Win Rate: 68%"
                 />
-                <StatCard
-                    label="Hours Played"
-                    value="840h"
-                    subtext="Last session: 2h ago"
-                />
             </div>
 
             {/* Performance Chart */}

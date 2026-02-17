@@ -2,7 +2,7 @@ import React from 'react';
 import type { Tournament } from '../../../models/tournament';
 import { TournamentStatus } from '../../../models/tournament';
 import { Trophy, Calendar, Users, DollarSign, Trash2, Ban } from 'lucide-react';
-import { Badge } from '../../../components/ui/core';
+
 
 interface TournamentCardProps {
   tournament: Tournament;
@@ -32,6 +32,8 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onClick, is
       default: return 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10';
     }
   };
+
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -76,12 +78,7 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onClick, is
           )}
         </div>
 
-        {/* Status Badge */}
-        <div className="absolute top-4 right-4">
-          <Badge variant={getStatusBadgeVariant(tournament.status)}>
-            {tournament.status.replace('_', ' ')}
-          </Badge>
-        </div>
+
 
         <h3 className="text-base font-bold text-white truncate group-hover:text-primary transition-colors mb-1">
           {tournament.name}

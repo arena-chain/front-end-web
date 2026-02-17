@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Globe, Search } from 'lucide-react';
+import { Plus, Globe, Search, Trophy } from 'lucide-react';
 import { Button, Input, Select } from '../../components/ui/core';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import SuccessModal from '../../components/ui/SuccessModal';
@@ -9,9 +9,9 @@ import { TournamentStatus } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
 import TournamentCard from '../components/tournaments/TournamentCard';
 import CreateTournamentModal from '../components/tournaments/CreateTournamentModal';
-import TournamentDetailsModal from '../components/tournaments/TournamentDetailsModal';
 
 export default function Tournaments() {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'official' | 'ranked'>('official');
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [loading, setLoading] = useState(true);
@@ -20,8 +20,6 @@ export default function Tournaments() {
 
     // Modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    // const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null); // Removed for page navigation
-    // const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false); // Removed for page navigation
 
     // Confirmation Modal State
     const [confirmation, setConfirmation] = useState<{
@@ -121,12 +119,6 @@ export default function Tournaments() {
                 });
             }
             await fetchTournaments();
-
-            // Close details modal if open and matching
-            if (isDetailsModalOpen && selectedTournament?._id === confirmation.id) {
-                setIsDetailsModalOpen(false);
-                setSelectedTournament(null);
-            }
         } catch (error) {
             console.error(`Failed to ${confirmation.type} tournament:`, error);
         } finally {
@@ -135,9 +127,9 @@ export default function Tournaments() {
         }
     };
 
+    // Navigate to details page
     const handleTournamentClick = (tournament: Tournament) => {
-        setSelectedTournament(tournament);
-        setIsDetailsModalOpen(true);
+        navigate(`/admin/tournaments/${tournament._id}`);
     };
 
     // Filter tournaments
@@ -150,23 +142,9 @@ export default function Tournaments() {
         const matchesSearch = tournament.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             gameTitle.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || tournament.status === statusFilter;
+
         return matchesSearch && matchesStatus;
     });
-
-    // Handle status update from panel - update state dynamically
-
-        // Filter by Tier (Official vs Ranked/Community)
-        const matchesTab = activeTab === 'official'
-            ? tournament.tier === 'OFFICIAL'
-            : tournament.tier !== 'OFFICIAL';
-
-    // Deselect tournament when clicking card (to close panel)
-    const navigate = useNavigate();
-
-    // Navigate to details page
-    const handleTournamentClick = (tournament: Tournament) => {
-        navigate(`/admin/tournaments/${tournament._id}`);
-    };
 
     return (
         <div className="space-y-6 animate-fade-in-up">
@@ -192,104 +170,85 @@ export default function Tournaments() {
                 <TabButton
                     active={activeTab === 'ranked'}
                     onClick={() => setActiveTab('ranked')}
-                    icon={<Medal size={16} />}
+                    icon={<Trophy size={16} />}
                     label="Ranked"
                 />
             </div>
 
-                    {/* Filters */}
-                    <div className="flex flex-col md:flex-row gap-4 bg-[#1A1D21] p-4 rounded-xl border border-white/5">
-                        <div className="flex-1">
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                                <Input
-                                    placeholder="Search tournaments..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-11 bg-black/20 border-white/5"
-                                />
-                            </div>
-                        </div>
-                        <div className="w-full md:w-48">
-                            <Select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="bg-black/20 border-white/5"
-                            >
-                                <option value="all">All Status</option>
-                                <option value={TournamentStatus.DRAFT}>Draft</option>
-                                <option value={TournamentStatus.OPEN_REGISTRATION}>Open Registration</option>
-                                <option value={TournamentStatus.ONGOING}>Ongoing</option>
-                                <option value={TournamentStatus.COMPLETED}>Completed</option>
-                                <option value={TournamentStatus.CANCELLED}>Cancelled</option>
-                            </Select>
-                        </div>
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-4 bg-[#1A1D21] p-4 rounded-xl border border-white/5">
+                <div className="flex-1">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                        <Input
+                            placeholder="Search tournaments..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-11 bg-black/20 border-white/5"
+                        />
                     </div>
-
-                    {/* Content Area - List View */}
-                    {loading ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="bg-surface border border-white/5 rounded-xl h-24 animate-pulse" />
-                            ))}
-                        </div>
-                    ) : filteredTournaments.length > 0 ? (
-                        <div className="space-y-3">
-                            {filteredTournaments.map((tournament) => (
-                                <TournamentCard
-                                    key={tournament._id}
-                                    tournament={tournament}
-                                    onClick={() => handleTournamentClick(tournament)}
-                                    isOfficial={true}
-                                    onDelete={handleDeleteClick}
-                                    onCancel={handleCancelClick}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-16 bg-[#1A1D21] rounded-xl border border-white/5 border-dashed">
-                            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Globe className="w-10 h-10 text-text-muted" />
-                            </div>
-                            <h3 className="text-lg font-bold text-white mb-2">No Tournaments Found</h3>
-                            <p className="text-text-muted mb-6">
-                                {searchQuery || statusFilter !== 'all'
-                                    ? 'Try adjusting your filters'
-                                    : 'Create your first official tournament to get started'
-                                }
-                            </p>
-                            {!searchQuery && statusFilter === 'all' && (
-                                <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    Create Tournament
-                                </Button>
-                            )}
-                        </div>
-                    )}
+                </div>
+                <div className="w-full md:w-48">
+                    <Select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-black/20 border-white/5"
+                    >
+                        <option value="all">All Status</option>
+                        <option value={TournamentStatus.DRAFT}>Draft</option>
+                        <option value={TournamentStatus.OPEN_REGISTRATION}>Open Registration</option>
+                        <option value={TournamentStatus.ONGOING}>Ongoing</option>
+                        <option value={TournamentStatus.COMPLETED}>Completed</option>
+                        <option value={TournamentStatus.CANCELLED}>Cancelled</option>
+                    </Select>
                 </div>
             </div>
 
-
-
+            {/* Content Area - List View */}
+            {loading ? (
+                <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-surface border border-white/5 rounded-xl h-24 animate-pulse" />
+                    ))}
+                </div>
+            ) : filteredTournaments.length > 0 ? (
+                <div className="space-y-3">
+                    {filteredTournaments.map((tournament) => (
+                        <TournamentCard
+                            key={tournament._id}
+                            tournament={tournament}
+                            onClick={() => handleTournamentClick(tournament)}
+                            isOfficial={true}
+                            onDelete={handleDeleteClick}
+                            onCancel={handleCancelClick}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-16 bg-[#1A1D21] rounded-xl border border-white/5 border-dashed">
+                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Globe className="w-10 h-10 text-text-muted" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-2">No Tournaments Found</h3>
+                    <p className="text-text-muted mb-6">
+                        {searchQuery || statusFilter !== 'all'
+                            ? 'Try adjusting your filters'
+                            : 'Create your first official tournament to get started'
+                        }
+                    </p>
+                    {!searchQuery && statusFilter === 'all' && (
+                        <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
+                            <Plus className="w-4 h-4" />
+                            Create Tournament
+                        </Button>
+                    )}
+                </div>
+            )}
             {/* Modals */}
             <CreateTournamentModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onSubmit={handleCreateTournament}
-            />
-
-            <TournamentDetailsModal
-                tournament={selectedTournament}
-                isOpen={isDetailsModalOpen}
-                onClose={() => {
-                    setIsDetailsModalOpen(false);
-                    setSelectedTournament(null);
-                }}
-                onDelete={handleDeleteClick}
-                onEdit={(tournament) => {
-                    // TODO: Implement edit functionality
-                    console.log('Edit tournament:', tournament);
-                }}
             />
 
             <ConfirmationModal

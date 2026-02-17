@@ -155,8 +155,8 @@ export default function TournamentDetails() {
                         </Badge>
                     </div>
                     <div>
-                        <p className="text-sm text-text-muted mb-1">Organizer ID</p>
-                        <p className="text-white font-semibold font-mono text-xs">{tournament.organizerId}</p>
+                        <p className="text-sm text-text-muted mb-1">Organizer</p>
+                        <p className="text-white font-semibold">{tournament.organizerId?.username || 'Unknown'}</p>
                     </div>
                 </div>
             </div>

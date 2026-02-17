@@ -14,7 +14,6 @@ import {
     Bell,
     ChevronDown,
     Search,
-    Users
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/core';
@@ -22,6 +21,7 @@ import { Button } from '../../components/ui/core';
 export default function PlayerLayout() {
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth > 1024);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -192,6 +192,7 @@ function NavItem({ to, icon, label, isOpen }: NavItemProps) {
             className={({ isActive }) => cn(
                 "flex items-center p-3 rounded-lg transition-all duration-200 group relative overflow-hidden",
                 isActive
+                    ? "bg-primary/10 text-primary border-primary/20 border"
                     : "text-text-muted hover:text-white hover:bg-white/5"
             )}
         >
@@ -217,15 +218,3 @@ function NavItem({ to, icon, label, isOpen }: NavItemProps) {
         </NavLink>
     );
 }
-
-// Mock Data for Social Sidebar
-const MOCK_FRIENDS = [
-    { id: 1, name: 'Soudemy', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Soudemy', status: 'online' },
-    { id: 2, name: 'Kratos', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kratos', status: 'in-game' },
-    { id: 3, name: 'Deep Walker', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Deep', status: 'online' },
-    { id: 4, name: 'Jane Doe', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane', status: 'offline' },
-    { id: 5, name: 'Alex Smith', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex', status: 'in-game' },
-    { id: 6, name: 'John Wick', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John', status: 'online' },
-    { id: 7, name: 'Sarah Connor', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', status: 'offline' },
-    { id: 8, name: 'Neo', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Neo', status: 'in-game' },
-];

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Input, Modal, Select } from '../../../components/ui/core';
+import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertCircle } from 'lucide-react';
 import type { League } from '../../../services/leagueService';
 
@@ -138,6 +139,9 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
         } catch (error: any) {
             console.error('Error saving league:', error);
             if (error.message && Array.isArray(error.message)) {
+                // Toast all errors for visibility
+                error.message.forEach((msg: string) => toast.error(msg));
+
                 const backendErrs: Record<string, string> = {};
                 error.message.forEach((msg: string) => {
                     const fields = ['name', 'gameId', 'tier', 'mode', 'regionFilter', 'minElo', 'maxParticipants', 'startDate', 'endDate'];
@@ -145,6 +149,7 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                     if (field) backendErrs[field] = msg;
                 });
                 setErrors(backendErrs);
+
                 // Switch to first step if there are errors there
                 if (backendErrs.name || backendErrs.gameId || backendErrs.tier || backendErrs.mode || backendErrs.minElo) {
                     setCurrentStep(1);
@@ -152,7 +157,9 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                     setCurrentStep(2);
                 }
             } else if (error.message) {
-                alert('Erreur: ' + error.message);
+                toast.error(error.message);
+            } else {
+                toast.error('Une erreur est survenue lors de la sauvegarde');
             }
         } finally {
             setIsSubmitting(false);
@@ -234,8 +241,6 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                                     value={formData.startDate}
                                     onChange={(e) => updateField('startDate', e.target.value)}
                                     className={errors.startDate ? 'border-red-500' : ''}
-                                    onFocus={(e) => (e.target as any).showPicker?.()}
-                                    onClick={(e) => (e.target as any).showPicker?.()}
                                 />
                                 {errors.startDate && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.startDate}</p>}
                             </div>
@@ -247,8 +252,6 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                                     value={formData.endDate}
                                     onChange={(e) => updateField('endDate', e.target.value)}
                                     className={errors.endDate ? 'border-red-500' : ''}
-                                    onFocus={(e) => (e.target as any).showPicker?.()}
-                                    onClick={(e) => (e.target as any).showPicker?.()}
                                 />
                                 {errors.endDate && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.endDate}</p>}
                             </div>

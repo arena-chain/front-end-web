@@ -41,6 +41,9 @@ import ManagerDashboard from './manager/pages/ManagerDashboard';
 // Referee Imports
 import RefereeLayout from './referee/layout/RefereeLayout';
 import RefereeDashboard from './referee/pages/RefereeDashboard';
+import AdminLeagues from "./admin/pages/Leagues.tsx";
+import Reservations from "./admin/pages/Reservations.tsx";
+import AdminTickets from "./admin/pages/Tickets.tsx";
 
 function App() {
   return (
@@ -63,7 +66,7 @@ function App() {
           <Route path="tournaments" element={<Tournaments />} />
           <Route path="leagues" element={<AdminLeagues />} />
           <Route path="tournaments/:id" element={<TournamentDetails />} />
-          <Route path="tickets" element={<Tickets />} />
+          <Route path="tickets" element={<AdminTickets />} />
           <Route path="reservations" element={<Reservations />} />
           <Route path="games" element={<Games />} />
           <Route path="matches" element={<Matches />} />
