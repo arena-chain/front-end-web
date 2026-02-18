@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Input, Modal, Select } from '../../../components/ui/core';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, Trash2, AlertCircle } from 'lucide-react';
-import type { League } from '../../../services/leagueService';
+import { ChevronLeft, ChevronRight, Plus, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { leagueService, LeagueLevel, LeagueFormat, LeagueStatus, type League } from '../../../services/leagueService';
+import { default as catalogService } from '../../../services/catalogService';
+import type { Game } from '../../../models/game';
 
 interface CreateLeagueModalProps {
     isOpen: boolean;
@@ -15,16 +17,38 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [formData, setFormData] = useState({
+
+    // Enums for dropdowns
+    const [continents, setContinents] = useState<string[]>([]);
+    const [countries, setCountries] = useState<string[]>([]);
+    const [loadingEnums, setLoadingEnums] = useState(false);
+
+    const [games, setGames] = useState<Game[]>([]);
+    const [loadingGames, setLoadingGames] = useState(false);
+
+    interface LeagueFormData {
+        name: string;
+        gameId: string;
+        level: LeagueLevel;
+        format: LeagueFormat;
+        regionId: string;
+        startDate: string;
+        endDate: string;
+        maxTeams: number;
+        status: LeagueStatus;
+        rewards: { rank: number; prize: string; points: number }[];
+    }
+
+    const [formData, setFormData] = useState<LeagueFormData>({
         name: '',
         gameId: 'super_striker_01',
-        tier: 'OFFICIAL',
-        mode: 'SOLO',
-        regionFilter: 'GLOBAL',
+        level: LeagueLevel.INTERNATIONAL,
+        format: LeagueFormat.GROUPS,
+        regionId: 'Global', // Default for International
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        maxParticipants: 100,
-        minElo: 0,
+        maxTeams: 16,
+        status: LeagueStatus.REGISTRATION,
         rewards: [
             { rank: 1, prize: '', points: 0 }
         ]
@@ -32,31 +56,68 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
 
     const today = new Date().toISOString().split('T')[0];
 
-    React.useEffect(() => {
+    useEffect(() => {
+        const fetchEnums = async () => {
+            setLoadingEnums(true);
+            try {
+                const data = await leagueService.getRegionEnums();
+                setContinents(data.continents);
+                setCountries(data.countries);
+            } catch (error) {
+                console.error("Failed to load region enums", error);
+            } finally {
+                setLoadingEnums(false);
+            }
+        };
+
+        if (isOpen) {
+            fetchEnums();
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        const fetchGames = async () => {
+            setLoadingGames(true);
+            try {
+                const data = await catalogService.fetchGames();
+                setGames(data);
+            } catch (error) {
+                console.error("Failed to load games", error);
+            } finally {
+                setLoadingGames(false);
+            }
+        };
+
+        if (isOpen) {
+            fetchGames();
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
         if (league) {
             setFormData({
                 name: league.name || '',
                 gameId: league.gameId || 'super_striker_01',
-                tier: league.tier || 'OFFICIAL',
-                mode: league.mode || 'SOLO',
-                regionFilter: league.regionFilter || 'GLOBAL',
+                level: league.level || LeagueLevel.INTERNATIONAL,
+                format: league.format || LeagueFormat.GROUPS,
+                regionId: league.regionId || 'Global',
                 startDate: league.startDate ? new Date(league.startDate).toISOString().split('T')[0] : today,
                 endDate: league.endDate ? new Date(league.endDate).toISOString().split('T')[0] : today,
-                maxParticipants: league.maxParticipants || 100,
-                minElo: league.minElo || 0,
+                maxTeams: league.maxTeams || 16,
+                status: league.status || LeagueStatus.REGISTRATION,
                 rewards: league.rewards || [{ rank: 1, prize: '', points: 0 }]
             });
         } else {
             setFormData({
                 name: '',
                 gameId: 'super_striker_01',
-                tier: 'OFFICIAL',
-                mode: 'SOLO',
-                regionFilter: 'GLOBAL',
+                level: LeagueLevel.INTERNATIONAL,
+                format: LeagueFormat.GROUPS,
+                regionId: 'Global',
                 startDate: today,
                 endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                maxParticipants: 100,
-                minElo: 0,
+                maxTeams: 16,
+                status: LeagueStatus.REGISTRATION,
                 rewards: [{ rank: 1, prize: '', points: 0 }]
             });
         }
@@ -64,11 +125,35 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
         setCurrentStep(1);
     }, [league, isOpen, today]);
 
+    // Effect to reset regionId when level changes
+    useEffect(() => {
+        // Only reset if it's a manual change, not initial load (handled above)
+        // We can check if isOpen is true and we are interacting.
+        // For simplicity, we can just enforce the rule if the current regionId is invalid for the new level.
+        if (!isOpen) return;
+
+        if (formData.level === LeagueLevel.INTERNATIONAL) {
+            if (formData.regionId !== 'Global') updateField('regionId', 'Global');
+        } else if (formData.level === LeagueLevel.CONTINENTAL) {
+            // If current region is not in continents, reset to first continent or empty
+            if (!continents.includes(formData.regionId)) {
+                updateField('regionId', continents[0] || '');
+            }
+        } else if (formData.level === LeagueLevel.NATIONAL) {
+            // If current region is not in countries, reset
+            if (!countries.includes(formData.regionId)) {
+                updateField('regionId', countries[0] || '');
+            }
+        } else {
+            // Regional - free text, no reset needed typically unless empty
+        }
+    }, [formData.level, continents, countries]);
+
+
     const totalSteps = 3;
 
     const updateField = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error when field changes
         if (errors[field]) {
             setErrors(prev => {
                 const newErrs = { ...prev };
@@ -102,7 +187,16 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
 
             if (!formData.gameId.trim()) stepErrors.gameId = 'L\'ID du jeu est obligatoire';
 
-            if (formData.minElo < 0) stepErrors.minElo = 'L\'ELO ne peut pas être négatif';
+            // Region validation
+            if (formData.level === LeagueLevel.CONTINENTAL && !formData.regionId) {
+                stepErrors.regionId = 'Veuillez sélectionner un continent';
+            }
+            if (formData.level === LeagueLevel.NATIONAL && !formData.regionId) {
+                stepErrors.regionId = 'Veuillez sélectionner un pays';
+            }
+            if (formData.level === LeagueLevel.REGIONAL && !formData.regionId.trim()) {
+                stepErrors.regionId = 'Veuillez entrer une région';
+            }
         }
         else if (currentStep === 2) {
             if (!formData.startDate) stepErrors.startDate = 'La date de début est obligatoire';
@@ -114,7 +208,7 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                 }
             }
 
-            if (formData.maxParticipants < 2) stepErrors.maxParticipants = 'Il faut au moins 2 participants';
+            if (formData.maxTeams < 2) stepErrors.maxTeams = 'Il faut au moins 2 équipes';
         }
 
         if (Object.keys(stepErrors).length > 0) {
@@ -139,23 +233,10 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
         } catch (error: any) {
             console.error('Error saving league:', error);
             if (error.message && Array.isArray(error.message)) {
-                // Toast all errors for visibility
                 error.message.forEach((msg: string) => toast.error(msg));
-
                 const backendErrs: Record<string, string> = {};
-                error.message.forEach((msg: string) => {
-                    const fields = ['name', 'gameId', 'tier', 'mode', 'regionFilter', 'minElo', 'maxParticipants', 'startDate', 'endDate'];
-                    const field = fields.find(f => msg.toLowerCase().includes(f.toLowerCase()));
-                    if (field) backendErrs[field] = msg;
-                });
+                // Simple mapping attempt, might need refinement based on exact backend error keys
                 setErrors(backendErrs);
-
-                // Switch to first step if there are errors there
-                if (backendErrs.name || backendErrs.gameId || backendErrs.tier || backendErrs.mode || backendErrs.minElo) {
-                    setCurrentStep(1);
-                } else if (backendErrs.startDate || backendErrs.endDate || backendErrs.maxParticipants) {
-                    setCurrentStep(2);
-                }
             } else if (error.message) {
                 toast.error(error.message);
             } else {
@@ -163,6 +244,55 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
             }
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const renderLevelSpecificRegion = () => {
+        if (loadingEnums) return <p className="text-xs text-text-muted"><Loader2 className="animate-spin w-3 h-3 inline" /> Loading regions...</p>;
+
+        switch (formData.level) {
+            case LeagueLevel.INTERNATIONAL:
+                return (
+                    <Input
+                        value="Global"
+                        disabled
+                        className="bg-white/5 text-text-muted cursor-not-allowed"
+                        title="International leagues are always Global"
+                    />
+                );
+            case LeagueLevel.CONTINENTAL:
+                return (
+                    <Select
+                        value={formData.regionId}
+                        onChange={(e) => updateField('regionId', e.target.value)}
+                        className={errors.regionId ? 'border-red-500' : ''}
+                    >
+                        <option value="">Select Continent</option>
+                        {continents.map(c => <option key={c} value={c}>{c}</option>)}
+                    </Select>
+                );
+            case LeagueLevel.NATIONAL:
+                return (
+                    <Select
+                        value={formData.regionId}
+                        onChange={(e) => updateField('regionId', e.target.value)}
+                        className={errors.regionId ? 'border-red-500' : ''}
+                    >
+                        <option value="">Select Country</option>
+                        {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                    </Select>
+                );
+            case LeagueLevel.REGIONAL:
+                return (
+                    <Input
+                        placeholder="e.g. Ile-de-France, California..."
+                        value={formData.regionId}
+                        onChange={(e) => updateField('regionId', e.target.value)}
+                        className={errors.regionId ? 'border-red-500' : ''}
+                    />
+                );
+            default:
+                return null;
         }
     };
 
@@ -175,54 +305,71 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                         <div>
                             <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">League Name</label>
                             <Input
-                                placeholder="e.g. Winter Season 2026"
+                                placeholder="e.g. African Champions Cup"
                                 value={formData.name}
                                 onChange={(e) => updateField('name', e.target.value)}
                                 className={errors.name ? 'border-red-500' : ''}
                             />
                             {errors.name && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.name}</p>}
                         </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Tier</label>
-                                <Select value={formData.tier} onChange={(e) => updateField('tier', e.target.value)} className={errors.tier ? 'border-red-500' : ''}>
-                                    <option value="OFFICIAL">Official</option>
-                                    <option value="PREMIUM">Premium</option>
-                                    <option value="COMMUNITY">Community</option>
-                                </Select>
-                                {errors.tier && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.tier}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Mode</label>
-                                <Select value={formData.mode} onChange={(e) => updateField('mode', e.target.value)} className={errors.mode ? 'border-red-500' : ''}>
-                                    <option value="SOLO">Solo</option>
-                                    <option value="TEAM">Team</option>
-                                </Select>
-                                {errors.mode && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.mode}</p>}
+                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Game</label>
+                                {loadingGames ? (
+                                    <div className="flex items-center gap-2 text-xs text-text-muted">
+                                        <Loader2 className="w-3 h-3 animate-spin" /> Loading games...
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={formData.gameId}
+                                        onChange={(e) => updateField('gameId', e.target.value)}
+                                        className={errors.gameId ? 'border-red-500' : ''}
+                                    >
+                                        <option value="">Select a Game</option>
+                                        {games.map((game: any) => (
+                                            <option key={game._id} value={game._id}>
+                                                {game.title}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                )}
+                                {errors.gameId && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.gameId}</p>}
                             </div>
                         </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Region Filter</label>
-                                <Select value={formData.regionFilter} onChange={(e) => updateField('regionFilter', e.target.value)} className={errors.regionFilter ? 'border-red-500' : ''}>
-                                    <option value="GLOBAL">Global</option>
-                                    <option value="EUROPE">Europe</option>
-                                    <option value="AFRICA">Afrique</option>
-                                    <option value="ASIA">Asie</option>
-                                    <option value="AMERICAS">Amériques</option>
-                                    <option value="OCEANIA">Océanie</option>
+                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">League Level</label>
+                                <Select value={formData.level} onChange={(e) => updateField('level', e.target.value)} className={errors.level ? 'border-red-500' : ''}>
+                                    {Object.values(LeagueLevel).map((lvl) => (
+                                        <option key={lvl} value={lvl}>{lvl}</option>
+                                    ))}
                                 </Select>
-                                {errors.regionFilter && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.regionFilter}</p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Min ELO</label>
-                                <Input
-                                    type="number"
-                                    value={formData.minElo}
-                                    onChange={(e) => updateField('minElo', parseInt(e.target.value))}
-                                    className={errors.minElo ? 'border-red-500' : ''}
-                                />
-                                {errors.minElo && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.minElo}</p>}
+                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Region</label>
+                                {renderLevelSpecificRegion()}
+                                {errors.regionId && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.regionId}</p>}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Format</label>
+                                <Select value={formData.format} onChange={(e) => updateField('format', e.target.value)} className={errors.format ? 'border-red-500' : ''}>
+                                    {Object.values(LeagueFormat).map((fmt) => (
+                                        <option key={fmt} value={fmt}>{fmt.replace('_', ' ')}</option>
+                                    ))}
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Status</label>
+                                <Select value={formData.status} onChange={(e) => updateField('status', e.target.value)}>
+                                    {Object.values(LeagueStatus).map((st) => (
+                                        <option key={st} value={st}>{st}</option>
+                                    ))}
+                                </Select>
                             </div>
                         </div>
                     </div>
@@ -257,14 +404,14 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Max Participants</label>
+                            <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Max Teams</label>
                             <Input
                                 type="number"
-                                value={formData.maxParticipants}
-                                onChange={(e) => updateField('maxParticipants', parseInt(e.target.value))}
-                                className={errors.maxParticipants ? 'border-red-500' : ''}
+                                value={formData.maxTeams}
+                                onChange={(e) => updateField('maxTeams', parseInt(e.target.value))}
+                                className={errors.maxTeams ? 'border-red-500' : ''}
                             />
-                            {errors.maxParticipants && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.maxParticipants}</p>}
+                            {errors.maxTeams && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.maxTeams}</p>}
                         </div>
                     </div>
                 );
@@ -324,7 +471,7 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} size="lg" title={league ? "Edit Official League" : "Create Official League"}>
+        <Modal isOpen={isOpen} onClose={onClose} size="lg" title={league ? "Edit League" : "Create League"}>
             <div className="p-6">
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     History,
     Settings,
@@ -14,9 +14,12 @@ import {
     Bell,
     ChevronDown,
     Search,
+    Loader2,
+    Crown,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/core';
+import { leagueService, type League, LeagueStatus } from '../../services/leagueService';
 
 export default function PlayerLayout() {
     const navigate = useNavigate();
@@ -45,9 +48,7 @@ export default function PlayerLayout() {
                     {isSidebarOpen ? (
                         <div className="flex items-center gap-2 animate-fade-in-up">
                             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-black font-black">A</div>
-                            <h1 className="text-xl font-black uppercase tracking-widest text-white">
-                                ARENA
-                            </h1>
+                            <h1 className="text-xl font-black uppercase tracking-widest text-white">ARENA</h1>
                         </div>
                     ) : (
                         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black font-black text-xl shadow-[0_0_15px_rgba(0,255,136,0.5)]">
@@ -57,14 +58,16 @@ export default function PlayerLayout() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 py-4 px-3 space-y-2 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto custom-scrollbar">
                     <NavItem to="/player/dashboard" icon={<Gamepad2 size={20} />} label="Play" isOpen={isSidebarOpen} />
                     <NavItem to="/player/tournaments" icon={<Trophy size={20} />} label="Tournaments" isOpen={isSidebarOpen} />
+                    <LeaguesDropdown isOpen={isSidebarOpen} />
                     <NavItem to="/player/market" icon={<DollarSign size={20} />} label="Get Tickets" isOpen={isSidebarOpen} />
                     <NavItem to="/player/my-tickets" icon={<Ticket size={20} />} label="My Tickets" isOpen={isSidebarOpen} />
                     <NavItem to="/player/matches" icon={<History size={20} />} label="Match History" isOpen={isSidebarOpen} />
+                    <NavItem to="/player/rankings" icon={<Crown size={20} />} label="Rankings" isOpen={isSidebarOpen} />
 
-                    <div className="my-4 border-t border-white/5 mx-2" />
+                    <div className="my-3 border-t border-white/5 mx-2" />
 
                     <NavItem to="/player/profile" icon={<User size={20} />} label="Profile" isOpen={isSidebarOpen} />
                     <NavItem to="/player/settings" icon={<Settings size={20} />} label="Settings" isOpen={isSidebarOpen} />
@@ -95,7 +98,6 @@ export default function PlayerLayout() {
                             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
                         </button>
 
-                        {/* Search Bar */}
                         <div className="hidden md:flex items-center relative w-96">
                             <Search className="absolute left-4 w-4 h-4 text-text-muted" />
                             <input
@@ -107,13 +109,11 @@ export default function PlayerLayout() {
                     </div>
 
                     <div className="flex items-center gap-6">
-                        {/* Notification Bell */}
                         <button className="relative p-2.5 rounded-full hover:bg-white/5 text-text-muted hover:text-white transition-colors">
                             <Bell size={20} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
                         </button>
 
-                        {/* Profile Dropdown */}
                         <div className="relative">
                             <button
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -130,21 +130,15 @@ export default function PlayerLayout() {
                                 </div>
                                 <div className="hidden md:flex flex-col items-start mr-2">
                                     <span className="text-sm font-bold text-white leading-none">Player One</span>
-                                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase font-bold mt-1">
-                                        PRO
-                                    </span>
+                                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase font-bold mt-1">PRO</span>
                                 </div>
                                 <ChevronDown size={14} className="text-text-muted hidden md:block" />
                             </button>
 
-                            {/* Dropdown Menu */}
                             {isProfileOpen && (
                                 <>
-                                    <div
-                                        className="fixed inset-0 z-40"
-                                        onClick={() => setIsProfileOpen(false)}
-                                    />
-                                    <div className="absolute right-0 top-full mt-2 w-56 bg-[#1A1D21] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                                    <div className="absolute right-0 top-full mt-2 w-56 bg-[#1A1D21] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
                                         <div className="p-4 border-b border-white/5">
                                             <p className="text-sm font-bold text-white">Player One</p>
                                             <p className="text-xs text-text-muted">player.one@arena.com</p>
@@ -178,6 +172,124 @@ export default function PlayerLayout() {
     );
 }
 
+// ─── Leagues Dropdown ────────────────────────────────────────────────────────
+
+function LeaguesDropdown({ isOpen }: { isOpen: boolean }) {
+    const navigate = useNavigate();
+    const { pathname } = useLocation();
+    const [expanded, setExpanded] = useState(false);
+    const [leagues, setLeagues] = useState<League[]>([]);
+    const [loading, setLoading] = useState(false);
+    const isLeaguesActive = pathname.startsWith('/player/leagues');
+
+    useEffect(() => {
+        if (expanded && leagues.length === 0) {
+            setLoading(true);
+            leagueService.getAllLeagues()
+                .then(setLeagues)
+                .catch(console.error)
+                .finally(() => setLoading(false));
+        }
+    }, [expanded]);
+
+    const levelColor = (level: string): { hex: string; glow: string } => {
+        switch (level) {
+            case 'INTERNATIONAL': return { hex: '#9333ea', glow: '0 0 14px rgba(147,51,234,0.6)' };
+            case 'CONTINENTAL':   return { hex: '#2563eb', glow: '0 0 14px rgba(37,99,235,0.6)' };
+            case 'NATIONAL':      return { hex: '#059669', glow: '0 0 14px rgba(5,150,105,0.6)' };
+            default:              return { hex: '#ea580c', glow: '0 0 14px rgba(234,88,12,0.6)' };
+        }
+    };
+
+    const statusDot = (status: string) =>
+        status === LeagueStatus.ONGOING ? 'bg-green-400' :
+        status === LeagueStatus.REGISTRATION ? 'bg-blue-400' : 'bg-white/20';
+
+    // auto-expand when navigating directly to a league URL
+    useEffect(() => {
+        if (isLeaguesActive) setExpanded(true);
+    }, [isLeaguesActive]);
+
+    if (!isOpen) {
+        return (
+            <button
+                onClick={() => navigate('/player/leagues')}
+                className={cn(
+                    "w-full flex items-center justify-center p-3 rounded-lg transition-all duration-200",
+                    isLeaguesActive
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "text-text-muted hover:text-white hover:bg-white/5"
+                )}
+                title="Leagues"
+            >
+                <Trophy size={20} />
+            </button>
+        );
+    }
+
+    return (
+        <div>
+            <button
+                onClick={() => setExpanded(!expanded)}
+                className={cn(
+                    "w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 group",
+                    isLeaguesActive
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "text-text-muted hover:text-white hover:bg-white/5"
+                )}
+            >
+                <div className="flex items-center gap-3">
+                    <Trophy size={20} className="shrink-0" />
+                    <span className="font-bold text-sm">Leagues</span>
+                </div>
+                <ChevronDown
+                    size={14}
+                    className={cn("transition-transform duration-200 shrink-0", expanded && "rotate-180")}
+                />
+            </button>
+
+            {expanded && (
+                <div className="mt-2 space-y-1.5">
+                    {loading ? (
+                        <div className="flex justify-center py-3">
+                            <Loader2 size={14} className="text-primary animate-spin" />
+                        </div>
+                    ) : leagues.length === 0 ? (
+                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest px-2 py-2 opacity-50">No leagues</p>
+                    ) : leagues.map((league) => {
+                        const lc = levelColor(league.level);
+                        const isActive = pathname === `/player/leagues/${league._id}`;
+                        return (
+                            <button
+                                key={league._id}
+                                onClick={() => navigate(`/player/leagues/${league._id}`)}
+                                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200 text-white"
+                                style={{
+                                    backgroundColor: lc.hex,
+                                    opacity: isActive ? 1 : 0.75,
+                                    boxShadow: isActive ? lc.glow : 'none',
+                                    outline: isActive ? '2px solid rgba(255,255,255,0.25)' : 'none',
+                                    outlineOffset: '1px',
+                                }}
+                                onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                                onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.opacity = '0.75'; }}
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <Trophy size={12} className="shrink-0" />
+                                    <span className="truncate">{league.name}</span>
+                                </div>
+                                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 border border-white/30", statusDot(league.status))} />
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── NavItem ─────────────────────────────────────────────────────────────────
+
 interface NavItemProps {
     to: string;
     icon: React.ReactNode;
@@ -198,21 +310,16 @@ function NavItem({ to, icon, label, isOpen }: NavItemProps) {
         >
             {({ isActive }) => (
                 <>
-                    <span className={cn("z-10 transition-transform duration-200", isActive && "scale-110")}>
+                    <span className={cn("z-10 transition-transform duration-200 shrink-0", isActive && "scale-110")}>
                         {icon}
                     </span>
-
                     <span className={cn(
                         "ml-3 font-bold text-sm whitespace-nowrap transition-all duration-300 z-10",
                         !isOpen && "opacity-0 w-0 overflow-hidden ml-0"
                     )}>
                         {label}
                     </span>
-
-                    {/* Active Glow Effect */}
-                    {isActive && (
-                        <div className="absolute inset-0 bg-primary/5 blur-md" />
-                    )}
+                    {isActive && <div className="absolute inset-0 bg-primary/5 blur-md" />}
                 </>
             )}
         </NavLink>

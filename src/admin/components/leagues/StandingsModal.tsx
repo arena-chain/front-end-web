@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Modal, Badge } from '../../../components/ui/core';
-import { leagueService, type LeagueParticipant } from '../../../services/leagueService';
-import { Trophy, Loader2, Medal, User, X, Globe } from 'lucide-react';
+import { Modal } from '../../../components/ui/core';
+import { leagueService } from '../../../services/leagueService';
+import { Trophy, Loader2, User, X, Globe } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 interface StandingsModalProps {
@@ -40,15 +40,6 @@ export default function StandingsModal({ isOpen, onClose, leagueId, leagueName }
             console.error('Failed to fetch standings:', error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const getRankIcon = (index: number) => {
-        switch (index) {
-            case 0: return <Medal className="text-yellow-400 w-5 h-5" />;
-            case 1: return <Medal className="text-gray-300 w-5 h-5" />;
-            case 2: return <Medal className="text-orange-400 w-5 h-5" />;
-            default: return <span className="text-text-muted font-bold text-sm w-5 text-center">{index + 1}</span>;
         }
     };
 
@@ -149,45 +140,53 @@ export default function StandingsModal({ isOpen, onClose, leagueId, leagueName }
                                             </tr>
                                         );
                                     }
-                                    return filtered.map((player, index) => (
-                                        <tr key={player._id} className="group hover:bg-white/[0.02] transition-colors border-b border-white/[0.03]">
-                                            <td className="py-6 pr-4">
-                                                <span className="text-white font-black text-sm pl-4">{index + 1}</span>
-                                            </td>
-                                            <td className="py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center overflow-hidden ring-1 ring-white/5 bg-surface relative">
-                                                        {player.playerId?.avatar ? (
-                                                            <img src={player.playerId.avatar} className="w-full h-full object-cover" alt="" />
-                                                        ) : (
-                                                            <User className="w-5 h-5 text-white/50" />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-white text-sm group-hover:text-primary transition-colors">{player.playerId.nickname}</p>
-                                                        <p className="text-[10px] text-[#444] uppercase font-bold tracking-tight">{player.playerId.email}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
+                                    return filtered.map((participant, index) => {
+                                        // Determine display data (Team or Player)
+                                        const isTeam = !!participant.teamId && typeof participant.teamId === 'object';
+                                        const name = isTeam ? (participant.teamId as any).name : (participant.playerId?.nickname || 'Unknown');
+                                        const avatar = isTeam ? (participant.teamId as any).logo : (participant.playerId?.avatar || null);
+                                        const subText = isTeam ? 'Team' : (participant.playerId?.email || '');
 
-                                            <td className="py-6 text-center">
-                                                <div className="inline-flex items-center gap-2 bg-[#121212] border border-white/10 pl-1 pr-3 py-1 rounded-full ring-1 ring-white/5">
-                                                    <div className={cn(
-                                                        "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black",
-                                                        index < 3 ? "bg-orange-500 text-black shadow-[0_0_10px_rgba(255,165,0,0.3)]" : "bg-white/10 text-white"
-                                                    )}>
-                                                        #{index + 1}
+                                        return (
+                                            <tr key={participant._id} className="group hover:bg-white/[0.02] transition-colors border-b border-white/[0.03]">
+                                                <td className="py-6 pr-4">
+                                                    <span className="text-white font-black text-sm pl-4">{index + 1}</span>
+                                                </td>
+                                                <td className="py-6">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center overflow-hidden ring-1 ring-white/5 bg-surface relative">
+                                                            {avatar ? (
+                                                                <img src={avatar} className="w-full h-full object-cover" alt={name} />
+                                                            ) : (
+                                                                isTeam ? <Globe className="w-5 h-5 text-white/50" /> : <User className="w-5 h-5 text-white/50" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-white text-sm group-hover:text-primary transition-colors">{name}</p>
+                                                            <p className="text-[10px] text-[#444] uppercase font-bold tracking-tight">{subText}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="w-4 h-4 bg-orange-500/20 rounded-full flex items-center justify-center">
-                                                        <div className="w-1 h-1 bg-orange-500 rounded-full"></div>
+                                                </td>
+
+                                                <td className="py-6 text-center">
+                                                    <div className="inline-flex items-center gap-2 bg-[#121212] border border-white/10 pl-1 pr-3 py-1 rounded-full ring-1 ring-white/5">
+                                                        <div className={cn(
+                                                            "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black",
+                                                            index < 3 ? "bg-orange-500 text-black shadow-[0_0_10px_rgba(255,165,0,0.3)]" : "bg-white/10 text-white"
+                                                        )}>
+                                                            #{index + 1}
+                                                        </div>
+                                                        <div className="w-4 h-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                                                            <div className="w-1 h-1 bg-orange-500 rounded-full"></div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="py-6 text-right pr-4">
-                                                <span className="text-lg font-black text-white tracking-tighter">{player.rankPoints}</span>
-                                            </td>
-                                        </tr>
-                                    ));
+                                                </td>
+                                                <td className="py-6 text-right pr-4">
+                                                    <span className="text-lg font-black text-white tracking-tighter">{participant.rankPoints || participant.points || 0}</span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    });
                                 })()}
                             </tbody>
                         </table>

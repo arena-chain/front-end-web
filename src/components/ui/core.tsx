@@ -152,9 +152,10 @@ interface ModalProps {
     title?: string;
     children: React.ReactNode;
     size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+    hideDefaultHeader?: boolean;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md', hideDefaultHeader = false }) => {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -193,7 +194,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                 sizes[size]
             )}>
                 {/* Header */}
-                {title && (
+                {title && !hideDefaultHeader && (
                     <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-surface/50">
                         <h2 className="text-xl font-black uppercase tracking-tighter text-white">{title}</h2>
                         <button

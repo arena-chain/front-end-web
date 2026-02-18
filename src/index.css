@@ -76,6 +76,79 @@
 
   --animate-spin-slow: spin-slow 8s linear infinite;
   --animate-slide-in-right: slide-in-right 0.3s ease-out forwards;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 9s ease-in-out infinite;
+  --animate-float-fast: float 4s ease-in-out infinite;
+  --animate-beam: beam-sweep 4s ease-in-out infinite;
+  --animate-flicker: text-flicker 5s linear infinite;
+  --animate-glow-breathe: glow-breathe 2.5s ease-in-out infinite;
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-slide-left: slide-left 0.7s ease-out forwards;
+  --animate-scale-in: scale-in 0.5s ease-out forwards;
+  --animate-fade-stagger-1: fadeInUp 0.8s ease-out 0.1s forwards;
+  --animate-fade-stagger-2: fadeInUp 0.8s ease-out 0.3s forwards;
+  --animate-fade-stagger-3: fadeInUp 0.8s ease-out 0.5s forwards;
+  --animate-fade-stagger-4: fadeInUp 0.8s ease-out 0.7s forwards;
+  --animate-fade-stagger-5: fadeInUp 0.8s ease-out 0.9s forwards;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-24px) scale(1.04); }
+  }
+
+  @keyframes beam-sweep {
+    0% { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateX(400%) skewX(-20deg); opacity: 0; }
+  }
+
+  @keyframes text-flicker {
+    0%, 100% { opacity: 1; text-shadow: 0 0 20px rgba(0,255,0,0.8), 0 0 60px rgba(0,255,0,0.3); }
+    92% { opacity: 1; }
+    93% { opacity: 0.5; text-shadow: none; }
+    94% { opacity: 1; text-shadow: 0 0 20px rgba(0,255,0,0.8); }
+    96% { opacity: 0.7; }
+    97% { opacity: 1; }
+  }
+
+  @keyframes glow-breathe {
+    0%, 100% { box-shadow: 0 0 15px rgba(0,255,0,0.3), 0 0 30px rgba(0,255,0,0.1); }
+    50% { box-shadow: 0 0 35px rgba(0,255,0,0.7), 0 0 70px rgba(0,255,0,0.3), 0 0 120px rgba(0,255,0,0.1); }
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @keyframes slide-left {
+    from { opacity: 0; transform: translateX(-40px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes grid-move {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(40px); }
+  }
+
+  @keyframes radar-scan {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  --animate-radar: radar-scan 4s linear infinite;
+  --animate-count: count-up 0.6s ease-out forwards;
 }
 
 :root {

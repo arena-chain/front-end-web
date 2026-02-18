@@ -33,6 +33,7 @@ import TicketBooking from './player/pages/TicketBooking';
 import MyTickets from './player/pages/MyTickets';
 import PlayerSubscription from './player/pages/PlayerSubscription';
 import PlayerPayment from './player/pages/PlayerPayment';
+import PlayerRankings from './player/pages/PlayerRankings';
 
 // Manager Imports
 import ManagerLayout from './manager/layout/ManagerLayout';
@@ -42,6 +43,7 @@ import ManagerDashboard from './manager/pages/ManagerDashboard';
 import RefereeLayout from './referee/layout/RefereeLayout';
 import RefereeDashboard from './referee/pages/RefereeDashboard';
 import AdminLeagues from "./admin/pages/Leagues.tsx";
+import LeagueDetails from "./admin/pages/LeagueDetails.tsx";
 import Reservations from "./admin/pages/Reservations.tsx";
 import AdminTickets from "./admin/pages/Tickets.tsx";
 
@@ -65,6 +67,7 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="tournaments" element={<Tournaments />} />
           <Route path="leagues" element={<AdminLeagues />} />
+          <Route path="leagues/:id" element={<LeagueDetails />} />
           <Route path="tournaments/:id" element={<TournamentDetails />} />
           <Route path="tickets" element={<AdminTickets />} />
           <Route path="reservations" element={<Reservations />} />
@@ -88,6 +91,8 @@ function App() {
           <Route path="tickets/:id" element={<TicketDetails />} />
           <Route path="matches" element={<PlayerMatches />} />
           <Route path="leagues" element={<PlayerLeagues />} />
+          <Route path="leagues/:id" element={<PlayerLeagues />} />
+          <Route path="rankings" element={<PlayerRankings />} />
           <Route path="profile" element={<PlayerProfile />} />
           <Route path="subscription" element={<PlayerSubscription />} />
           <Route path="payment" element={<PlayerPayment />} />
