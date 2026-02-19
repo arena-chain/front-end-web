@@ -46,6 +46,12 @@ import AdminLeagues from "./admin/pages/Leagues.tsx";
 import LeagueDetails from "./admin/pages/LeagueDetails.tsx";
 import Reservations from "./admin/pages/Reservations.tsx";
 import AdminTickets from "./admin/pages/Tickets.tsx";
+import WorkflowPage from "./admin/pages/league-hub/WorkflowPage.tsx";
+import SeasonsPage from "./admin/pages/league-hub/SeasonsPage.tsx";
+import RulesPage from "./admin/pages/league-hub/RulesPage.tsx";
+import RoundsPage from "./admin/pages/league-hub/RoundsPage.tsx";
+import MatchesPage from "./admin/pages/league-hub/MatchesPage.tsx";
+import TeamsPage from "./admin/pages/league-hub/TeamsPage.tsx";
 
 function App() {
   return (
@@ -68,6 +74,13 @@ function App() {
           <Route path="tournaments" element={<Tournaments />} />
           <Route path="leagues" element={<AdminLeagues />} />
           <Route path="leagues/:id" element={<LeagueDetails />} />
+          <Route path="leagues/workflow" element={<WorkflowPage />} />
+          <Route path="leagues/list" element={<AdminLeagues />} />
+          <Route path="leagues/seasons" element={<SeasonsPage />} />
+          <Route path="leagues/rules" element={<RulesPage />} />
+          <Route path="leagues/rounds" element={<RoundsPage />} />
+          <Route path="leagues/matches" element={<MatchesPage />} />
+          <Route path="leagues/teams" element={<TeamsPage />} />
           <Route path="tournaments/:id" element={<TournamentDetails />} />
           <Route path="tickets" element={<AdminTickets />} />
           <Route path="reservations" element={<Reservations />} />

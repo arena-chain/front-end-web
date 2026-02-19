@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
@@ -11,7 +11,14 @@ import {
     X,
     MessageSquare,
     Gamepad2,
-    Ticket
+    Ticket,
+    ChevronDown,
+    ChevronRight,
+    Zap,
+    BookOpen,
+    Calendar,
+    Flag,
+    List,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/core';
@@ -48,10 +55,10 @@ export default function AdminLayout() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 py-6 px-3 space-y-2">
+                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
                     <NavItem to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Overview" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/users" icon={<Users size={20} />} label="Users" isOpen={isSidebarOpen} />
-                    <NavItem to="/admin/leagues" icon={<Trophy size={20} />} label="Leagues" isOpen={isSidebarOpen} />
+                    <LeaguesMenu isOpen={isSidebarOpen} />
                     <NavItem to="/admin/tournaments" icon={<Trophy size={20} />} label="Tournaments" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/tickets" icon={<Ticket size={20} />} label="Tickets" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/reservations" icon={<Ticket size={20} />} label="Reservations" isOpen={isSidebarOpen} />
@@ -104,6 +111,83 @@ export default function AdminLayout() {
         </div>
     );
 }
+
+// ─── League Hub Accordion ─────────────────────────────────────────────────────
+
+const LEAGUE_SUB_ITEMS = [
+    { to: '/admin/leagues/workflow', icon: <Zap size={15} />, label: 'Workflow' },
+    { to: '/admin/leagues/list',     icon: <List size={15} />, label: 'Leagues' },
+    { to: '/admin/leagues/seasons',  icon: <Calendar size={15} />, label: 'Seasons' },
+    { to: '/admin/leagues/rules',    icon: <BookOpen size={15} />, label: 'Rules' },
+    { to: '/admin/leagues/rounds',   icon: <Flag size={15} />, label: 'Rounds' },
+    { to: '/admin/leagues/matches',  icon: <Swords size={15} />, label: 'Matches' },
+    { to: '/admin/leagues/teams',    icon: <Users size={15} />, label: 'Teams' },
+];
+
+function LeaguesMenu({ isOpen }: { isOpen: boolean }) {
+    const location = useLocation();
+    const isLeagueRoute = location.pathname.startsWith('/admin/leagues');
+    const [expanded, setExpanded] = React.useState(isLeagueRoute);
+
+    React.useEffect(() => {
+        if (isLeagueRoute) setExpanded(true);
+    }, [isLeagueRoute]);
+
+    return (
+        <div>
+            {/* Parent button */}
+            <button
+                onClick={() => setExpanded(v => !v)}
+                className={cn(
+                    'w-full flex items-center p-3 rounded-lg transition-all duration-200 group relative overflow-hidden',
+                    isLeagueRoute
+                        ? 'bg-primary/10 text-primary border border-primary/20'
+                        : 'text-text-muted hover:text-white hover:bg-white/5'
+                )}
+            >
+                <span className={cn('z-10 transition-transform duration-200 shrink-0', isLeagueRoute && 'scale-110')}>
+                    <Trophy size={20} />
+                </span>
+                {isOpen && (
+                    <>
+                        <span className="ml-3 font-medium text-sm flex-1 text-left whitespace-nowrap z-10">
+                            League Hub
+                        </span>
+                        <span className="z-10 ml-1 text-text-muted">
+                            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </span>
+                    </>
+                )}
+                {isLeagueRoute && <div className="absolute inset-0 bg-primary/5 blur-md" />}
+            </button>
+
+            {/* Sub-items */}
+            {expanded && (
+                <div className={cn('mt-1 space-y-0.5', isOpen ? 'pl-4' : 'pl-0')}>
+                    {LEAGUE_SUB_ITEMS.map(item => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            className={({ isActive }) => cn(
+                                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150',
+                                isActive
+                                    ? 'bg-primary/15 text-primary border border-primary/15'
+                                    : 'text-text-muted hover:text-white hover:bg-white/5',
+                                !isOpen && 'justify-center px-2'
+                            )}
+                            title={!isOpen ? item.label : undefined}
+                        >
+                            <span className="shrink-0">{item.icon}</span>
+                            {isOpen && <span className="whitespace-nowrap">{item.label}</span>}
+                        </NavLink>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Generic NavItem ──────────────────────────────────────────────────────────
 
 interface NavItemProps {
     to: string;
