@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/core';
-import { leagueService, type League, LeagueStatus } from '../../services/leagueService';
+import { leagueService, type League } from '../../services/leagueService';
 
 export default function PlayerLayout() {
     const navigate = useNavigate();
@@ -195,15 +195,13 @@ function LeaguesDropdown({ isOpen }: { isOpen: boolean }) {
     const levelColor = (level: string): { hex: string; glow: string } => {
         switch (level) {
             case 'INTERNATIONAL': return { hex: '#9333ea', glow: '0 0 14px rgba(147,51,234,0.6)' };
-            case 'CONTINENTAL':   return { hex: '#2563eb', glow: '0 0 14px rgba(37,99,235,0.6)' };
-            case 'NATIONAL':      return { hex: '#059669', glow: '0 0 14px rgba(5,150,105,0.6)' };
-            default:              return { hex: '#ea580c', glow: '0 0 14px rgba(234,88,12,0.6)' };
+            case 'CONTINENTAL': return { hex: '#2563eb', glow: '0 0 14px rgba(37,99,235,0.6)' };
+            case 'NATIONAL': return { hex: '#059669', glow: '0 0 14px rgba(5,150,105,0.6)' };
+            default: return { hex: '#ea580c', glow: '0 0 14px rgba(234,88,12,0.6)' };
         }
     };
 
-    const statusDot = (status: string) =>
-        status === LeagueStatus.ONGOING ? 'bg-green-400' :
-        status === LeagueStatus.REGISTRATION ? 'bg-blue-400' : 'bg-white/20';
+
 
     // auto-expand when navigating directly to a league URL
     useEffect(() => {
@@ -278,7 +276,7 @@ function LeaguesDropdown({ isOpen }: { isOpen: boolean }) {
                                     <Trophy size={12} className="shrink-0" />
                                     <span className="truncate">{league.name}</span>
                                 </div>
-                                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 border border-white/30", statusDot(league.status))} />
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-white/20 border border-white/30" />
                             </button>
                         );
                     })}

@@ -38,20 +38,35 @@ import PlayerRankings from './player/pages/PlayerRankings';
 // Manager Imports
 import ManagerLayout from './manager/layout/ManagerLayout';
 import ManagerDashboard from './manager/pages/ManagerDashboard';
+import ManagerRoster from './manager/pages/ManagerRoster';
+import ManagerTournaments from './manager/pages/ManagerTournaments';
+import ManagerScrims from './manager/pages/ManagerScrims';
+import ManagerSettings from './manager/pages/ManagerSettings';
 
 // Referee Imports
 import RefereeLayout from './referee/layout/RefereeLayout';
 import RefereeDashboard from './referee/pages/RefereeDashboard';
-import AdminLeagues from "./admin/pages/Leagues.tsx";
-import LeagueDetails from "./admin/pages/LeagueDetails.tsx";
-import Reservations from "./admin/pages/Reservations.tsx";
-import AdminTickets from "./admin/pages/Tickets.tsx";
-import WorkflowPage from "./admin/pages/league-hub/WorkflowPage.tsx";
-import SeasonsPage from "./admin/pages/league-hub/SeasonsPage.tsx";
-import RulesPage from "./admin/pages/league-hub/RulesPage.tsx";
-import RoundsPage from "./admin/pages/league-hub/RoundsPage.tsx";
-import MatchesPage from "./admin/pages/league-hub/MatchesPage.tsx";
-import TeamsPage from "./admin/pages/league-hub/TeamsPage.tsx";
+
+// Admin misc
+import AdminLeagues from './admin/pages/Leagues';
+import Reservations from './admin/pages/Reservations';
+import AdminTickets from './admin/pages/Tickets';
+import Partnerships from './admin/pages/Partnerships';
+
+// League Hub
+import LeagueHubLayout from './admin/pages/league-hub/LeagueHubLayout';
+import WorkflowPage from './admin/pages/league-hub/WorkflowPage';
+import ProgressionPage from './admin/pages/league-hub/ProgressionPage';
+import SeasonsPage from './admin/pages/league-hub/SeasonsPage';
+import RulesPage from './admin/pages/league-hub/RulesPage';
+import RoundsPage from './admin/pages/league-hub/RoundsPage';
+import MatchesPage from './admin/pages/league-hub/MatchesPage';
+import TeamsPage from './admin/pages/league-hub/TeamsPage';
+import RostersPage from './admin/pages/league-hub/RostersPage';
+import PrizePoolPage from './admin/pages/league-hub/PrizePoolPage';
+import CheckInsPage from './admin/pages/league-hub/CheckInsPage';
+import DisputesPage from './admin/pages/league-hub/DisputesPage';
+import BracketsPage from './admin/pages/league-hub/BracketsPage';
 
 function App() {
   return (
@@ -66,31 +81,45 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
 
-        {/* Admin Routes */}
+        {/* ── Admin ──────────────────────────────────────────────────── */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<Overview />} />
           <Route path="users" element={<Users />} />
           <Route path="tournaments" element={<Tournaments />} />
-          <Route path="leagues" element={<AdminLeagues />} />
-          <Route path="leagues/:id" element={<LeagueDetails />} />
-          <Route path="leagues/workflow" element={<WorkflowPage />} />
-          <Route path="leagues/list" element={<AdminLeagues />} />
-          <Route path="leagues/seasons" element={<SeasonsPage />} />
-          <Route path="leagues/rules" element={<RulesPage />} />
-          <Route path="leagues/rounds" element={<RoundsPage />} />
-          <Route path="leagues/matches" element={<MatchesPage />} />
-          <Route path="leagues/teams" element={<TeamsPage />} />
           <Route path="tournaments/:id" element={<TournamentDetails />} />
           <Route path="tickets" element={<AdminTickets />} />
           <Route path="reservations" element={<Reservations />} />
           <Route path="games" element={<Games />} />
+          <Route path="partnerships" element={<Partnerships />} />
           <Route path="matches" element={<Matches />} />
           <Route path="channels" element={<Channels />} />
           <Route path="settings" element={<Settings />} />
+
+          {/* Standalone (MUST come before the :id wildcard) */}
+          <Route path="leagues/workflow" element={<WorkflowPage />} />
+          <Route path="leagues/progression" element={<ProgressionPage />} />
+
+          {/* League list */}
+          <Route path="leagues" element={<AdminLeagues />} />
+
+          {/* League Hub — all sub-pages nested under the league's :id */}
+          <Route path="leagues/:id" element={<LeagueHubLayout />}>
+            <Route index element={<Navigate to="seasons" replace />} />
+            <Route path="seasons" element={<SeasonsPage />} />
+            <Route path="rules" element={<RulesPage />} />
+            <Route path="rounds" element={<RoundsPage />} />
+            <Route path="matches" element={<MatchesPage />} />
+            <Route path="teams" element={<TeamsPage />} />
+            <Route path="rosters" element={<RostersPage />} />
+            <Route path="brackets" element={<BracketsPage />} />
+            <Route path="prize-pools" element={<PrizePoolPage />} />
+            <Route path="check-ins" element={<CheckInsPage />} />
+            <Route path="disputes" element={<DisputesPage />} />
+          </Route>
         </Route>
 
-        {/* Player Routes with Layout */}
+        {/* ── Player ─────────────────────────────────────────────────── */}
         <Route path="/player" element={<PlayerLayout />}>
           <Route index element={<Navigate to="/player/dashboard" replace />} />
           <Route path="dashboard" element={<PlayerDashboard />} />
@@ -111,13 +140,17 @@ function App() {
           <Route path="payment" element={<PlayerPayment />} />
         </Route>
 
-        {/* Manager Routes */}
+        {/* ── Manager ────────────────────────────────────────────────── */}
         <Route path="/manager" element={<ManagerLayout />}>
           <Route index element={<Navigate to="/manager/dashboard" replace />} />
           <Route path="dashboard" element={<ManagerDashboard />} />
+          <Route path="roster" element={<ManagerRoster />} />
+          <Route path="tournaments" element={<ManagerTournaments />} />
+          <Route path="scrims" element={<ManagerScrims />} />
+          <Route path="settings" element={<ManagerSettings />} />
         </Route>
 
-        {/* Referee Routes */}
+        {/* ── Referee ────────────────────────────────────────────────── */}
         <Route path="/referee" element={<RefereeLayout />}>
           <Route index element={<Navigate to="/referee/dashboard" replace />} />
           <Route path="dashboard" element={<RefereeDashboard />} />

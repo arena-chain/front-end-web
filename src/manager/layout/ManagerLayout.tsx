@@ -8,14 +8,26 @@ import {
     LogOut,
     Menu,
     X,
-    Shield
+    Shield,
+    Swords,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/core';
 
+interface StoredUser { nickname?: string; email?: string; organizationName?: string; role?: string }
+
 export default function ManagerLayout() {
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+
+    const user: StoredUser = (() => {
+        try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+        catch { return {}; }
+    })();
+
+    const displayName = user.nickname || user.email?.split('@')[0] || 'Manager';
+    const orgName     = user.organizationName || 'My Team';
+    const initials    = displayName.charAt(0).toUpperCase();
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -47,11 +59,11 @@ export default function ManagerLayout() {
 
                 {/* Navigation */}
                 <nav className="flex-1 py-6 px-3 space-y-2">
-                    <NavItem to="/manager/dashboard" icon={<LayoutDashboard size={20} />} label="Overview" isOpen={isSidebarOpen} />
-                    <NavItem to="/manager/roster" icon={<Users size={20} />} label="My Team" isOpen={isSidebarOpen} />
-                    <NavItem to="/manager/tournaments" icon={<Trophy size={20} />} label="Tournaments" isOpen={isSidebarOpen} />
-                    <NavItem to="/manager/scrims" icon={<Shield size={20} />} label="Scrims" isOpen={isSidebarOpen} />
-                    <NavItem to="/manager/settings" icon={<Settings size={20} />} label="Settings" isOpen={isSidebarOpen} />
+                    <NavItem to="/manager/dashboard"    icon={<LayoutDashboard size={20} />} label="Overview"    isOpen={isSidebarOpen} />
+                    <NavItem to="/manager/roster"       icon={<Users size={20} />}           label="My Roster"   isOpen={isSidebarOpen} />
+                    <NavItem to="/manager/tournaments"  icon={<Trophy size={20} />}          label="Leagues"     isOpen={isSidebarOpen} />
+                    <NavItem to="/manager/scrims"       icon={<Swords size={20} />}          label="Scrims"      isOpen={isSidebarOpen} />
+                    <NavItem to="/manager/settings"     icon={<Settings size={20} />}        label="Settings"    isOpen={isSidebarOpen} />
                 </nav>
 
                 {/* Bottom Actions */}
@@ -80,11 +92,11 @@ export default function ManagerLayout() {
 
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col items-end">
-                            <span className="text-sm font-bold text-white">Manager Name</span>
-                            <span className="text-xs text-primary">Team Liquid</span>
+                            <span className="text-sm font-bold text-white">{displayName}</span>
+                            <span className="text-xs text-primary">{orgName}</span>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-surface border border-white/10 flex items-center justify-center">
-                            <span className="font-bold text-primary">M</span>
+                            <span className="font-bold text-primary">{initials}</span>
                         </div>
                     </div>
                 </header>

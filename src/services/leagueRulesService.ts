@@ -3,24 +3,84 @@ import axios from 'axios';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const auth = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-export type FormatType  = 'LEAGUE' | 'SWISS' | 'KNOCKOUT';
-export type MatchType   = 'BO1' | 'BO3' | 'BO5';
-export type Tiebreaker  = 'POINTS' | 'GAME_DIFF' | 'HEAD_TO_HEAD';
+export type FormatType    = 'LEAGUE' | 'SWISS' | 'KNOCKOUT';
+export type MatchType     = 'BO1' | 'BO3' | 'BO5';
+export type Tiebreaker    = 'POINTS' | 'GAME_DIFF' | 'HEAD_TO_HEAD';
+
+/** Which phase(s) this ruleset applies to */
+export type RuleUsage = 'REGULAR_SEASON' | 'PLAYOFFS' | 'GRAND_FINAL' | 'PLAY_IN' | 'QUALIFICATION' | 'GROUP_STAGE';
+
+/** How attack/defense (or blue/red) is decided */
+export type SideSelection =
+    | 'HIGHER_SEED_CHOOSES'
+    | 'KNIFE_ROUND'
+    | 'COIN_TOSS'
+    | 'VETO_WINNER_CHOOSES'
+    | 'FIXED_TEAM_A_ATTACK';
+
+/** How scores are submitted and validated */
+export type ScoreSubmissionMethod = 'ADMIN_VERIFIED' | 'BOTH_TEAMS_CONFIRM' | 'AUTO_FROM_API';
+
+export type MapVetoFormat =
+    | 'BAN_BAN_PICK_PICK_BAN_BAN_DECIDER'
+    | 'BAN_BAN_PICK_PICK_PICK_PICK_DECIDER'
+    | 'PICK_PICK_DECIDER'
+    | 'BAN_BAN_DECIDER'
+    | 'RANDOM'
+    | 'ADMIN_PICK';
+export type VetoFirstPick  = 'HIGHER_SEED' | 'LOWER_SEED' | 'COIN_FLIP' | 'ADMIN';
+export type OvertimeFormat = 'NONE' | 'VALORANT_OT' | 'CS2_OT';
+
+export interface OvertimeConfig {
+    format: OvertimeFormat;
+    enabled: boolean;
+    maxRoundsPerPeriod?: number;
+    startMoney?: number;
+    allowDrawIfDisabled?: boolean;
+    maxOvertimePeriods?: number;
+}
+
+export interface PopulatedGame {
+    _id: string;
+    title: string;
+    genre?: string;
+    publisher?: string;
+    teamSize?: number;
+    supportsTeams?: boolean;
+    coverImageUrl?: string;
+}
 
 export interface LeagueRule {
     _id: string;
     name: string;
-    gameId: string | { _id: string; title: string };
+    gameId: string | PopulatedGame;
     formatType: FormatType;
     matchType: MatchType;
     pointsWin: number;
-    pointsDraw: number;
     pointsLoss: number;
     maxTeams: number;
     maxForfeitsBeforeDisqualification?: number;
     forfeitCountsAsLoss?: boolean;
     tiebreaker: Tiebreaker;
+    mapPool?: string[];
+    mapVetoEnabled?: boolean;
+    mapVetoFormat?: MapVetoFormat | null;
+    vetoFirstPick?: VetoFirstPick | null;
+    overtimeConfig?: OvertimeConfig;
     extraRules?: Record<string, unknown>;
+    /** Phase(s) this ruleset applies to */
+    ruleUsage?: RuleUsage[];
+    /** How attack/defense (blue/red) is decided */
+    sideSelection?: SideSelection;
+    /** Score submission / validation */
+    scoreSubmissionMethod?: ScoreSubmissionMethod;
+    substitutionsAllowed?: boolean;
+    maxSubstitutions?: number;
+    emergencySubsOnly?: boolean;
+    pauseAllowedForDisconnect?: boolean;
+    replayConditions?: string;
+    remakeConditions?: string;
+    adminDecisionRequired?: boolean;
     createdAt?: string;
 }
 
@@ -30,13 +90,27 @@ export interface CreateLeagueRuleDto {
     formatType: FormatType;
     matchType: MatchType;
     pointsWin: number;
-    pointsDraw: number;
     pointsLoss: number;
     maxTeams: number;
     maxForfeitsBeforeDisqualification?: number;
     forfeitCountsAsLoss?: boolean;
     tiebreaker: Tiebreaker;
+    mapPool?: string[];
+    mapVetoEnabled?: boolean;
+    mapVetoFormat?: MapVetoFormat | null;
+    vetoFirstPick?: VetoFirstPick | null;
+    overtimeConfig?: OvertimeConfig;
     extraRules?: Record<string, unknown>;
+    ruleUsage?: RuleUsage[];
+    sideSelection?: SideSelection;
+    scoreSubmissionMethod?: ScoreSubmissionMethod;
+    substitutionsAllowed?: boolean;
+    maxSubstitutions?: number;
+    emergencySubsOnly?: boolean;
+    pauseAllowedForDisconnect?: boolean;
+    replayConditions?: string;
+    remakeConditions?: string;
+    adminDecisionRequired?: boolean;
 }
 
 export const leagueRulesService = {

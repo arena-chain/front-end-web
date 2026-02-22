@@ -49,6 +49,9 @@ export const matchAdminService = {
     forfeit: (id: string, dto: { forfeitingTeamId: string; forfeitReason?: string }): Promise<AdminMatch> =>
         axios.patch(`${API}/matches/${id}/forfeit`, dto, auth()).then(r => r.data),
 
+    start: (id: string): Promise<AdminMatch> =>
+        axios.patch(`${API}/matches/${id}/start`, {}, auth()).then(r => r.data),
+
     cancel: (id: string): Promise<AdminMatch> =>
         axios.patch(`${API}/matches/${id}/cancel`, {}, auth()).then(r => r.data),
 };

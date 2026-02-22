@@ -20,6 +20,9 @@ export interface Game {
     platforms?: string[];
     releaseDate?: string; // ISO 8601 string
     isActive?: boolean;
+    teamSize?: number;
+    supportsTeams?: boolean;
+    supportsSolo?: boolean;
     metadata?: Record<string, any>;
 }
 

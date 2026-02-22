@@ -11,10 +11,13 @@ export interface CreateGameDto {
     releaseDate?: string;
     coverImageUrl?: string;
     isActive?: boolean;
+    teamSize?: number;
+    supportsTeams?: boolean;
+    supportsSolo?: boolean;
     metadata?: Record<string, any>;
     isPartner?: boolean;
     roles?: string[];
-    file?: File; // Added for file upload
+    file?: File;
 }
 
 export interface UpdateGameDto {
@@ -26,10 +29,13 @@ export interface UpdateGameDto {
     releaseDate?: string;
     coverImageUrl?: string;
     isActive?: boolean;
+    teamSize?: number;
+    supportsTeams?: boolean;
+    supportsSolo?: boolean;
     metadata?: Record<string, any>;
     isPartner?: boolean;
     roles?: string[];
-    file?: File; // Added for file upload
+    file?: File;
 }
 
 class CatalogService {

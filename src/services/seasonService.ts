@@ -30,7 +30,13 @@ export interface CreateSeasonDto {
 
 export const seasonService = {
     getByLeague: (leagueId: string): Promise<Season[]> =>
-        axios.get(`${API}/seasons?leagueId=${leagueId}`).then(r => r.data),
+        axios.get(`${API}/seasons?leagueId=${leagueId}`, auth()).then(r => {
+            const d = r.data;
+            if (Array.isArray(d)) return d;
+            if (d && Array.isArray(d.data)) return d.data;
+            if (d && Array.isArray(d.seasons)) return d.seasons;
+            return [];
+        }),
 
     getById: (id: string): Promise<Season> =>
         axios.get(`${API}/seasons/${id}`).then(r => r.data),

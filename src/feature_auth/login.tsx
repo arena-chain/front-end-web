@@ -51,7 +51,7 @@ export default function Login() {
             const role = response.user.role;
             if (role === 'admin') {
                 navigate('/admin');
-            } else if (role === 'team-manager') {
+            } else if (role === 'team-manager' || role === 'team_manager') {
                 navigate('/manager');
             } else if (role === 'referee') {
                 navigate('/referee');

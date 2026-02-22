@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Gamepad2, Trophy, Star, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Gamepad2, Trophy, Star, Edit, Trash2, AlertTriangle, Building2, Users, Monitor } from 'lucide-react';
 import { Button, Input, Modal } from '../../components/ui/core';
 import type { Game } from '../../models/game';
 import catalogService, { type CreateGameDto, type UpdateGameDto } from '../../services/catalogService';
@@ -249,49 +249,85 @@ function GameCard({ game, onEdit, onDelete }: { game: Game; onEdit: () => void; 
 
                     <div className="flex items-start justify-between gap-4 relative z-10">
                         <div className="flex-1">
-                            <h3 className="text-3xl font-black text-white group-hover:text-primary transition-all duration-300 mb-2 tracking-tight" style={{
+                            {/* Title + genre */}
+                            <h3 className="text-3xl font-black text-white group-hover:text-primary transition-all duration-300 mb-1 tracking-tight" style={{
                                 textShadow: '0 2px 10px rgba(0, 255, 157, 0.2)'
                             }}>
                                 {game.title}
                             </h3>
-                            <div className="flex items-center gap-3 mb-4">
-                                <p className="text-sm text-primary font-bold uppercase tracking-widest">
-                                    {game.genre}
-                                </p>
+                            <div className="flex items-center gap-3 mb-3">
+                                <p className="text-sm text-primary font-bold uppercase tracking-widest">{game.genre}</p>
                                 <div className="h-1 w-12 bg-gradient-to-r from-primary to-transparent rounded-full" />
                             </div>
 
+                            {/* Meta row — publisher · team size · platforms */}
+                            <div className="flex flex-wrap items-center gap-4 mb-4">
+                                {game.publisher && (
+                                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                        <Building2 className="w-3.5 h-3.5 text-primary/60" />
+                                        <span className="font-semibold text-white/80">{game.publisher}</span>
+                                    </div>
+                                )}
+                                {(game.teamSize ?? (game.metadata as Record<string, unknown> | undefined)?.teamSize) && (
+                                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                        <Users className="w-3.5 h-3.5 text-primary/60" />
+                                        <span>
+                                            {String(game.teamSize ?? (game.metadata as Record<string, unknown>)?.teamSize)}v
+                                            {String(game.teamSize ?? (game.metadata as Record<string, unknown>)?.teamSize)} per team
+                                        </span>
+                                    </div>
+                                )}
+                                {(game.platforms || []).length > 0 && (
+                                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                        <Monitor className="w-3.5 h-3.5 text-primary/60" />
+                                        <span>{(game.platforms || []).join(' · ')}</span>
+                                    </div>
+                                )}
+                                {game.releaseDate && (
+                                    <span className="text-xs text-text-muted">
+                                        Released {new Date(game.releaseDate).getFullYear()}
+                                    </span>
+                                )}
+                            </div>
+
                             {game.description && (
-                                <p className="text-text-muted text-sm leading-relaxed line-clamp-2 mb-5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                <p className="text-text-muted text-sm leading-relaxed line-clamp-2 mb-4 opacity-80 group-hover:opacity-100 transition-opacity">
                                     {game.description}
                                 </p>
                             )}
 
-                            {/* Roles Section */}
-                            {(game.roles || []).length > 0 && (
-                                <div className="flex flex-wrap gap-2.5 mb-5">
-                                    {(game.roles || []).slice(0, 6).map((role, index) => (
-                                        <span
-                                            key={role}
-                                            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-white/5 to-white/10 border border-white/20 text-xs text-white font-semibold hover:border-primary/50 hover:bg-primary/10 transition-all duration-300 shadow-lg backdrop-blur-sm"
-                                            style={{
-                                                animationDelay: `${index * 50}ms`,
-                                            }}
-                                        >
-                                            {role}
-                                        </span>
-                                    ))}
-                                    {(game.roles || []).length > 6 && (
-                                        <span className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary/20 to-primary/30 border border-primary/50 text-xs text-primary font-bold shadow-lg shadow-primary/20">
-                                            +{(game.roles || []).length - 6} more
-                                        </span>
-                                    )}
-                                </div>
-                            )}
+                            {/* Roles section */}
+                            <div className="space-y-1.5">
+                                {(game.roles || []).length > 0 ? (
+                                    <>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5">
+                                            <Users className="w-3 h-3" /> In-game Roles
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(game.roles || []).slice(0, 8).map((role, index) => (
+                                                <span
+                                                    key={role}
+                                                    className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-white/5 to-white/10 border border-white/20 text-xs text-white font-semibold hover:border-primary/50 hover:bg-primary/10 transition-all duration-300 shadow-lg backdrop-blur-sm"
+                                                    style={{ animationDelay: `${index * 50}ms` }}
+                                                >
+                                                    {role}
+                                                </span>
+                                            ))}
+                                            {(game.roles || []).length > 8 && (
+                                                <span className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary/20 to-primary/30 border border-primary/50 text-xs text-primary font-bold shadow-lg shadow-primary/20">
+                                                    +{(game.roles || []).length - 8} more
+                                                </span>
+                                            )}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <p className="text-[11px] text-white/20 italic">No roles defined</p>
+                                )}
+                            </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 shrink-0">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
                                 className="group/btn p-3 bg-gradient-to-br from-white/10 to-white/5 hover:from-primary hover:to-primary/80 rounded-xl text-white hover:text-black transition-all duration-300 shadow-xl border border-white/20 hover:border-primary hover:scale-110 backdrop-blur-sm"
@@ -310,7 +346,7 @@ function GameCard({ game, onEdit, onDelete }: { game: Game; onEdit: () => void; 
                     </div>
 
                     {/* Footer Stats */}
-                    <div className="pt-5 border-t border-white/10 flex items-center gap-6 relative z-10" style={{
+                    <div className="pt-4 border-t border-white/10 flex items-center gap-6 relative z-10" style={{
                         background: 'linear-gradient(90deg, rgba(0, 255, 157, 0.05) 0%, transparent 100%)'
                     }}>
                         <div className="flex items-center gap-3 group/stat">
@@ -322,6 +358,13 @@ function GameCard({ game, onEdit, onDelete }: { game: Game; onEdit: () => void; 
                                 <span className="text-text-muted text-sm ml-2">Active Tournaments</span>
                             </div>
                         </div>
+                        {game.isPartner && (
+                            <div className="flex items-center gap-1.5 text-xs text-yellow-400 font-bold">
+                                <Star className="w-3.5 h-3.5 fill-yellow-400" />
+                                Official Partner
+                            </div>
+                        )}
+                        <div className="ml-auto text-[10px] text-white/20 font-mono">{game._id.slice(-8)}</div>
                     </div>
                 </div>
 

@@ -1,514 +1,464 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Input, Modal, Select } from '../../../components/ui/core';
-import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, Trash2, AlertCircle, Loader2 } from 'lucide-react';
-import { leagueService, LeagueLevel, LeagueFormat, LeagueStatus, type League } from '../../../services/leagueService';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Loader2, Upload, X, Globe, Gamepad2, AlertCircle } from 'lucide-react';
+import { leagueService, LeagueLevel, type League, type CreateLeaguePayload } from '../../../services/leagueService';
 import { default as catalogService } from '../../../services/catalogService';
 import type { Game } from '../../../models/game';
+import { cn } from '../../../lib/utils';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const LEAGUE_LEVELS: { value: LeagueLevel; label: string; desc: string }[] = [
+    { value: 'INTERNATIONAL', label: 'International', desc: 'Global — region locked to "Global"' },
+    { value: 'CONTINENTAL', label: 'Continental', desc: 'Geographic continent or Esports region (EMEA, Americas, Pacific, CN)' },
+    { value: 'NATIONAL', label: 'National', desc: 'A specific country' },
+    { value: 'REGIONAL', label: 'Regional', desc: 'Any sub-national region' },
+];
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const inputCls = 'w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors placeholder-white/20';
+const selectCls = `${inputCls} appearance-none`;
+const labelCls = 'block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5';
+const errCls = 'flex items-center gap-1 text-red-400 text-[10px] font-bold mt-1';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CreateLeagueModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: any) => Promise<void>;
-    league?: League;
+    onSubmit: (data: CreateLeaguePayload | FormData) => Promise<void>;
+    league?: League | null;
 }
 
-const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, onSubmit, league }) => {
-    const [currentStep, setCurrentStep] = useState(1);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [errors, setErrors] = useState<Record<string, string>>({});
+interface FormState {
+    name: string;
+    level: LeagueLevel;
+    regionId: string;
+    gameId: string;
+    description: string;
+    logoUrl: string;
+}
 
-    // Enums for dropdowns
+const DEFAULT_FORM: FormState = {
+    name: '',
+    level: 'CONTINENTAL',
+    regionId: '',
+    gameId: '',
+    description: '',
+    logoUrl: '',
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, onSubmit, league }) => {
+    const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+    const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+    const [submitting, setSubmitting] = useState(false);
+
+    // region enums
     const [continents, setContinents] = useState<string[]>([]);
     const [countries, setCountries] = useState<string[]>([]);
-    const [loadingEnums, setLoadingEnums] = useState(false);
+    const [enumsLoaded, setEnumsLoaded] = useState(false);
 
+    // catalog
     const [games, setGames] = useState<Game[]>([]);
-    const [loadingGames, setLoadingGames] = useState(false);
+    const [gamesLoading, setGamesLoading] = useState(false);
 
-    interface LeagueFormData {
-        name: string;
-        gameId: string;
-        level: LeagueLevel;
-        format: LeagueFormat;
-        regionId: string;
-        startDate: string;
-        endDate: string;
-        maxTeams: number;
-        status: LeagueStatus;
-        rewards: { rank: number; prize: string; points: number }[];
-    }
+    // logo file
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
+    const fileRef = useRef<HTMLInputElement>(null);
 
-    const [formData, setFormData] = useState<LeagueFormData>({
-        name: '',
-        gameId: 'super_striker_01',
-        level: LeagueLevel.INTERNATIONAL,
-        format: LeagueFormat.GROUPS,
-        regionId: 'Global', // Default for International
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        maxTeams: 16,
-        status: LeagueStatus.REGISTRATION,
-        rewards: [
-            { rank: 1, prize: '', points: 0 }
-        ]
-    });
-
-    const today = new Date().toISOString().split('T')[0];
+    // ── Load data when open ──────────────────────────────────────────────────
 
     useEffect(() => {
-        const fetchEnums = async () => {
-            setLoadingEnums(true);
-            try {
-                const data = await leagueService.getRegionEnums();
-                setContinents(data.continents);
-                setCountries(data.countries);
-            } catch (error) {
-                console.error("Failed to load region enums", error);
-            } finally {
-                setLoadingEnums(false);
-            }
-        };
-
-        if (isOpen) {
-            fetchEnums();
-        }
-    }, [isOpen]);
-
-    useEffect(() => {
-        const fetchGames = async () => {
-            setLoadingGames(true);
-            try {
-                const data = await catalogService.fetchGames();
-                setGames(data);
-            } catch (error) {
-                console.error("Failed to load games", error);
-            } finally {
-                setLoadingGames(false);
-            }
-        };
-
-        if (isOpen) {
-            fetchGames();
-        }
-    }, [isOpen]);
-
-    useEffect(() => {
-        if (league) {
-            setFormData({
-                name: league.name || '',
-                gameId: league.gameId || 'super_striker_01',
-                level: league.level || LeagueLevel.INTERNATIONAL,
-                format: league.format || LeagueFormat.GROUPS,
-                regionId: league.regionId || 'Global',
-                startDate: league.startDate ? new Date(league.startDate).toISOString().split('T')[0] : today,
-                endDate: league.endDate ? new Date(league.endDate).toISOString().split('T')[0] : today,
-                maxTeams: league.maxTeams || 16,
-                status: league.status || LeagueStatus.REGISTRATION,
-                rewards: league.rewards || [{ rank: 1, prize: '', points: 0 }]
-            });
-        } else {
-            setFormData({
-                name: '',
-                gameId: 'super_striker_01',
-                level: LeagueLevel.INTERNATIONAL,
-                format: LeagueFormat.GROUPS,
-                regionId: 'Global',
-                startDate: today,
-                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                maxTeams: 16,
-                status: LeagueStatus.REGISTRATION,
-                rewards: [{ rank: 1, prize: '', points: 0 }]
-            });
-        }
-        setErrors({});
-        setCurrentStep(1);
-    }, [league, isOpen, today]);
-
-    // Effect to reset regionId when level changes
-    useEffect(() => {
-        // Only reset if it's a manual change, not initial load (handled above)
-        // We can check if isOpen is true and we are interacting.
-        // For simplicity, we can just enforce the rule if the current regionId is invalid for the new level.
         if (!isOpen) return;
 
-        if (formData.level === LeagueLevel.INTERNATIONAL) {
-            if (formData.regionId !== 'Global') updateField('regionId', 'Global');
-        } else if (formData.level === LeagueLevel.CONTINENTAL) {
-            // If current region is not in continents, reset to first continent or empty
-            if (!continents.includes(formData.regionId)) {
-                updateField('regionId', continents[0] || '');
-            }
-        } else if (formData.level === LeagueLevel.NATIONAL) {
-            // If current region is not in countries, reset
-            if (!countries.includes(formData.regionId)) {
-                updateField('regionId', countries[0] || '');
-            }
-        } else {
-            // Regional - free text, no reset needed typically unless empty
-        }
-    }, [formData.level, continents, countries]);
+        // Load games
+        setGamesLoading(true);
+        catalogService.fetchGames()
+            .then(setGames)
+            .catch(console.error)
+            .finally(() => setGamesLoading(false));
 
-
-    const totalSteps = 3;
-
-    const updateField = (field: string, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors(prev => {
-                const newErrs = { ...prev };
-                delete newErrs[field];
-                return newErrs;
+        // Load region enums
+        if (!enumsLoaded) {
+            leagueService.getRegionEnums().then(d => {
+                setContinents(d.continents);
+                setCountries(d.countries);
+                setEnumsLoaded(true);
             });
         }
-    };
+    }, [isOpen]);
 
-    const updateReward = (index: number, field: string, value: any) => {
-        const newRewards = [...formData.rewards];
-        newRewards[index] = { ...newRewards[index], [field]: value };
-        updateField('rewards', newRewards);
-    };
+    // ── Populate form when editing ───────────────────────────────────────────
 
-    const addReward = () => {
-        updateField('rewards', [...formData.rewards, { rank: formData.rewards.length + 1, prize: '', points: 0 }]);
-    };
-
-    const removeReward = (index: number) => {
-        const newRewards = formData.rewards.filter((_, i) => i !== index);
-        updateField('rewards', newRewards);
-    };
-
-    const handleNext = () => {
-        const stepErrors: Record<string, string> = {};
-
-        if (currentStep === 1) {
-            if (!formData.name.trim()) stepErrors.name = 'Le nom est obligatoire';
-            else if (formData.name.length < 3) stepErrors.name = 'Le nom doit faire au moins 3 caractères';
-
-            if (!formData.gameId.trim()) stepErrors.gameId = 'L\'ID du jeu est obligatoire';
-
-            // Region validation
-            if (formData.level === LeagueLevel.CONTINENTAL && !formData.regionId) {
-                stepErrors.regionId = 'Veuillez sélectionner un continent';
-            }
-            if (formData.level === LeagueLevel.NATIONAL && !formData.regionId) {
-                stepErrors.regionId = 'Veuillez sélectionner un pays';
-            }
-            if (formData.level === LeagueLevel.REGIONAL && !formData.regionId.trim()) {
-                stepErrors.regionId = 'Veuillez entrer une région';
-            }
+    useEffect(() => {
+        if (!isOpen) return;
+        if (league) {
+            setForm({
+                name: league.name || '',
+                level: league.level || 'CONTINENTAL',
+                regionId: league.regionId || '',
+                gameId: (typeof league.gameId === 'string' ? league.gameId : ''),
+                description: league.description || '',
+                logoUrl: league.logoUrl || '',
+            });
+        } else {
+            setForm(DEFAULT_FORM);
         }
-        else if (currentStep === 2) {
-            if (!formData.startDate) stepErrors.startDate = 'La date de début est obligatoire';
-            if (!formData.endDate) stepErrors.endDate = 'La date de fin est obligatoire';
-
-            if (formData.startDate && formData.endDate) {
-                if (new Date(formData.endDate) <= new Date(formData.startDate)) {
-                    stepErrors.endDate = 'La date de fin doit être après la date de début';
-                }
-            }
-
-            if (formData.maxTeams < 2) stepErrors.maxTeams = 'Il faut au moins 2 équipes';
-        }
-
-        if (Object.keys(stepErrors).length > 0) {
-            setErrors(stepErrors);
-            return;
-        }
-
         setErrors({});
-        if (currentStep < totalSteps) setCurrentStep(prev => prev + 1);
+        clearLogoFile();
+    }, [isOpen, league]);
+
+    // ── Reset regionId when level changes ────────────────────────────────────
+
+    const handleLevelChange = (level: LeagueLevel) => {
+        let regionId = '';
+        if (level === 'INTERNATIONAL') regionId = 'Global';
+        else if (level === 'CONTINENTAL') regionId = continents[0] || '';
+        else if (level === 'NATIONAL') regionId = countries[0] || '';
+        setForm(f => ({ ...f, level, regionId }));
+        setErrors(e => { const n = { ...e }; delete n.regionId; return n; });
     };
 
-    const handlePrevious = () => {
-        if (currentStep > 1) setCurrentStep(prev => prev - 1);
+    // ── Region options ───────────────────────────────────────────────────────
+
+    const regionOptions = useMemo((): { value: string; label: string; group: string }[] => {
+        if (form.level === 'INTERNATIONAL') return [{ value: 'Global', label: 'Global', group: '' }];
+        if (form.level === 'CONTINENTAL') {
+            const geo = continents.map(c => ({ value: c, label: c, group: 'Geographic' }));
+            const esports = [
+                { value: 'EMEA', label: 'EMEA — Europe, Middle East & Africa', group: 'Esports' },
+                { value: 'Americas', label: 'Americas — North + South America', group: 'Esports' },
+                { value: 'Pacific', label: 'Pacific — Asia-Pacific (excl. CN)', group: 'Esports' },
+                { value: 'CN', label: 'CN — China', group: 'Esports' },
+            ];
+            return [...geo, ...esports];
+        }
+        if (form.level === 'NATIONAL') return countries.map(c => ({ value: c, label: c, group: '' }));
+        return [];
+    }, [form.level, continents, countries]);
+
+    // ── Logo file helpers ────────────────────────────────────────────────────
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) return;
+        if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
+        setLogoFile(file);
+        setLogoPreviewUrl(URL.createObjectURL(file));
+        setForm(f => ({ ...f, logoUrl: '' }));
     };
 
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        setErrors({});
+    const clearLogoFile = () => {
+        if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
+        setLogoFile(null);
+        setLogoPreviewUrl('');
+        if (fileRef.current) fileRef.current.value = '';
+    };
+
+    // ── Validation ───────────────────────────────────────────────────────────
+
+    const validate = (): boolean => {
+        const errs: Partial<Record<keyof FormState, string>> = {};
+        if (!form.name.trim()) errs.name = 'Name is required';
+        if (!form.gameId.trim()) errs.gameId = 'Please select a game';
+        if (form.level === 'CONTINENTAL' && !form.regionId) errs.regionId = 'Please select a continent';
+        if (form.level === 'NATIONAL' && !form.regionId) errs.regionId = 'Please select a country';
+        if (form.level === 'REGIONAL' && !form.regionId.trim()) errs.regionId = 'Region name is required';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    // ── Submit ───────────────────────────────────────────────────────────────
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validate()) return;
+        setSubmitting(true);
         try {
-            await onSubmit(formData);
-            onClose();
-        } catch (error: any) {
-            console.error('Error saving league:', error);
-            if (error.message && Array.isArray(error.message)) {
-                error.message.forEach((msg: string) => toast.error(msg));
-                const backendErrs: Record<string, string> = {};
-                // Simple mapping attempt, might need refinement based on exact backend error keys
-                setErrors(backendErrs);
-            } else if (error.message) {
-                toast.error(error.message);
-            } else {
-                toast.error('Une erreur est survenue lors de la sauvegarde');
+            // Resolve logo — if a local file was picked, read it as base64 data URL
+            let resolvedLogoUrl = form.logoUrl.trim();
+            if (logoFile) {
+                resolvedLogoUrl = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(logoFile);
+                });
             }
+
+            // Always send plain JSON — backend POST /leagues only accepts JSON
+            const payload: CreateLeaguePayload = {
+                name: form.name.trim(),
+                level: form.level,
+                gameId: form.gameId,
+            };
+            const rid = form.level === 'INTERNATIONAL' ? 'Global' : form.regionId;
+            if (rid) payload.regionId = rid;
+            if (form.description.trim()) payload.description = form.description.trim();
+            if (resolvedLogoUrl) payload.logoUrl = resolvedLogoUrl;
+
+            await onSubmit(payload);
+            onClose();
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || err?.message || 'Something went wrong';
+            setErrors({ name: Array.isArray(msg) ? msg.join(', ') : msg });
         } finally {
-            setIsSubmitting(false);
+            setSubmitting(false);
         }
     };
 
-    const renderLevelSpecificRegion = () => {
-        if (loadingEnums) return <p className="text-xs text-text-muted"><Loader2 className="animate-spin w-3 h-3 inline" /> Loading regions...</p>;
+    if (!isOpen) return null;
 
-        switch (formData.level) {
-            case LeagueLevel.INTERNATIONAL:
-                return (
-                    <Input
-                        value="Global"
-                        disabled
-                        className="bg-white/5 text-text-muted cursor-not-allowed"
-                        title="International leagues are always Global"
-                    />
-                );
-            case LeagueLevel.CONTINENTAL:
-                return (
-                    <Select
-                        value={formData.regionId}
-                        onChange={(e) => updateField('regionId', e.target.value)}
-                        className={errors.regionId ? 'border-red-500' : ''}
-                    >
-                        <option value="">Select Continent</option>
-                        {continents.map(c => <option key={c} value={c}>{c}</option>)}
-                    </Select>
-                );
-            case LeagueLevel.NATIONAL:
-                return (
-                    <Select
-                        value={formData.regionId}
-                        onChange={(e) => updateField('regionId', e.target.value)}
-                        className={errors.regionId ? 'border-red-500' : ''}
-                    >
-                        <option value="">Select Country</option>
-                        {countries.map(c => <option key={c} value={c}>{c}</option>)}
-                    </Select>
-                );
-            case LeagueLevel.REGIONAL:
-                return (
-                    <Input
-                        placeholder="e.g. Ile-de-France, California..."
-                        value={formData.regionId}
-                        onChange={(e) => updateField('regionId', e.target.value)}
-                        className={errors.regionId ? 'border-red-500' : ''}
-                    />
-                );
-            default:
-                return null;
-        }
-    };
+    // ── Render ───────────────────────────────────────────────────────────────
 
-    const renderStep = () => {
-        switch (currentStep) {
-            case 1:
-                return (
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white mb-4">Basic Settings</h3>
-                        <div>
-                            <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">League Name</label>
-                            <Input
-                                placeholder="e.g. African Champions Cup"
-                                value={formData.name}
-                                onChange={(e) => updateField('name', e.target.value)}
-                                className={errors.name ? 'border-red-500' : ''}
-                            />
-                            {errors.name && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.name}</p>}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Game</label>
-                                {loadingGames ? (
-                                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                                        <Loader2 className="w-3 h-3 animate-spin" /> Loading games...
-                                    </div>
-                                ) : (
-                                    <Select
-                                        value={formData.gameId}
-                                        onChange={(e) => updateField('gameId', e.target.value)}
-                                        className={errors.gameId ? 'border-red-500' : ''}
-                                    >
-                                        <option value="">Select a Game</option>
-                                        {games.map((game: any) => (
-                                            <option key={game._id} value={game._id}>
-                                                {game.title}
-                                            </option>
-                                        ))}
-                                    </Select>
-                                )}
-                                {errors.gameId && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.gameId}</p>}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">League Level</label>
-                                <Select value={formData.level} onChange={(e) => updateField('level', e.target.value)} className={errors.level ? 'border-red-500' : ''}>
-                                    {Object.values(LeagueLevel).map((lvl) => (
-                                        <option key={lvl} value={lvl}>{lvl}</option>
-                                    ))}
-                                </Select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Region</label>
-                                {renderLevelSpecificRegion()}
-                                {errors.regionId && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.regionId}</p>}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Format</label>
-                                <Select value={formData.format} onChange={(e) => updateField('format', e.target.value)} className={errors.format ? 'border-red-500' : ''}>
-                                    {Object.values(LeagueFormat).map((fmt) => (
-                                        <option key={fmt} value={fmt}>{fmt.replace('_', ' ')}</option>
-                                    ))}
-                                </Select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Status</label>
-                                <Select value={formData.status} onChange={(e) => updateField('status', e.target.value)}>
-                                    {Object.values(LeagueStatus).map((st) => (
-                                        <option key={st} value={st}>{st}</option>
-                                    ))}
-                                </Select>
-                            </div>
-                        </div>
-                    </div>
-                );
-
-            case 2:
-                return (
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white mb-4">Duration & Capacity</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Start Date</label>
-                                <Input
-                                    type="date"
-                                    min={today}
-                                    value={formData.startDate}
-                                    onChange={(e) => updateField('startDate', e.target.value)}
-                                    className={errors.startDate ? 'border-red-500' : ''}
-                                />
-                                {errors.startDate && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.startDate}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">End Date</label>
-                                <Input
-                                    type="date"
-                                    min={formData.startDate || today}
-                                    value={formData.endDate}
-                                    onChange={(e) => updateField('endDate', e.target.value)}
-                                    className={errors.endDate ? 'border-red-500' : ''}
-                                />
-                                {errors.endDate && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.endDate}</p>}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-black uppercase tracking-widest text-text-muted mb-2">Max Teams</label>
-                            <Input
-                                type="number"
-                                value={formData.maxTeams}
-                                onChange={(e) => updateField('maxTeams', parseInt(e.target.value))}
-                                className={errors.maxTeams ? 'border-red-500' : ''}
-                            />
-                            {errors.maxTeams && <p className="text-red-500 text-[10px] mt-1 font-bold uppercase flex items-center gap-1"><AlertCircle size={10} /> {errors.maxTeams}</p>}
-                        </div>
-                    </div>
-                );
-
-            case 3:
-                return (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-white">Rewards</h3>
-                            <Button size="sm" variant="outline" onClick={addReward} className="gap-2">
-                                <Plus size={14} /> Add Rank
-                            </Button>
-                        </div>
-                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                            {formData.rewards.map((reward, index) => (
-                                <div key={index} className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-3 relative group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12">
-                                            <label className="text-[10px] font-black uppercase text-text-muted">Rank</label>
-                                            <Input
-                                                type="number"
-                                                value={reward.rank}
-                                                onChange={(e) => updateReward(index, 'rank', parseInt(e.target.value))}
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="text-[10px] font-black uppercase text-text-muted">Prize Description</label>
-                                            <Input
-                                                placeholder="e.g. Gold Medal"
-                                                value={reward.prize}
-                                                onChange={(e) => updateReward(index, 'prize', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="w-24">
-                                            <label className="text-[10px] font-black uppercase text-text-muted">Points</label>
-                                            <Input
-                                                type="number"
-                                                value={reward.points}
-                                                onChange={(e) => updateReward(index, 'points', parseInt(e.target.value))}
-                                            />
-                                        </div>
-                                        {formData.rewards.length > 1 && (
-                                            <button onClick={() => removeReward(index)} className="mt-4 text-red-500 hover:text-red-400 p-2">
-                                                <Trash2 size={16} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-
-            default:
-                return null;
-        }
-    };
+    const selectedGame = games.find(g => g._id === form.gameId);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} size="lg" title={league ? "Edit League" : "Create League"}>
-            <div className="p-6">
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-2">
-                        {[1, 2, 3].map((step) => (
-                            <div
-                                key={step}
-                                className={`flex-1 h-1 ${step <= currentStep ? 'bg-primary' : 'bg-white/10'} ${step !== 3 ? 'mr-2' : ''}`}
-                            />
-                        ))}
+        <>
+            {/* Backdrop */}
+            <div
+                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+                onClick={onClose}
+            />
+
+            {/* Modal */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                <div
+                    className="pointer-events-auto w-full max-w-lg bg-[#0e0e0e] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+                    onClick={e => e.stopPropagation()}
+                >
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 bg-white/[0.015]">
+                        <div>
+                            <h2 className="text-base font-black text-white uppercase tracking-tight">
+                                {league ? 'Edit League' : 'Create League'}
+                            </h2>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                                {league ? 'Update league details' : 'Set up a new league brand'}
+                            </p>
+                        </div>
+                        <button onClick={onClose} className="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/8 transition-all">
+                            <X size={16} />
+                        </button>
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Step {currentStep} of {totalSteps}
-                    </p>
-                </div>
 
-                <div className="min-h-[350px]">
-                    {renderStep()}
-                </div>
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
 
-                <div className="flex justify-between mt-8 pt-6 border-t border-white/5">
-                    <Button variant="ghost" onClick={handlePrevious} disabled={currentStep === 1} className="gap-2">
-                        <ChevronLeft size={16} /> Previous
-                    </Button>
-                    <div className="flex gap-3">
-                        {currentStep < totalSteps ? (
-                            <Button onClick={handleNext} className="gap-2">
-                                Next <ChevronRight size={16} />
-                            </Button>
-                        ) : (
-                            <Button onClick={handleSubmit} isLoading={isSubmitting}>
-                                {league ? "Save Changes" : "Create League"}
-                            </Button>
+                        {/* Global error */}
+                        {errors.name && errors.name.length > 30 && (
+                            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold">
+                                <AlertCircle size={14} /> {errors.name}
+                            </div>
                         )}
-                    </div>
+
+                        {/* Name */}
+                        <div>
+                            <label className={labelCls}>League Name <span className="text-red-400">*</span></label>
+                            <input
+                                className={cn(inputCls, errors.name && 'border-red-500/50')}
+                                placeholder="e.g. VCT EMEA, ESL Pro League…"
+                                value={form.name}
+                                onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(v => ({ ...v, name: undefined })); }}
+                            />
+                            {errors.name && errors.name.length <= 30 && <p className={errCls}><AlertCircle size={10} />{errors.name}</p>}
+                        </div>
+
+                        {/* Game */}
+                        <div>
+                            <label className={labelCls}>Game <span className="text-red-400">*</span></label>
+                            <div className="relative">
+                                <select
+                                    className={cn(selectCls, errors.gameId && 'border-red-500/50')}
+                                    value={form.gameId}
+                                    onChange={e => { setForm(f => ({ ...f, gameId: e.target.value })); setErrors(v => ({ ...v, gameId: undefined })); }}
+                                >
+                                    <option value="">Select a game…</option>
+                                    {gamesLoading
+                                        ? <option disabled>Loading…</option>
+                                        : games.map(g => <option key={g._id} value={g._id}>{g.title}</option>)
+                                    }
+                                </select>
+                                {selectedGame?.logoUrl || selectedGame?.coverImageUrl ? (
+                                    <img
+                                        src={(selectedGame as any).logoUrl || selectedGame.coverImageUrl}
+                                        alt=""
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded object-cover pointer-events-none"
+                                    />
+                                ) : (
+                                    <Gamepad2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                                )}
+                            </div>
+                            {errors.gameId && <p className={errCls}><AlertCircle size={10} />{errors.gameId}</p>}
+                        </div>
+
+                        {/* Level + Region row */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className={labelCls}>Level <span className="text-red-400">*</span></label>
+                                <select
+                                    className={selectCls}
+                                    value={form.level}
+                                    onChange={e => handleLevelChange(e.target.value as LeagueLevel)}
+                                >
+                                    {LEAGUE_LEVELS.map(l => (
+                                        <option key={l.value} value={l.value}>{l.label}</option>
+                                    ))}
+                                </select>
+                                <p className="text-[9px] text-slate-600 mt-1 leading-tight">
+                                    {LEAGUE_LEVELS.find(l => l.value === form.level)?.desc}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className={labelCls}>
+                                    {form.level === 'NATIONAL' ? 'Country' : form.level === 'CONTINENTAL' ? 'Continent' : form.level === 'REGIONAL' ? 'Region' : 'Region'}
+                                    {form.level !== 'INTERNATIONAL' && <span className="text-red-400 ml-1">*</span>}
+                                </label>
+                                {form.level === 'INTERNATIONAL' ? (
+                                    <div className={cn(inputCls, 'flex items-center gap-2 text-slate-500 cursor-not-allowed')}>
+                                        <Globe size={13} /> Global
+                                    </div>
+                                ) : form.level === 'REGIONAL' ? (
+                                    <input
+                                        className={cn(inputCls, errors.regionId && 'border-red-500/50')}
+                                        placeholder="e.g. Île-de-France, Midwest…"
+                                        value={form.regionId}
+                                        onChange={e => { setForm(f => ({ ...f, regionId: e.target.value })); setErrors(v => ({ ...v, regionId: undefined })); }}
+                                    />
+                                ) : (
+                                    <select
+                                        className={cn(selectCls, errors.regionId && 'border-red-500/50')}
+                                        value={form.regionId}
+                                        onChange={e => { setForm(f => ({ ...f, regionId: e.target.value })); setErrors(v => ({ ...v, regionId: undefined })); }}
+                                    >
+                                        <option value="">Select…</option>
+                                        {form.level === 'CONTINENTAL' ? (
+                                            <>
+                                                <optgroup label="── Geographic ──">
+                                                    {regionOptions.filter(o => o.group === 'Geographic').map(o => (
+                                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                                    ))}
+                                                </optgroup>
+                                                <optgroup label="── Esports (VCT / Riot) ──">
+                                                    {regionOptions.filter(o => o.group === 'Esports').map(o => (
+                                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                                    ))}
+                                                </optgroup>
+                                            </>
+                                        ) : (
+                                            regionOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)
+                                        )}
+                                    </select>
+                                )}
+                                {errors.regionId && <p className={errCls}><AlertCircle size={10} />{errors.regionId}</p>}
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                            <label className={labelCls}>Description <span className="text-slate-600 font-normal normal-case tracking-normal">(optional)</span></label>
+                            <textarea
+                                className={cn(inputCls, 'resize-none')}
+                                rows={2}
+                                placeholder="Short description of this league…"
+                                value={form.description}
+                                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                            />
+                        </div>
+
+                        {/* Logo */}
+                        <div>
+                            <label className={labelCls}>Logo <span className="text-slate-600 font-normal normal-case tracking-normal">(optional)</span></label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                ref={fileRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                            />
+
+                            {/* Preview or drop zone */}
+                            <div
+                                className="relative flex items-center gap-4 border border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-white/[0.02] transition-all"
+                                onClick={() => fileRef.current?.click()}
+                            >
+                                {logoPreviewUrl || form.logoUrl ? (
+                                    <>
+                                        <img
+                                            src={logoPreviewUrl || form.logoUrl}
+                                            alt=""
+                                            className="w-14 h-14 rounded-xl object-contain bg-white/5 border border-white/10 flex-shrink-0"
+                                            onError={e => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-white truncate">
+                                                {logoFile ? logoFile.name : 'Current logo'}
+                                            </p>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">Click to replace</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={e => { e.stopPropagation(); clearLogoFile(); setForm(f => ({ ...f, logoUrl: '' })); }}
+                                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/8 flex items-center justify-center flex-shrink-0">
+                                            <Upload size={18} className="text-slate-500" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-white">Upload logo</p>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">JPG, PNG or GIF · click to browse</p>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* URL fallback — only when no file selected */}
+                            {!logoFile && (
+                                <div className="mt-2">
+                                    <input
+                                        type="url"
+                                        className={cn(inputCls, 'text-xs')}
+                                        placeholder="…or paste a logo URL"
+                                        value={form.logoUrl}
+                                        onClick={e => e.stopPropagation()}
+                                        onChange={e => setForm(f => ({ ...f, logoUrl: e.target.value }))}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/5">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/8 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest bg-emerald-500 text-black hover:bg-emerald-400 disabled:opacity-50 transition-all"
+                            >
+                                {submitting && <Loader2 size={13} className="animate-spin" />}
+                                {league ? 'Save Changes' : 'Create League'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        </Modal>
+        </>
     );
 };
 

@@ -46,6 +46,9 @@ export default function GameForm({ game, onSubmit, onCancel, isLoading = false }
         releaseDate: '',
         coverImageUrl: '',
         isActive: true,
+        teamSize: 5,
+        supportsTeams: true,
+        supportsSolo: false,
         metadata: {},
         isPartner: false,
         roles: []
@@ -55,6 +58,9 @@ export default function GameForm({ game, onSubmit, onCancel, isLoading = false }
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [roleInput, setRoleInput] = useState('');
 
+    const resolveImageUrl = (url: string) =>
+        url.startsWith('/uploads/') ? `http://localhost:3000${url}` : url;
+
     useEffect(() => {
         if (game) {
             setFormData({
@@ -63,15 +69,18 @@ export default function GameForm({ game, onSubmit, onCancel, isLoading = false }
                 description: game.description || '',
                 publisher: game.publisher || '',
                 platforms: game.platforms || [],
-                releaseDate: game.releaseDate || '',
+                releaseDate: game.releaseDate ? game.releaseDate.split('T')[0] : '',
                 coverImageUrl: game.coverImageUrl || '',
                 isActive: game.isActive ?? true,
+                teamSize: game.teamSize ?? 5,
+                supportsTeams: game.supportsTeams ?? true,
+                supportsSolo: game.supportsSolo ?? false,
                 metadata: game.metadata || {},
                 isPartner: game.isPartner,
                 roles: game.roles || []
             });
             if (game.coverImageUrl) {
-                setImagePreview(game.coverImageUrl);
+                setImagePreview(resolveImageUrl(game.coverImageUrl));
             }
         }
     }, [game]);
@@ -136,22 +145,20 @@ export default function GameForm({ game, onSubmit, onCancel, isLoading = false }
         data.append('title', formData.title);
         data.append('genre', formData.genre);
         if (formData.description) data.append('description', formData.description);
-        if (formData.publisher) data.append('publisher', formData.publisher);
+        if (formData.publisher)   data.append('publisher', formData.publisher);
         if (formData.releaseDate) data.append('releaseDate', formData.releaseDate);
+        data.append('teamSize', String(formData.teamSize ?? 5));
+        data.append('supportsTeams', String(formData.supportsTeams ?? true));
+        data.append('supportsSolo',  String(formData.supportsSolo  ?? false));
 
-        // Handle platforms array
         if (formData.platforms && formData.platforms.length > 0) {
             formData.platforms.forEach(platform => data.append('platforms[]', platform));
         }
 
-        // Handle roles array
         if (formData.roles && formData.roles.length > 0) {
             formData.roles.forEach(role => data.append('roles[]', role));
         }
 
-        // IMPORTANT: Backend validation fails for isActive (boolean) and metadata (object)
-        // when sent as strings via FormData. We omit them to use backend defaults.
-        // isPartner is sent as string which backend accepts
         data.append('isPartner', String(formData.isPartner));
 
         if (selectedFile) {
@@ -228,6 +235,20 @@ export default function GameForm({ game, onSubmit, onCancel, isLoading = false }
                             value={formData.releaseDate}
                             onChange={handleChange}
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-text-muted mb-1">Team Size</label>
+                        <Input
+                            type="number"
+                            name="teamSize"
+                            value={formData.teamSize ?? 5}
+                            onChange={e => setFormData(prev => ({ ...prev, teamSize: +e.target.value }))}
+                            min={1}
+                            max={50}
+                            placeholder="e.g. 5"
+                        />
+                        <p className="text-xs text-text-muted mt-1">Players per team (e.g. 5 → 5v5)</p>
                     </div>
                 </div>
 
