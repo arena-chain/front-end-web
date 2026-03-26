@@ -3,9 +3,9 @@ import axios from 'axios';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const auth = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-export type FormatType    = 'LEAGUE' | 'SWISS' | 'KNOCKOUT';
-export type MatchType     = 'BO1' | 'BO3' | 'BO5';
-export type Tiebreaker    = 'POINTS' | 'GAME_DIFF' | 'HEAD_TO_HEAD';
+export type FormatType = 'LEAGUE' | 'SWISS' | 'KNOCKOUT';
+export type MatchType = 'BO1' | 'BO3' | 'BO5';
+export type Tiebreaker = 'POINTS' | 'GAME_DIFF' | 'HEAD_TO_HEAD';
 
 /** Which phase(s) this ruleset applies to */
 export type RuleUsage = 'REGULAR_SEASON' | 'PLAYOFFS' | 'GRAND_FINAL' | 'PLAY_IN' | 'QUALIFICATION' | 'GROUP_STAGE';
@@ -28,7 +28,7 @@ export type MapVetoFormat =
     | 'BAN_BAN_DECIDER'
     | 'RANDOM'
     | 'ADMIN_PICK';
-export type VetoFirstPick  = 'HIGHER_SEED' | 'LOWER_SEED' | 'COIN_FLIP' | 'ADMIN';
+export type VetoFirstPick = 'HIGHER_SEED' | 'LOWER_SEED' | 'COIN_FLIP' | 'ADMIN';
 export type OvertimeFormat = 'NONE' | 'VALORANT_OT' | 'CS2_OT';
 
 export interface OvertimeConfig {
@@ -50,8 +50,11 @@ export interface PopulatedGame {
     coverImageUrl?: string;
 }
 
-export interface LeagueRule {
+/** A rule set belonging to a specific season */
+export interface SeasonRule {
     _id: string;
+    /** The season this rule belongs to */
+    seasonId: string;
     name: string;
     gameId: string | PopulatedGame;
     formatType: FormatType;
@@ -84,7 +87,12 @@ export interface LeagueRule {
     createdAt?: string;
 }
 
-export interface CreateLeagueRuleDto {
+/** Alias for backward compatibility */
+export type LeagueRule = SeasonRule;
+
+export interface CreateSeasonRuleDto {
+    /** Season this rule is attached to */
+    seasonId: string;
     name: string;
     gameId: string;
     formatType: FormatType;
@@ -113,17 +121,25 @@ export interface CreateLeagueRuleDto {
     adminDecisionRequired?: boolean;
 }
 
+/** Alias for backward compatibility */
+export type CreateLeagueRuleDto = CreateSeasonRuleDto;
+
 export const leagueRulesService = {
-    getAll: (): Promise<LeagueRule[]> =>
+    /** Fetch all rules (global — avoid when possible, prefer getBySeasonId) */
+    getAll: (): Promise<SeasonRule[]> =>
         axios.get(`${API}/league-rules`).then(r => r.data),
 
-    getById: (id: string): Promise<LeagueRule> =>
+    /** Fetch rules belonging to a specific season */
+    getBySeasonId: (seasonId: string): Promise<SeasonRule[]> =>
+        axios.get(`${API}/league-rules?seasonId=${seasonId}`).then(r => r.data),
+
+    getById: (id: string): Promise<SeasonRule> =>
         axios.get(`${API}/league-rules/${id}`).then(r => r.data),
 
-    create: (dto: CreateLeagueRuleDto): Promise<LeagueRule> =>
+    create: (dto: CreateSeasonRuleDto): Promise<SeasonRule> =>
         axios.post(`${API}/league-rules`, dto, auth()).then(r => r.data),
 
-    update: (id: string, dto: Partial<CreateLeagueRuleDto>): Promise<LeagueRule> =>
+    update: (id: string, dto: Partial<CreateSeasonRuleDto>): Promise<SeasonRule> =>
         axios.patch(`${API}/league-rules/${id}`, dto, auth()).then(r => r.data),
 
     delete: (id: string): Promise<void> =>

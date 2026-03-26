@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { leagueService, type League, type LeagueParticipant } from '../../services/leagueService';
+import { seasonService, type Season } from '../../services/seasonService';
 import { Button, Badge } from '../../components/ui/core';
-import { ArrowLeft, Trophy, Calendar, Users, Globe, Medal, User, Edit } from 'lucide-react';
+import { ArrowLeft, Trophy, Calendar, Globe, Medal, User, Edit } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import CreateLeagueModal from '../components/leagues/CreateLeagueModal';
 
@@ -11,6 +12,7 @@ export default function LeagueDetails() {
     const navigate = useNavigate();
     const [league, setLeague] = useState<League | null>(null);
     const [standings, setStandings] = useState<LeagueParticipant[]>([]);
+    const [activeSeason, setActiveSeason] = useState<Season | null>(null);
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [continentFilter, setContinentFilter] = useState<string>('GLOBAL');
@@ -33,12 +35,19 @@ export default function LeagueDetails() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [leagueData, standingsData] = await Promise.all([
+            const [leagueData, standingsData, seasonsData] = await Promise.all([
                 leagueService.getLeagueById(id!),
-                leagueService.getLeagueStandings(id!)
+                leagueService.getLeagueStandings(id!),
+                seasonService.getByLeague(id!),
             ]);
             setLeague(leagueData);
             setStandings(standingsData);
+            // Pick the ONGOING season, or fall back to the most recent PLANNED one
+            const ongoing = seasonsData.find((s: Season) => s.status === 'ONGOING');
+            const planned = seasonsData
+                .filter((s: Season) => s.status === 'PLANNED')
+                .sort((a: Season, b: Season) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0];
+            setActiveSeason(ongoing ?? planned ?? null);
         } catch (error) {
             console.error('Failed to fetch league details:', error);
         } finally {
@@ -75,7 +84,9 @@ export default function LeagueDetails() {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <Badge variant="primary" className="text-[10px] tracking-widest">{league.level}</Badge>
-                            <Badge variant="secondary" className="text-[10px] tracking-widest">{league.status}</Badge>
+                            {activeSeason && (
+                                <Badge variant="secondary" className="text-[10px] tracking-widest">{activeSeason.status}</Badge>
+                            )}
                         </div>
                         <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-4 leading-none">{league.name}</h1>
                         <div className="flex flex-wrap items-center gap-6 text-text-muted text-sm font-bold">
@@ -85,11 +96,16 @@ export default function LeagueDetails() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-primary" />
-                                <span>{new Date(league.startDate).toLocaleDateString()} - {new Date(league.endDate).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 text-primary" />
-                                <span>{league.maxTeams} Teams Max</span>
+                                {activeSeason ? (
+                                    <span>
+                                        <span className="text-white/40 text-xs mr-1">{activeSeason.name} ·</span>
+                                        {new Date(activeSeason.startDate).toLocaleDateString()}
+                                        {' – '}
+                                        {new Date(activeSeason.endDate).toLocaleDateString()}
+                                    </span>
+                                ) : (
+                                    <span className="italic opacity-50">No active season</span>
+                                )}
                             </div>
                         </div>
                     </div>

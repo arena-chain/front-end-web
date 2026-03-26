@@ -2,18 +2,19 @@ import { useState, useEffect } from 'react';
 import {
     BookOpen, Plus, Loader2, Trash2, Search, AlertTriangle,
     CheckSquare, ChevronRight, RefreshCw, X, Gamepad2, Map,
-    ToggleLeft, ToggleRight, Zap,
+    ToggleLeft, ToggleRight, Zap, Calendar, Users,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import {
     leagueRulesService,
-    type LeagueRule, type FormatType, type MatchType,
+    type SeasonRule, type FormatType, type MatchType,
     type Tiebreaker, type MapVetoFormat, type VetoFirstPick,
     type OvertimeFormat, type OvertimeConfig, type PopulatedGame,
     type RuleUsage, type SideSelection, type ScoreSubmissionMethod,
 } from '../../../services/leagueRulesService';
 import catalogService from '../../../services/catalogService';
 import type { Game } from '../../../models/game';
+import { useLeagueHub } from './LeagueHubContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,13 +26,13 @@ const apiErr = (e: unknown) => {
 // Veto format options filtered by match type
 const VETO_OPTIONS: Record<MatchType, { value: MapVetoFormat; label: string }[]> = {
     BO1: [
-        { value: 'BAN_BAN_DECIDER',  label: 'Ban Ban → Decider' },
-        { value: 'RANDOM',           label: 'Random' },
-        { value: 'ADMIN_PICK',       label: 'Admin Pick' },
+        { value: 'BAN_BAN_DECIDER', label: 'Ban Ban → Decider' },
+        { value: 'RANDOM', label: 'Random' },
+        { value: 'ADMIN_PICK', label: 'Admin Pick' },
     ],
     BO3: [
         { value: 'BAN_BAN_PICK_PICK_BAN_BAN_DECIDER', label: 'Ban Ban Pick Pick Ban Ban → Decider (Standard)' },
-        { value: 'PICK_PICK_DECIDER',                 label: 'Pick Pick → Decider (Simple)' },
+        { value: 'PICK_PICK_DECIDER', label: 'Pick Pick → Decider (Simple)' },
     ],
     BO5: [
         { value: 'BAN_BAN_PICK_PICK_PICK_PICK_DECIDER', label: 'Ban Ban Pick Pick Pick Pick → Decider' },
@@ -79,7 +80,6 @@ const GAME_PRESETS: Record<string, GamePreset> = {
     },
 };
 
-// Keep old alias so preset buttons still work
 const MAP_PRESETS = GAME_PRESETS;
 
 // Parse veto format into step list
@@ -101,9 +101,9 @@ function parseVetoSteps(fmt: string): { step: number; team: string; action: stri
 }
 
 const FORMAT_COLORS: Record<string, string> = {
-    LEAGUE:   'bg-green-500/15 text-green-400 border-green-500/25',
-    GROUPS:   'bg-blue-500/15 text-blue-400 border-blue-500/25',
-    SWISS:    'bg-purple-500/15 text-purple-400 border-purple-500/25',
+    LEAGUE: 'bg-green-500/15 text-green-400 border-green-500/25',
+    GROUPS: 'bg-blue-500/15 text-blue-400 border-blue-500/25',
+    SWISS: 'bg-purple-500/15 text-purple-400 border-purple-500/25',
     KNOCKOUT: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
 };
 const MATCH_COLORS: Record<string, string> = {
@@ -122,14 +122,13 @@ function Toast({ msg, type }: { msg: string; type: 'ok' | 'err' }) {
     );
 }
 
-// Section card for form — clear visual separation
 function FormSection({ icon, title, accent = 'emerald', children }: { icon: React.ReactNode; title: string; accent?: 'emerald' | 'blue' | 'amber' | 'slate' | 'indigo'; children: React.ReactNode }) {
     const accentCls = {
         emerald: 'border-l-emerald-500/50 bg-emerald-500/5',
-        blue:    'border-l-blue-500/50 bg-blue-500/5',
-        amber:   'border-l-amber-500/50 bg-amber-500/5',
-        slate:   'border-l-slate-500/50 bg-slate-500/5',
-        indigo:  'border-l-indigo-500/50 bg-indigo-500/5',
+        blue: 'border-l-blue-500/50 bg-blue-500/5',
+        amber: 'border-l-amber-500/50 bg-amber-500/5',
+        slate: 'border-l-slate-500/50 bg-slate-500/5',
+        indigo: 'border-l-indigo-500/50 bg-indigo-500/5',
     }[accent];
     return (
         <div className={cn('rounded-xl border border-white/10 pl-4 border-l-4', accentCls)}>
@@ -200,9 +199,9 @@ function VetoVisualizer({ fmt }: { fmt: string }) {
             {steps.map(s => (
                 <div key={s.step} className={cn(
                     'flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border',
-                    s.action === 'BAN'     ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                    s.action === 'PICK'    ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                            'bg-white/5 text-text-muted border-white/10'
+                    s.action === 'BAN' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                        s.action === 'PICK' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                            'bg-white/5 text-text-muted border-white/10'
                 )}>
                     <span className="text-white/30">{s.step}.</span>
                     {s.team === 'AUTO' ? 'AUTO' : s.team} — {s.action}
@@ -216,25 +215,25 @@ function VetoVisualizer({ fmt }: { fmt: string }) {
 
 const RULE_USAGE_OPTIONS: { value: RuleUsage; label: string }[] = [
     { value: 'REGULAR_SEASON', label: 'Regular Season' },
-    { value: 'PLAYOFFS',       label: 'Playoffs' },
-    { value: 'GRAND_FINAL',    label: 'Grand Final' },
-    { value: 'PLAY_IN',       label: 'Play-In' },
-    { value: 'QUALIFICATION',  label: 'Qualification' },
-    { value: 'GROUP_STAGE',    label: 'Group Stage' },
+    { value: 'PLAYOFFS', label: 'Playoffs' },
+    { value: 'GRAND_FINAL', label: 'Grand Final' },
+    { value: 'PLAY_IN', label: 'Play-In' },
+    { value: 'QUALIFICATION', label: 'Qualification' },
+    { value: 'GROUP_STAGE', label: 'Group Stage' },
 ];
 
 const SIDE_SELECTION_OPTIONS: { value: SideSelection; label: string }[] = [
-    { value: 'HIGHER_SEED_CHOOSES',   label: 'Higher seed chooses' },
-    { value: 'KNIFE_ROUND',           label: 'Knife round' },
-    { value: 'COIN_TOSS',             label: 'Coin toss' },
-    { value: 'VETO_WINNER_CHOOSES',   label: 'Veto winner chooses' },
-    { value: 'FIXED_TEAM_A_ATTACK',   label: 'Fixed: Team A attack' },
+    { value: 'HIGHER_SEED_CHOOSES', label: 'Higher seed chooses' },
+    { value: 'KNIFE_ROUND', label: 'Knife round' },
+    { value: 'COIN_TOSS', label: 'Coin toss' },
+    { value: 'VETO_WINNER_CHOOSES', label: 'Veto winner chooses' },
+    { value: 'FIXED_TEAM_A_ATTACK', label: 'Fixed: Team A attack' },
 ];
 
 const SCORE_SUBMISSION_OPTIONS: { value: ScoreSubmissionMethod; label: string }[] = [
-    { value: 'ADMIN_VERIFIED',    label: 'Admin verified' },
+    { value: 'ADMIN_VERIFIED', label: 'Admin verified' },
     { value: 'BOTH_TEAMS_CONFIRM', label: 'Both teams confirm' },
-    { value: 'AUTO_FROM_API',     label: 'Auto from API' },
+    { value: 'AUTO_FROM_API', label: 'Auto from API' },
 ];
 
 interface CreateForm {
@@ -296,31 +295,50 @@ const EMPTY: CreateForm = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RulesPage() {
-    const [rules, setRules]       = useState<LeagueRule[]>([]);
-    const [games, setGames]       = useState<Game[]>([]);
-    const [search, setSearch]     = useState('');
-    const [loading, setLoading]   = useState(true);
+    const {
+        seasons, seasonsLoading,
+        selectedSeason, setSelectedSeason,
+    } = useLeagueHub();
+
+    // Local state: rules & games loaded independently so this page works
+    // even when navigated to directly (without switching seasons in sidebar).
+    const [rules, setRules] = useState<SeasonRule[]>([]);
+    const [games, setGames] = useState<Game[]>([]);
+    const [search, setSearch] = useState('');
+    const [loading, setLoading] = useState(false);
     const [creating, setCreating] = useState(false);
     const [showForm, setShowForm] = useState(false);
-    const [form, setForm]         = useState<CreateForm>(EMPTY);
-    const [toast, setToast]       = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+    const [form, setForm] = useState<CreateForm>(EMPTY);
+    const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
 
     const notify = (msg: string, type: 'ok' | 'err') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
     };
 
-    const load = async () => {
+    // Load games once on mount
+    useEffect(() => {
+        catalogService.fetchGames().then(setGames).catch(() => notify('Failed to load games', 'err'));
+    }, []);
+
+    // Load rules whenever the selected season changes
+    const loadRules = async (seasonId: string) => {
         setLoading(true);
+        setRules([]);
         try {
-            const [rls, gms] = await Promise.all([leagueRulesService.getAll(), catalogService.fetchGames()]);
+            const rls = await leagueRulesService.getBySeasonId(seasonId);
             setRules(rls);
-            setGames(gms);
         } catch (e) { notify(apiErr(e), 'err'); }
         finally { setLoading(false); }
     };
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => {
+        if (selectedSeason) {
+            loadRules(selectedSeason._id);
+        } else {
+            setRules([]);
+        }
+    }, [selectedSeason?._id]);
 
     // When game changes, auto-apply preset
     const handleGameChange = (gameId: string) => {
@@ -369,10 +387,12 @@ export default function RulesPage() {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedSeason) { notify('Select a season first', 'err'); return; }
         setCreating(true);
         try {
             await leagueRulesService.create({
                 ...form,
+                seasonId: selectedSeason._id,   // ← key: tie rule to this season
                 mapVetoFormat: form.mapVetoEnabled ? form.mapVetoFormat : null,
                 vetoFirstPick: form.mapVetoEnabled ? form.vetoFirstPick : null,
                 ruleUsage: form.ruleUsage.length ? form.ruleUsage : ['REGULAR_SEASON'],
@@ -386,26 +406,26 @@ export default function RulesPage() {
                 remakeConditions: form.remakeConditions || undefined,
                 adminDecisionRequired: form.adminDecisionRequired,
             });
-            notify('Rule template created!', 'ok');
+            notify('Season rule created!', 'ok');
             setShowForm(false);
             setForm(EMPTY);
-            load();
+            loadRules(selectedSeason._id);
         } catch (e) { notify(apiErr(e), 'err'); }
         finally { setCreating(false); }
     };
 
     const del = async (id: string) => {
-        if (!confirm('Delete this rule template?')) return;
+        if (!confirm('Delete this rule?')) return;
         try {
             await leagueRulesService.delete(id);
             notify('Rule deleted.', 'ok');
-            load();
+            if (selectedSeason) loadRules(selectedSeason._id);
         } catch (e) { notify(apiErr(e), 'err'); }
     };
 
     const filtered = rules.filter(r => !search || r.name.toLowerCase().includes(search.toLowerCase()));
 
-    const resolveGame = (r: LeagueRule) => {
+    const resolveGame = (r: SeasonRule) => {
         if (typeof r.gameId === 'object' && r.gameId !== null) return r.gameId as PopulatedGame;
         const found = games.find(g => g._id === r.gameId);
         return found ? { _id: found._id, title: found.title, genre: found.genre, coverImageUrl: found.coverImageUrl, logoUrl: found.logoUrl } as PopulatedGame & { logoUrl?: string } : null;
@@ -425,25 +445,75 @@ export default function RulesPage() {
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2 text-text-muted text-xs mb-1">
-                        <span>League Hub</span><ChevronRight size={12} /><span className="text-white font-semibold">Rules</span>
+                        <span>League Hub</span><ChevronRight size={12} /><span className="text-white font-semibold">Season Rules</span>
                     </div>
                     <h1 className="text-2xl font-black text-white flex items-center gap-3">
-                        <BookOpen size={24} className="text-blue-400" />Rules Manager
+                        <BookOpen size={24} className="text-blue-400" />Season Rules
                     </h1>
-                    <p className="text-text-muted text-sm mt-1">Reusable rule templates with map system, veto format, and point configuration.</p>
+                    <p className="text-text-muted text-sm mt-1">Rules configured per season — each season owns its own ruleset.</p>
                 </div>
-                <button onClick={() => setShowForm(v => !v)}
+                <button
+                    onClick={() => { if (!selectedSeason) { notify('Select a season first', 'err'); return; } setShowForm(v => !v); }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-black bg-green-400 hover:bg-green-300 transition-all shrink-0">
                     {showForm ? <X size={16} /> : <Plus size={16} />}
                     {showForm ? 'Cancel' : 'New Rule'}
                 </button>
             </div>
 
-            {/* Create form — two-column layout with section cards */}
-            {showForm && (
+            {/* ── Season selector ── */}
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-white/10 bg-slate-900/40">
+                <Calendar size={16} className="text-amber-400 shrink-0" />
+                <div className="flex-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Season</p>
+                    {seasonsLoading ? (
+                        <p className="text-sm text-slate-400 flex items-center gap-2"><Loader2 size={13} className="animate-spin" /> Loading seasons…</p>
+                    ) : seasons.length === 0 ? (
+                        <p className="text-sm text-slate-400">No seasons found — create a season first.</p>
+                    ) : (
+                        <select
+                            value={selectedSeason?._id ?? ''}
+                            onChange={e => {
+                                const s = seasons.find(s => s._id === e.target.value) ?? null;
+                                setSelectedSeason(s);
+                                setShowForm(false);
+                                setForm(EMPTY);
+                            }}
+                            className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-amber-500/40 outline-none cursor-pointer transition-colors min-w-[260px]"
+                        >
+                            <option value="">Select a season…</option>
+                            {seasons.map(s => (
+                                <option key={s._id} value={s._id}>{s.name} ({s.status})</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+                {selectedSeason && (
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full border bg-amber-500/10 text-amber-400 border-amber-500/20 shrink-0">
+                        {rules.length} rule{rules.length !== 1 ? 's' : ''}
+                    </span>
+                )}
+            </div>
+
+            {/* ── No season selected placeholder ── */}
+            {!selectedSeason && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <Calendar size={40} className="text-text-muted mb-4 opacity-30" />
+                    <p className="text-white font-black text-lg uppercase tracking-widest mb-1">No Season Selected</p>
+                    <p className="text-text-muted text-sm">Select a season above to view or create its rules.</p>
+                </div>
+            )}
+
+            {/* ── Create form — shown only when a season is selected ── */}
+            {selectedSeason && showForm && (
                 <form onSubmit={handleCreate} className="space-y-6">
+                    {/* Season context tag */}
+                    <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
+                        <Calendar size={13} />
+                        Creating rule for <span className="font-black">{selectedSeason.name}</span>
+                    </div>
+
                     <div className="grid lg:grid-cols-2 gap-6">
-                        {/* Left column: Core, Phase, Match reporting */}
+                        {/* Left column */}
                         <div className="space-y-6">
                             <FormSection icon={<BookOpen size={16} />} title="Core settings" accent="emerald">
                                 <div className="grid grid-cols-2 gap-3">
@@ -585,7 +655,7 @@ export default function RulesPage() {
                             </FormSection>
                         </div>
 
-                        {/* Right column: Map system, Overtime */}
+                        {/* Right column */}
                         <div className="space-y-6">
                             <FormSection icon={<Map size={16} />} title="Map system" accent="blue">
                                 <div className="flex flex-wrap gap-2 mb-3">
@@ -685,124 +755,179 @@ export default function RulesPage() {
                 </form>
             )}
 
-            {/* Search + refresh */}
-            <div className="flex gap-3">
-                <div className="relative flex-1 max-w-xs">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search rules…"
-                        className="w-full pl-9 pr-3 py-2 bg-surface border border-white/10 rounded-xl text-sm text-white placeholder-text-muted focus:border-green-500/50 outline-none" />
-                </div>
-                <button onClick={load} className="p-2 rounded-xl border border-white/10 hover:bg-white/5 text-text-muted hover:text-white transition-all">
-                    <RefreshCw size={16} />
-                </button>
-            </div>
+            {/* ── Rule list (only when season is selected) ── */}
+            {selectedSeason && (
+                <>
+                    {/* Search + refresh */}
+                    <div className="flex gap-3">
+                        <div className="relative flex-1 max-w-xs">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search rules…"
+                                className="w-full pl-9 pr-3 py-2 bg-surface border border-white/10 rounded-xl text-sm text-white placeholder-text-muted focus:border-green-500/50 outline-none" />
+                        </div>
+                        <button onClick={() => loadRules(selectedSeason._id)} className="p-2 rounded-xl border border-white/10 hover:bg-white/5 text-text-muted hover:text-white transition-all">
+                            <RefreshCw size={16} />
+                        </button>
+                    </div>
 
-            {/* ── Rule cards ── */}
-            {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 size={32} className="animate-spin text-green-400" />
-                </div>
-            ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <BookOpen size={40} className="text-text-muted mb-4 opacity-50" />
-                    <p className="text-text-muted font-semibold">No rules yet</p>
-                    <p className="text-text-muted text-sm mt-1">Create your first rule template to link to seasons</p>
-                </div>
-            ) : (
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filtered.map(r => {
-                        const game = resolveGame(r) as (PopulatedGame & { logoUrl?: string; coverImageUrl?: string }) | null;
-                        const cover = game?.coverImageUrl;
-                        const logo  = (game as Game & PopulatedGame | null)?.logoUrl ?? game?.coverImageUrl;
+                    {/* Rule cards */}
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <Loader2 size={32} className="animate-spin text-green-400" />
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <BookOpen size={40} className="text-text-muted mb-4 opacity-50" />
+                            <p className="text-text-muted font-semibold">No rules for this season</p>
+                            <p className="text-text-muted text-sm mt-1">Create the first rule for <span className="text-white font-semibold">{selectedSeason.name}</span></p>
+                        </div>
+                    ) : (
+                        <div className="flex gap-6 overflow-x-auto pb-6 snap-x -mx-6 px-6 flex-nowrap">
+                            {filtered.map(r => {
+                                const game = resolveGame(r) as (PopulatedGame & { logoUrl?: string; coverImageUrl?: string }) | null;
+                                const cover = game?.coverImageUrl;
+                                const logo = (game as Game & PopulatedGame | null)?.logoUrl ?? game?.coverImageUrl;
 
-                        return (
-                            <div key={r._id} className="rounded-xl border border-white/10 bg-slate-900/50 overflow-hidden hover:border-white/15 transition-all group">
-                                {/* Top: compact header with game + name */}
-                                <div className="flex items-start justify-between gap-3 p-4 border-b border-white/5">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        {logo || cover ? (
-                                            <img src={logo || cover} alt="" className="w-10 h-10 rounded-lg object-cover bg-black/30 flex-shrink-0" />
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-lg bg-slate-700/50 flex items-center justify-center flex-shrink-0"><Gamepad2 size={18} className="text-slate-500" /></div>
-                                        )}
-                                        <div className="min-w-0">
-                                            <p className="text-white font-semibold text-sm truncate">{r.name}</p>
-                                            <p className="text-slate-400 text-xs truncate">{game?.title ?? 'Unknown'}</p>
+                                return (
+                                    <div key={r._id} className="relative bg-[#0f0f10] border border-white/[0.06] rounded-3xl overflow-hidden hover:border-primary/30 transition-all duration-300 group shadow-lg hover:shadow-primary/10 shrink-0 w-[420px] snap-start">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                        {/* Dynamic top bar color based on format type or just primary */}
+                                        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                        {/* Header */}
+                                        <div className="relative z-10 p-6 pb-4 border-b border-white/[0.06]">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex items-center gap-4 min-w-0">
+                                                    <div className="relative w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/[0.06] p-2 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                                        {/* Fallback Icon always underneath */}
+                                                        <Gamepad2 size={24} className="text-white/20 absolute z-0" />
+
+                                                        {/* Image layer */}
+                                                        {(logo || cover) && (
+                                                            <img
+                                                                src={
+                                                                    (logo || cover)?.startsWith('/') && !(logo || cover)?.startsWith('http')
+                                                                        ? `http://localhost:3000${logo || cover}`
+                                                                        : (logo || cover)
+                                                                }
+                                                                alt={game?.title}
+                                                                className="w-full h-full object-contain relative z-10"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLImageElement).style.display = 'none';
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h3 className="text-white font-black text-lg tracking-tight mb-1 truncate">{r.name}</h3>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{game?.title ?? 'Unknown Game'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 flex-shrink-0">
+                                                    <button onClick={() => del(r._id)} className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-transparent hover:border-red-500/20 text-red-500/60 hover:text-red-400 transition-colors" title="Delete Rule">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Body */}
+                                        <div className="relative z-10 p-6 space-y-5">
+                                            {/* Badges */}
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border', FORMAT_COLORS[r.formatType] || FORMAT_COLORS.LEAGUE)}>
+                                                    {r.formatType}
+                                                </span>
+                                                <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border', MATCH_COLORS[r.matchType] || MATCH_COLORS.BO3)}>
+                                                    {r.matchType}
+                                                </span>
+
+                                                <div className="flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
+                                                    <span className="text-emerald-400 text-[10px] font-black">{r.pointsWin}W</span>
+                                                    <span className="text-white/20 text-[10px]">:</span>
+                                                    <span className="text-red-400/80 text-[10px] font-black">{r.pointsLoss}L</span>
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-1">
+                                                    TIE: {r.tiebreaker.replace(/_/g, ' ')}
+                                                </span>
+                                            </div>
+
+                                            {/* Rule Usage & Side Selection */}
+                                            {((r.ruleUsage && r.ruleUsage.length > 0) || r.sideSelection) && (
+                                                <div className="space-y-1.5">
+                                                    {r.ruleUsage && r.ruleUsage.length > 0 && (
+                                                        <p className="text-xs text-white/60 font-medium">
+                                                            <span className="text-white/40 uppercase text-[9px] font-black tracking-widest mr-2">Phases</span>
+                                                            {r.ruleUsage.map(u => RULE_USAGE_OPTIONS.find(o => o.value === u)?.label ?? u).join(', ')}
+                                                        </p>
+                                                    )}
+                                                    {r.sideSelection && (
+                                                        <p className="text-xs text-white/60 font-medium">
+                                                            <span className="text-white/40 uppercase text-[9px] font-black tracking-widest mr-2">Side</span>
+                                                            {SIDE_SELECTION_OPTIONS.find(o => o.value === r.sideSelection)?.label ?? r.sideSelection}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Map Info */}
+                                            {(r.mapPool?.length || r.mapVetoEnabled) && (
+                                                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
+                                                    {r.mapPool && r.mapPool.length > 0 && (
+                                                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-400">
+                                                            <Map size={12} />
+                                                            <span>{r.mapPool.length} Maps in pool</span>
+                                                        </div>
+                                                    )}
+                                                    {r.mapVetoEnabled && r.mapVetoFormat && (
+                                                        <div className="pt-1">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40 block mb-2">Map Veto Format</span>
+                                                            <VetoVisualizer fmt={r.mapVetoFormat} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Overtime Info */}
+                                            {r.overtimeConfig && (
+                                                <div className="flex items-center gap-2 rounded-xl bg-amber-500/5 border border-amber-500/10 px-4 py-3">
+                                                    <Zap size={14} className="text-amber-500/70" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/90">
+                                                        {r.overtimeConfig.enabled
+                                                            ? `OT: ${r.overtimeConfig.format.replace(/_/g, ' ')} ${r.overtimeConfig.format === 'CS2_OT' ? `· ${r.overtimeConfig.maxRoundsPerPeriod ?? 6}R / $${(r.overtimeConfig.startMoney ?? 10500).toLocaleString()}` : ''}`
+                                                            : r.overtimeConfig.allowDrawIfDisabled ? 'Draws Allowed' : 'No Overtime'}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Extra Admin Details */}
+                                            {(r.scoreSubmissionMethod || r.substitutionsAllowed || r.adminDecisionRequired) && (
+                                                <div className="flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold text-white/40 uppercase tracking-widest pt-2">
+                                                    {r.scoreSubmissionMethod && (
+                                                        <span className="flex items-center gap-1.5"><CheckSquare size={10} /> {SCORE_SUBMISSION_OPTIONS.find(o => o.value === r.scoreSubmissionMethod)?.label}</span>
+                                                    )}
+                                                    {r.substitutionsAllowed && (
+                                                        <span className="flex items-center gap-1.5"><Users size={10} /> Subs: {r.maxSubstitutions ?? 0}{r.emergencySubsOnly ? ' (Emergency Only)' : ''}</span>
+                                                    )}
+                                                    {r.adminDecisionRequired && (
+                                                        <span className="flex items-center gap-1.5"><AlertTriangle size={10} className="text-amber-500/70" /> Admin Decision Required</span>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Footer Stats */}
+                                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/30 pt-4 border-t border-white/[0.06]">
+                                                <span>Limit: {r.maxTeams} Teams</span>
+                                                <span>{r.maxForfeitsBeforeDisqualification ?? '—'} Forfeits / DQ</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <button onClick={() => del(r._id)} className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0" title="Delete">
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-
-                                {/* Body: divided blocks */}
-                                <div className="p-4 space-y-4">
-                                    {/* Primary: format, match, points */}
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded', FORMAT_COLORS[r.formatType] || FORMAT_COLORS.LEAGUE)}>{r.formatType}</span>
-                                        <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded', MATCH_COLORS[r.matchType] || MATCH_COLORS.BO3)}>{r.matchType}</span>
-                                        <span className="text-slate-400 text-xs">·</span>
-                                        <span className="text-emerald-400 text-xs font-medium">{r.pointsWin}W</span>
-                                        <span className="text-slate-500 text-xs">/</span>
-                                        <span className="text-red-400/80 text-xs font-medium">{r.pointsLoss}L</span>
-                                        <span className="text-slate-400 text-xs">· {r.tiebreaker}</span>
-                                    </div>
-
-                                    {/* Phases & side (if set) */}
-                                    {((r.ruleUsage && r.ruleUsage.length > 0) || r.sideSelection) && (
-                                        <div className="text-[10px] text-slate-400 space-y-0.5">
-                                            {r.ruleUsage && r.ruleUsage.length > 0 && (
-                                                <p>Phases: {r.ruleUsage.map(u => RULE_USAGE_OPTIONS.find(o => o.value === u)?.label ?? u).join(', ')}</p>
-                                            )}
-                                            {r.sideSelection && (
-                                                <p>Side: {SIDE_SELECTION_OPTIONS.find(o => o.value === r.sideSelection)?.label ?? r.sideSelection}</p>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Map & veto — single compact block */}
-                                    {(r.mapPool?.length || r.mapVetoEnabled) && (
-                                        <div className="rounded-lg bg-slate-800/40 border border-white/5 p-3 space-y-2">
-                                            {r.mapPool && r.mapPool.length > 0 && (
-                                                <p className="text-[10px] text-slate-400">
-                                                    <Map size={10} className="inline mr-1 text-blue-400/80" />
-                                                    {r.mapPool.length} maps{r.mapVetoEnabled && r.mapVetoFormat && ` · Veto: ${r.mapVetoFormat.split('_').slice(0, 3).join(' ')}…`}
-                                                </p>
-                                            )}
-                                            {r.mapVetoEnabled && r.mapVetoFormat && !r.mapPool?.length && (
-                                                <VetoVisualizer fmt={r.mapVetoFormat} />
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Overtime — one line when set */}
-                                    {r.overtimeConfig && (
-                                        <div className="text-[10px] text-slate-400 rounded-lg bg-slate-800/40 border border-white/5 px-3 py-2">
-                                            {r.overtimeConfig.enabled
-                                                ? <>OT: {r.overtimeConfig.format}{r.overtimeConfig.format === 'CS2_OT' && ` · ${r.overtimeConfig.maxRoundsPerPeriod ?? 6}r / $${(r.overtimeConfig.startMoney ?? 10500).toLocaleString()}`}</>
-                                                : r.overtimeConfig.allowDrawIfDisabled ? 'Draws allowed' : 'No OT'}
-                                        </div>
-                                    )}
-
-                                    {/* Match reporting — one line when relevant */}
-                                    {(r.scoreSubmissionMethod || r.substitutionsAllowed || r.adminDecisionRequired) && (
-                                        <div className="text-[10px] text-slate-400">
-                                            {r.scoreSubmissionMethod && <span>Score: {SCORE_SUBMISSION_OPTIONS.find(o => o.value === r.scoreSubmissionMethod)?.label}</span>}
-                                            {r.substitutionsAllowed && <span>{r.scoreSubmissionMethod ? ' · ' : ''}Subs: {r.maxSubstitutions ?? 0}{r.emergencySubsOnly ? ' (emergency)' : ''}</span>}
-                                            {r.adminDecisionRequired && <span> · Admin decision</span>}
-                                        </div>
-                                    )}
-
-                                    {/* Footer */}
-                                    <div className="flex justify-between text-[10px] text-slate-500 pt-2 border-t border-white/5">
-                                        <span>Max {r.maxTeams} teams</span>
-                                        <span>{r.maxForfeitsBeforeDisqualification ?? '—'} forfeits</span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                                );
+                            })}
+                        </div>
+                    )
+                    }
+                </>
             )}
         </div>
     );

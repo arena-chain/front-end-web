@@ -1,11 +1,38 @@
 import { useState } from 'react';
 import {
     Calendar, Plus, Loader2, Play, CheckSquare, Trash2, Search,
-    ChevronRight, Clock, X, Flag, Star,
+    Clock, X, Flag, Star, ChevronDown, ChevronUp, Layers,
+    LayoutList, Trophy, Grid2X2, Shuffle,
 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../../../lib/utils';
 import { seasonService } from '../../../services/seasonService';
+import { stageService, type Stage, type StageType, type StageStatus } from '../../../services/stageService';
 import { useLeagueHub } from './LeagueHubContext';
+
+// ─── Stage chip helpers ───────────────────────────────────────────────────────
+
+const STAGE_TYPE_COLOR: Record<StageType, string> = {
+    LEAGUE: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    BRACKET: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+    SWISS: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    GROUPS: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+};
+
+const STAGE_TYPE_ICON: Record<StageType, React.ReactNode> = {
+    LEAGUE: <LayoutList size={10} />,
+    BRACKET: <Trophy size={10} />,
+    SWISS: <Shuffle size={10} />,
+    GROUPS: <Grid2X2 size={10} />,
+};
+
+const STAGE_STATUS_DOT: Record<StageStatus, string> = {
+    DRAFT: 'bg-white/30',
+    SCHEDULED: 'bg-yellow-400',
+    LIVE: 'bg-green-400 animate-pulse',
+    COMPLETED: 'bg-green-700',
+};
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,20 +58,42 @@ export default function SeasonsPage() {
     const {
         selectedLeague,
         seasons, refetchSeasons, seasonsLoading,
-        rules, rulesLoading,
         notify,
     } = useLeagueHub();
+
+    const { id: leagueId } = useParams<{ id: string }>();
+    const navigate = useNavigate();
 
     const [search, setSearch] = useState('');
     const [creating, setCreating] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({
-        rulesId: '',
         name: '',
         registrationDeadline: '',
         startDate: '',
         endDate: '',
     });
+
+    // ── Stage preview state: { [seasonId]: Stage[] | 'loading' } ────────────
+    const [expandedSeasonId, setExpandedSeasonId] = useState<string | null>(null);
+    const [stageCache, setStageCache] = useState<Record<string, Stage[] | 'loading'>>({});
+
+    const toggleExpand = async (seasonId: string) => {
+        if (expandedSeasonId === seasonId) {
+            setExpandedSeasonId(null);
+            return;
+        }
+        setExpandedSeasonId(seasonId);
+        if (stageCache[seasonId]) return; // already fetched
+        setStageCache(prev => ({ ...prev, [seasonId]: 'loading' }));
+        try {
+            const data = await stageService.getBySeason(seasonId);
+            setStageCache(prev => ({ ...prev, [seasonId]: data }));
+        } catch {
+            setStageCache(prev => ({ ...prev, [seasonId]: [] }));
+        }
+    };
+
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,7 +103,7 @@ export default function SeasonsPage() {
             await seasonService.create({ ...form, leagueId: selectedLeague._id });
             notify('Season created!', 'ok');
             setShowForm(false);
-            setForm({ rulesId: '', name: '', registrationDeadline: '', startDate: '', endDate: '' });
+            setForm({ name: '', registrationDeadline: '', startDate: '', endDate: '' });
             refetchSeasons();
         } catch (e) { notify(apiErr(e), 'err'); }
         finally { setCreating(false); }
@@ -136,16 +185,6 @@ export default function SeasonsPage() {
                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-text-muted focus:border-primary/50 outline-none transition-colors" required />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Ruleset *</label>
-                            <select value={form.rulesId} onChange={e => setForm(f => ({ ...f, rulesId: e.target.value }))}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primary/50 outline-none cursor-pointer appearance-none transition-colors" required>
-                                <option value="">Select rules…</option>
-                                {rulesLoading ? <option disabled>Loading rules…</option> : rules.map(r => (
-                                    <option key={r._id} value={r._id}>{r.name} ({r.formatType} / {r.matchType})</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
                             <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Registration Deadline</label>
                             <input type="date" value={form.registrationDeadline} onChange={e => setForm(f => ({ ...f, registrationDeadline: e.target.value }))}
                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primary/50 outline-none transition-colors cursor-pointer" />
@@ -197,9 +236,11 @@ export default function SeasonsPage() {
                     )}
                 </div>
             ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
                     {filtered.map(s => {
                         const deadline = s.registrationDeadline ? daysLeft(s.registrationDeadline) : null;
+                        const isExpanded = expandedSeasonId === s._id;
+                        const stagePrev = stageCache[s._id];
                         return (
                             <div key={s._id} className="bg-surface border border-white/8 rounded-2xl overflow-hidden hover:border-white/15 transition-colors group flex flex-col">
                                 <div className="p-5 flex-1 space-y-4">
@@ -230,6 +271,59 @@ export default function SeasonsPage() {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Stage preview toggle */}
+                                <button
+                                    onClick={() => toggleExpand(s._id)}
+                                    className="flex items-center gap-2 px-5 py-2.5 border-t border-white/5 text-[11px] font-black uppercase tracking-widest text-text-muted hover:text-white hover:bg-white/[0.03] transition-all w-full text-left"
+                                >
+                                    <Layers size={12} className="text-violet-400" />
+                                    Stages
+                                    <span className="ml-auto">{isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}</span>
+                                </button>
+
+                                {/* Stage chips */}
+                                {isExpanded && (
+                                    <div className="px-5 pb-3 pt-1 border-t border-white/5 bg-black/10 space-y-2">
+                                        {stagePrev === 'loading' ? (
+                                            <div className="flex items-center gap-2 py-2">
+                                                <Loader2 size={12} className="animate-spin text-primary" />
+                                                <span className="text-[11px] text-text-muted">Loading stages…</span>
+                                            </div>
+                                        ) : !stagePrev || stagePrev.length === 0 ? (
+                                            <div className="flex items-center justify-between py-1">
+                                                <span className="text-[11px] text-text-muted">No stages yet.</span>
+                                                <button
+                                                    onClick={() => navigate(`/admin/leagues/${leagueId}/stages`)}
+                                                    className="text-[10px] font-black text-violet-400 hover:text-white uppercase tracking-widest transition-colors"
+                                                >
+                                                    + Add Stages
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex flex-wrap gap-1.5 py-1">
+                                                    {(stagePrev as Stage[]).map(st => (
+                                                        <span key={st._id} className={cn(
+                                                            'flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full border uppercase tracking-widest',
+                                                            STAGE_TYPE_COLOR[st.stageType] ?? STAGE_TYPE_COLOR.LEAGUE
+                                                        )}>
+                                                            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', STAGE_STATUS_DOT[st.status] ?? 'bg-white/30')} />
+                                                            {STAGE_TYPE_ICON[st.stageType]}
+                                                            {st.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    onClick={() => navigate(`/admin/leagues/${leagueId}/stages`)}
+                                                    className="text-[10px] font-black text-violet-400 hover:text-white uppercase tracking-widest transition-colors"
+                                                >
+                                                    Manage Stages →
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Actions footer */}
                                 <div className="p-2 border-t border-white/5 bg-black/20 flex gap-2">

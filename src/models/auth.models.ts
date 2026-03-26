@@ -8,7 +8,7 @@ export interface User {
     id: string;
     email: string;
     nickname: string;
-    role: 'player' | 'admin' | 'team-manager' | 'referee';
+    role: 'player' | 'admin' | 'team-manager' | 'team_manager' | 'referee' | 'scouter';
     profile?: UserProfile;
 }
 
@@ -75,4 +75,13 @@ export interface RegisterRefereeRequest {
     nickname: string;
     level?: string;
     role?: 'referee';
+}
+
+export interface RegisterScouterRequest {
+    email: string;
+    password: string;
+    nickname: string;
+    role?: 'scouter';
+    level?: 'REGIONAL' | 'NATIONAL' | 'INTERNATIONAL';
+    notes?: string;
 }

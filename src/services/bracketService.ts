@@ -33,6 +33,7 @@ export interface Bracket {
 export interface GenerateBracketDto {
     seasonId: string;
     format: BracketFormat;
+    seededTeamIds?: string[];
 }
 
 export const bracketService = {

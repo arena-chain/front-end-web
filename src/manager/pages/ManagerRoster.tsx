@@ -1,293 +1,534 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-    Users, Lock, Unlock, UserPlus, UserMinus, ShieldCheck,
-    Shield, Plus, X, Check, AlertCircle, RefreshCw,
+    Users, UserPlus, X, Check, AlertCircle,
+    Shield, Pencil, Trash2, Search, RefreshCw, Settings,
 } from 'lucide-react';
-import { leagueService, League } from '../../services/leagueService';
-import { seasonService, Season } from '../../services/seasonService';
-import { seasonRosterService, SeasonRoster, RosterPlayer } from '../../services/seasonRosterService';
+import { useNavigate } from 'react-router-dom';
+import { teamManagerService, type TeamMember, type PlayerSearchResult } from '../../services/teamManagerService';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type PlayerStatus = 'ACTIVE' | 'BENCHED' | 'TRIAL' | 'INACTIVE';
+type PlayerRole   = 'IGL' | 'AWP' | 'Entry' | 'Rifler' | 'Support' | 'Coach' | 'Analyst' | 'Flex';
+
+interface TeamPlayer {
+    id:        string;
+    nickname:  string;
+    playerId?: string;       // backend player ID if known
+    email?:    string;
+    role:      PlayerRole;
+    status:    PlayerStatus;
+    joinedAt:  string;
+    avatar?:   string;
+    number?:   number;
+}
 
 interface Toast { msg: string; ok: boolean }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const ROLES: PlayerRole[] = ['IGL', 'AWP', 'Entry', 'Rifler', 'Support', 'Coach', 'Analyst', 'Flex'];
+
+const ROLE_META: Record<PlayerRole, { color: string; label: string }> = {
+    IGL:     { color: '#00ff00', label: 'In-Game Leader'  },
+    AWP:     { color: '#ff4444', label: 'AWP Sniper'      },
+    Entry:   { color: '#ff8c00', label: 'Entry Fragger'   },
+    Rifler:  { color: '#a78bfa', label: 'Rifler'          },
+    Support: { color: '#3b9eff', label: 'Support'         },
+    Coach:   { color: '#fbbf24', label: 'Coach'           },
+    Analyst: { color: '#6ee7b7', label: 'Analyst'         },
+    Flex:    { color: '#f472b6', label: 'Flex Player'     },
+};
+
+const STATUS_META: Record<PlayerStatus, { color: string; bg: string; border: string }> = {
+    ACTIVE:   { color: '#00ff00', bg: 'rgba(0,255,0,0.1)',     border: 'rgba(0,255,0,0.2)'    },
+    BENCHED:  { color: '#fbbf24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.2)' },
+    TRIAL:    { color: '#3b9eff', bg: 'rgba(59,158,255,0.1)',  border: 'rgba(59,158,255,0.2)' },
+    INACTIVE: { color: '#666',    bg: 'rgba(100,100,100,0.1)', border: 'rgba(100,100,100,0.2)'},
+};
+
+// ── Local meta helpers ─────────────────────────────────────────────────────────
+
+type RoleMeta = { role: PlayerRole; status: PlayerStatus; number?: number };
+
+function loadMeta(uid: string): Record<string, RoleMeta> {
+    try { return JSON.parse(localStorage.getItem(`roster_meta_${uid}`) || '{}'); }
+    catch { return {}; }
+}
+function saveMeta(uid: string, m: Record<string, RoleMeta>) {
+    localStorage.setItem(`roster_meta_${uid}`, JSON.stringify(m));
+}
+
+// Merge backend member + local meta into display player
+function toPlayer(m: TeamMember, meta: RoleMeta | undefined): TeamPlayer {
+    return {
+        id:       m._id,
+        nickname: m.nickname,
+        avatar:   m.avatar,
+        playerId: m._id,
+        email:    m.email,
+        role:     meta?.role   ?? 'Rifler',
+        status:   meta?.status ?? 'ACTIVE',
+        number:   meta?.number,
+        joinedAt: new Date().toISOString(),
+    };
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
 export default function ManagerRoster() {
-    const [leagues, setLeagues]   = useState<League[]>([]);
-    const [seasons, setSeasons]   = useState<Season[]>([]);
-    const [rosters, setRosters]   = useState<SeasonRoster[]>([]);
-    const [selLeague, setSelLeague] = useState('');
-    const [selSeason, setSelSeason] = useState('');
-    const [loading, setLoading]   = useState(false);
-    const [toast, setToast]       = useState<Toast | null>(null);
-    const [addPlayerId, setAddPlayerId] = useState('');
-    const [addingToRoster, setAddingToRoster] = useState<string | null>(null);
-    const [creating, setCreating] = useState(false);
+    const navigate = useNavigate();
+    const userId = (() => {
+        try { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.id || u._id || 'default'; }
+        catch { return 'default'; }
+    })();
+
+    const [members,    setMembers]    = useState<TeamMember[]>([]);
+    const [meta,       setMetaState]  = useState<Record<string, RoleMeta>>(() => loadMeta(userId));
+    const [teamExists, setTeamExists] = useState<boolean | null>(null); // null = loading
+    const [loading,    setLoading]    = useState(true);
+    const [tab,        setTab]        = useState<PlayerStatus | 'ALL'>('ALL');
+    const [toast,      setToast]      = useState<Toast | null>(null);
+    const [inviteOpen, setInviteOpen] = useState(false);
+    const [editPlayer, setEditPlayer] = useState<TeamPlayer | null>(null);
+    const [search,     setSearch]     = useState('');
 
     const notify = (msg: string, ok = true) => {
         setToast({ msg, ok });
-        setTimeout(() => setToast(null), 3500);
+        setTimeout(() => setToast(null), 3000);
     };
 
-    useEffect(() => {
-        leagueService.getAllLeagues().then(setLeagues).catch(() => {});
-    }, []);
+    // ── Load team + members ──────────────────────────────────────────────────
+    const loadTeam = () => {
+        setLoading(true);
+        teamManagerService.getMyTeam()
+            .then(t => { setTeamExists(true); setMembers(t.members ?? []); })
+            .catch(() => { setTeamExists(false); setMembers([]); })
+            .finally(() => setLoading(false));
+    };
+    useEffect(loadTeam, []);
 
-    useEffect(() => {
-        if (!selLeague) { setSeasons([]); setSelSeason(''); return; }
-        seasonService.getByLeague(selLeague).then(setSeasons).catch(() => {});
-        setSelSeason('');
-    }, [selLeague]);
+    // ── Meta helpers ─────────────────────────────────────────────────────────
+    const updateMeta = (id: string, patch: Partial<RoleMeta>) => {
+        const existing = meta[id] ?? { role: 'Rifler' as PlayerRole, status: 'ACTIVE' as PlayerStatus };
+        const next = { ...meta, [id]: { ...existing, ...patch } };
+        setMetaState(next);
+        saveMeta(userId, next);
+    };
 
-    const loadRosters = async () => {
-        if (!selSeason) { setRosters([]); return; }
+    // ── Remove player ─────────────────────────────────────────────────────────
+    const removePlayer = async (playerUserId: string, nickname: string) => {
         try {
-            setLoading(true);
-            setRosters(await seasonRosterService.getBySeason(selSeason));
-        } catch { notify('Failed to load rosters', false); }
-        finally   { setLoading(false); }
+            await teamManagerService.removePlayer(playerUserId);
+            setMembers(prev => prev.filter(m => m._id !== playerUserId));
+            notify(`${nickname} removed from roster`);
+        } catch { notify('Failed to remove player', false); }
     };
 
-    useEffect(() => { loadRosters(); }, [selSeason]);
-
-    const handleAddPlayer = async (rosterId: string) => {
-        if (!addPlayerId.trim()) return notify('Enter a Player ID', false);
-        try {
-            await seasonRosterService.addPlayer(rosterId, addPlayerId.trim());
-            notify('Player added');
-            setAddPlayerId('');
-            setAddingToRoster(null);
-            loadRosters();
-        } catch { notify('Failed to add player', false); }
+    // ── Edit local metadata ───────────────────────────────────────────────────
+    const handleEdit = (updated: TeamPlayer) => {
+        updateMeta(updated.id, { role: updated.role, status: updated.status, number: updated.number });
+        setEditPlayer(null);
+        notify('Player updated');
     };
 
-    const handleRemove = async (rosterId: string, playerId: string) => {
-        try {
-            await seasonRosterService.removePlayer(rosterId, playerId);
-            notify('Player removed');
-            loadRosters();
-        } catch { notify('Failed', false); }
+    // ── Build display list ────────────────────────────────────────────────────
+    const roster: TeamPlayer[] = members.map(m => toPlayer(m, meta[m._id]));
+
+    const filtered = roster.filter(p => {
+        const matchTab    = tab === 'ALL' || p.status === tab;
+        const matchSearch = !search || p.nickname.toLowerCase().includes(search.toLowerCase());
+        return matchTab && matchSearch;
+    });
+
+    const counts: Record<string, number> = {
+        ALL:      roster.length,
+        ACTIVE:   roster.filter(p => p.status === 'ACTIVE').length,
+        BENCHED:  roster.filter(p => p.status === 'BENCHED').length,
+        TRIAL:    roster.filter(p => p.status === 'TRIAL').length,
+        INACTIVE: roster.filter(p => p.status === 'INACTIVE').length,
     };
 
-    const handleLockToggle = async (r: SeasonRoster) => {
-        try {
-            if (r.status === 'LOCKED') await seasonRosterService.unlock(r._id);
-            else await seasonRosterService.lock(r._id);
-            notify(r.status === 'LOCKED' ? 'Roster unlocked' : 'Roster locked 🔒');
-            loadRosters();
-        } catch { notify('Failed', false); }
-    };
-
-    const resolvePlayers = (roster: SeasonRoster): RosterPlayer[] => {
-        if (!roster.playerIds?.length) return [];
-        if (typeof roster.playerIds[0] === 'string') {
-            return (roster.playerIds as string[]).map(id => ({ _id: id, nickname: `…${id.slice(-8)}` }));
-        }
-        return roster.playerIds as RosterPlayer[];
-    };
-
-    const resolveTeam = (r: SeasonRoster) => {
-        if (typeof r.teamId === 'string') return { name: `…${r.teamId.slice(-8)}`, logo: undefined };
-        return r.teamId as { name: string; logo?: string };
-    };
+    // ── No-team guard ─────────────────────────────────────────────────────────
+    if (teamExists === false && !loading) {
+        return (
+            <div className="flex flex-col items-center gap-5 py-24 rounded-2xl"
+                style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <Shield className="w-12 h-12 opacity-20 text-white" />
+                <div className="text-center">
+                    <p className="text-white font-bold">No team created yet</p>
+                    <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>Create your team in Settings before managing the roster</p>
+                </div>
+                <button onClick={() => navigate('/manager/settings')}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm"
+                    style={{ background: '#00ff00', color: '#000' }}>
+                    <Settings className="w-4 h-4" /> Go to Settings
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
+
+            {/* Toast */}
             {toast && (
-                <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl text-sm font-medium border
-                    ${toast.ok ? 'bg-emerald-900/90 text-emerald-200 border-emerald-500/40' : 'bg-red-900/90 text-red-200 border-red-500/40'}`}>
+                <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-2xl text-sm font-medium border backdrop-blur-sm
+                    ${toast.ok ? 'bg-emerald-900/90 text-emerald-200 border-emerald-500/30' : 'bg-red-900/90 text-red-200 border-red-500/30'}`}>
                     {toast.ok ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                     {toast.msg}
                 </div>
             )}
 
-            {/* Header */}
-            <div className="flex items-center justify-between">
+            {/* ── Header ── */}
+            <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-white flex items-center gap-3">
-                        <Users className="w-6 h-6 text-primary" /> My Roster
+                        <Users className="w-6 h-6" style={{ color: '#3b9eff' }} />
+                        Team Roster
+                        {loading && <RefreshCw className="w-4 h-4 animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />}
                     </h1>
-                    <p className="text-text-muted text-sm mt-1">Manage players per season</p>
+                    <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        {counts.ACTIVE} active · {counts.TRIAL} on trial · {counts.BENCHED} benched
+                    </p>
                 </div>
-                <button onClick={loadRosters} className="p-2 rounded-lg border border-white/10 hover:bg-white/5 text-text-muted hover:text-white transition-colors">
-                    <RefreshCw className="w-4 h-4" />
+                <button onClick={() => setInviteOpen(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                    style={{ background: '#00ff00', color: '#000' }}>
+                    <UserPlus className="w-4 h-4" /> Invite Player
                 </button>
             </div>
 
-            {/* Season selector */}
-            <div className="grid grid-cols-2 gap-3">
-                <select value={selLeague} onChange={e => setSelLeague(e.target.value)}
-                    className="bg-surface border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-primary/50">
-                    <option value="">— Select League —</option>
-                    {leagues.map(l => <option key={l._id} value={l._id}>{l.name}</option>)}
-                </select>
-                <select value={selSeason} onChange={e => setSelSeason(e.target.value)}
-                    className="bg-surface border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
-                    disabled={!selLeague}>
-                    <option value="">— Select Season —</option>
-                    {seasons.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                </select>
+            {/* ── Search + Tabs ── */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(255,255,255,0.25)' }} />
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roster…"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-white outline-none"
+                        style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)' }} />
+                </div>
+                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)', background: '#0d0d0d' }}>
+                    {(['ALL', 'ACTIVE', 'BENCHED', 'TRIAL', 'INACTIVE'] as const).map(t => (
+                        <button key={t} onClick={() => setTab(t)}
+                            className="px-3 py-2.5 text-[11px] font-black uppercase tracking-wider transition-all"
+                            style={tab === t ? { background: 'rgba(0,255,0,0.12)', color: '#00ff00' } : { color: 'rgba(255,255,255,0.3)' }}>
+                            {t}{counts[t] > 0 && <span className="ml-1 opacity-60">{counts[t]}</span>}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Content */}
-            {!selSeason ? (
-                <div className="bg-surface border border-white/5 rounded-xl p-12 text-center text-text-muted">
-                    <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p>Select a league and season to manage your roster</p>
+            {/* ── Player Grid ── */}
+            {loading ? (
+                <div className="py-20 flex items-center justify-center" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                    <RefreshCw className="w-6 h-6 animate-spin mr-3" /> Loading roster…
                 </div>
-            ) : loading ? (
-                <div className="text-text-muted text-center py-16">Loading…</div>
-            ) : rosters.length === 0 ? (
-                <div className="bg-surface border border-white/5 rounded-xl p-12 text-center text-text-muted">
-                    <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="mb-4">No roster found for this season</p>
-                    <button onClick={() => setCreating(true)}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary-light transition-colors">
-                        <Plus className="w-4 h-4" /> Create Roster
-                    </button>
+            ) : filtered.length === 0 ? (
+                <div className="flex flex-col items-center gap-4 py-20 rounded-2xl"
+                    style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <Shield className="w-10 h-10 opacity-20 text-white" />
+                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                        {roster.length === 0 ? 'No players yet — invite your squad to get started' : 'No players in this category'}
+                    </p>
+                    {roster.length === 0 && (
+                        <button onClick={() => setInviteOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold"
+                            style={{ background: 'rgba(0,255,0,0.08)', color: '#00ff00', border: '1px solid rgba(0,255,0,0.15)' }}>
+                            <UserPlus className="w-4 h-4" /> Invite First Player
+                        </button>
+                    )}
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {rosters.map(roster => {
-                        const team    = resolveTeam(roster);
-                        const players = resolvePlayers(roster);
-                        const locked  = roster.status === 'LOCKED';
-                        return (
-                            <div key={roster._id} className="bg-surface border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all">
-                                {/* Roster header */}
-                                <div className="flex items-center justify-between px-5 py-4">
-                                    <div className="flex items-center gap-3">
-                                        {team.logo
-                                            ? <img src={team.logo} className="w-8 h-8 rounded-lg object-contain" alt="" />
-                                            : <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Shield className="w-4 h-4 text-text-muted" /></div>
-                                        }
-                                        <div>
-                                            <p className="text-white font-bold text-sm">{team.name}</p>
-                                            <p className="text-text-muted text-xs">{players.length} player{players.length !== 1 ? 's' : ''}</p>
-                                        </div>
-                                        <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${locked
-                                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                            : 'bg-primary/10 text-primary border-primary/20'}`}>
-                                            {locked ? 'LOCKED' : 'OPEN'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {!locked && (
-                                            <button onClick={() => setAddingToRoster(roster._id)}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/15 text-xs font-medium">
-                                                <UserPlus className="w-3.5 h-3.5" /> Add Player
-                                            </button>
-                                        )}
-                                        <button onClick={() => handleLockToggle(roster)}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${locked
-                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15'
-                                                : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/15'}`}>
-                                            {locked ? <><Unlock className="w-3.5 h-3.5" /> Unlock</> : <><Lock className="w-3.5 h-3.5" /> Lock Roster</>}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Add player inline */}
-                                {addingToRoster === roster._id && (
-                                    <div className="px-5 pb-4 flex items-center gap-2 border-t border-white/5 pt-3">
-                                        <input value={addPlayerId} onChange={e => setAddPlayerId(e.target.value)}
-                                            placeholder="Player ID…"
-                                            className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-text-muted outline-none focus:border-primary/50" />
-                                        <button onClick={() => handleAddPlayer(roster._id)}
-                                            className="px-4 py-2 rounded-lg bg-primary text-black text-sm font-bold">Add</button>
-                                        <button onClick={() => { setAddingToRoster(null); setAddPlayerId(''); }}
-                                            className="p-2 rounded-lg text-text-muted hover:text-white">
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Player list */}
-                                {players.length > 0 && (
-                                    <div className="border-t border-white/5 px-5 py-3">
-                                        <div className="flex flex-wrap gap-2">
-                                            {players.map(pl => (
-                                                <div key={pl._id} className="flex items-center gap-2 bg-white/5 border border-white/8 rounded-lg px-3 py-1.5 group">
-                                                    {pl.avatar
-                                                        ? <img src={pl.avatar} className="w-5 h-5 rounded-full" alt="" />
-                                                        : <ShieldCheck className="w-4 h-4 text-text-muted" />
-                                                    }
-                                                    <span className="text-xs text-white font-medium">{pl.nickname}</span>
-                                                    {!locked && (
-                                                        <button onClick={() => handleRemove(roster._id, pl._id)}
-                                                            className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-400 transition-all ml-1">
-                                                            <UserMinus className="w-3 h-3" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {filtered.map(p => (
+                        <PlayerCard key={p.id} player={p}
+                            onEdit={() => setEditPlayer(p)}
+                            onRemove={() => removePlayer(p.id, p.nickname)}
+                            onStatusChange={s => updateMeta(p.id, { status: s })} />
+                    ))}
                 </div>
             )}
 
-            {/* Create roster modal */}
-            {creating && (
-                <CreateRosterModal
-                    seasonId={selSeason}
-                    onClose={() => setCreating(false)}
-                    onCreated={() => { setCreating(false); loadRosters(); }}
+            {inviteOpen && (
+                <InviteModal
+                    onClose={() => setInviteOpen(false)}
+                    existingIds={members.map(m => m._id)}
+                    onInvited={m => {
+                        setMembers(prev => [...prev, m]);
+                        setInviteOpen(false);
+                        notify(`${m.nickname} added to roster`);
+                    }}
                     notify={notify}
                 />
             )}
+            {editPlayer && <EditModal player={editPlayer} onClose={() => setEditPlayer(null)} onSave={handleEdit} />}
         </div>
     );
 }
 
-function CreateRosterModal({ seasonId, onClose, onCreated, notify }: {
-    seasonId: string;
-    onClose: () => void;
-    onCreated: () => void;
-    notify: (msg: string, ok?: boolean) => void;
-}) {
-    const [teamId, setTeamId]     = useState('');
-    const [playerIds, setPlayerIds] = useState('');
-    const [submitting, setSubmitting] = useState(false);
+// ── Player Card ────────────────────────────────────────────────────────────────
 
-    const handleSubmit = async () => {
-        if (!teamId.trim()) return notify('Team ID required', false);
-        const ids = playerIds.split(',').map(s => s.trim()).filter(Boolean);
-        try {
-            setSubmitting(true);
-            await seasonRosterService.create({ seasonId, teamId, playerIds: ids });
-            notify('Roster created!');
-            onCreated();
-        } catch { notify('Create failed', false); }
-        finally  { setSubmitting(false); }
-    };
+function PlayerCard({ player: p, onEdit, onRemove, onStatusChange }: {
+    player: TeamPlayer;
+    onEdit: () => void;
+    onRemove: () => void;
+    onStatusChange: (s: PlayerStatus) => void;
+}) {
+    const rm = ROLE_META[p.role];
+    const sm = STATUS_META[p.status];
+    const initials = p.nickname.slice(0, 2).toUpperCase();
 
     return (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-white font-black">Create Roster</h2>
-                    <button onClick={onClose}><X className="w-5 h-5 text-text-muted" /></button>
+        <div className="group relative rounded-2xl overflow-hidden transition-all duration-200"
+            style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.07)' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = `${rm.color}30`)}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}>
+
+            {/* Color accent bar */}
+            <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${rm.color}, transparent)` }} />
+
+            <div className="p-4">
+                <div className="flex items-start gap-3">
+                    {/* Avatar */}
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-base shrink-0"
+                        style={{ background: `${rm.color}18`, color: rm.color, border: `1px solid ${rm.color}30` }}>
+                        {p.avatar ? <img src={p.avatar} className="w-full h-full rounded-xl object-cover" alt="" /> : initials}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                            <p className="text-white font-black text-sm truncate">{p.nickname}</p>
+                            {p.number !== undefined && (
+                                <span className="text-[10px] font-black" style={{ color: 'rgba(255,255,255,0.25)' }}>#{p.number}</span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded"
+                                style={{ background: `${rm.color}18`, color: rm.color }}>
+                                {p.role}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                                style={{ background: sm.bg, color: sm.color, border: `1px solid ${sm.border}` }}>
+                                {p.status}
+                            </span>
+                        </div>
+                        {p.playerId && (
+                            <p className="text-[10px] mt-1 font-mono truncate" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                                ID: {p.playerId.slice(-12)}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={onEdit} className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                            style={{ color: 'rgba(255,255,255,0.4)' }}>
+                            <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={onRemove} className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10"
+                            style={{ color: 'rgba(255,100,100,0.5)' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = '#ff4444')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,100,100,0.5)')}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label className="block text-xs font-bold uppercase text-text-muted mb-1.5">Team ID *</label>
-                    <input value={teamId} onChange={e => setTeamId(e.target.value)}
-                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-primary/50" placeholder="Your team's ID" />
+
+                {/* Quick status switcher */}
+                <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    {(['ACTIVE', 'BENCHED', 'TRIAL'] as PlayerStatus[]).map(s => (
+                        <button key={s} onClick={() => onStatusChange(s)}
+                            className="flex-1 text-[9px] font-black uppercase py-1 rounded-lg transition-all"
+                            style={p.status === s
+                                ? { background: STATUS_META[s].bg, color: STATUS_META[s].color, border: `1px solid ${STATUS_META[s].border}` }
+                                : { background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.2)' }}>
+                            {s}
+                        </button>
+                    ))}
+                    <p className="text-[9px] ml-auto shrink-0" style={{ color: 'rgba(255,255,255,0.15)' }}>
+                        {new Date(p.joinedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    </p>
                 </div>
-                <div>
-                    <label className="block text-xs font-bold uppercase text-text-muted mb-1.5">Player IDs (comma-separated)</label>
-                    <textarea value={playerIds} onChange={e => setPlayerIds(e.target.value)} rows={3}
-                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-primary/50 resize-none placeholder-text-muted"
-                        placeholder="id1, id2, id3…" />
+            </div>
+        </div>
+    );
+}
+
+// ── Invite Modal (real player search) ─────────────────────────────────────────
+
+function InviteModal({ onClose, existingIds, onInvited, notify }: {
+    onClose:   () => void;
+    existingIds: string[];
+    onInvited: (m: TeamMember) => void;
+    notify:    (msg: string, ok?: boolean) => void;
+}) {
+    const [query,    setQuery]    = useState('');
+    const [results,  setResults]  = useState<PlayerSearchResult[]>([]);
+    const [searching,setSearching]= useState(false);
+    const [inviting, setInviting] = useState<string | null>(null);
+    const [error,    setError]    = useState('');
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const doSearch = (q: string) => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(async () => {
+            setSearching(true); setError('');
+            try { setResults(await teamManagerService.searchPlayers(q || undefined)); }
+            catch { setError('Search failed — make sure your team is created first'); setResults([]); }
+            finally { setSearching(false); }
+        }, 400);
+    };
+
+    useEffect(() => { doSearch(query); }, [query]);
+
+    const handleInvite = async (r: PlayerSearchResult) => {
+        setInviting(r.userId._id);
+        try {
+            await teamManagerService.invitePlayer(r.userId._id);
+            onInvited({ _id: r.userId._id, nickname: r.userId.nickname, avatar: r.userId.avatar, email: r.userId.email });
+        } catch (e: unknown) {
+            const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Invite failed';
+            notify(msg, false);
+        } finally { setInviting(null); }
+    };
+
+    const already = (id: string) => existingIds.includes(id);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="w-full max-w-lg mx-4 rounded-2xl shadow-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div>
+                        <h2 className="text-white font-black text-base">Invite Player</h2>
+                        <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Search by nickname or email</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 transition-colors" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-white/10 text-text-muted text-sm">Cancel</button>
-                    <button onClick={handleSubmit} disabled={submitting}
-                        className="flex-1 py-2 rounded-xl bg-primary text-black text-sm font-bold disabled:opacity-50 hover:bg-primary-light transition-colors">
-                        {submitting ? 'Creating…' : 'Create'}
+
+                <div className="p-5 space-y-4">
+                    {/* Search input */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                        {searching && <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />}
+                        <input autoFocus
+                            value={query} onChange={e => setQuery(e.target.value)}
+                            placeholder="Search by nickname or email…"
+                            className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm text-white outline-none"
+                            style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)' }}
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: 'rgba(255,50,50,0.1)', color: '#ff6b6b', border: '1px solid rgba(255,50,50,0.2)' }}>
+                            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+                        </div>
+                    )}
+
+                    {/* Results */}
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                        {results.length === 0 && !searching && !error && (
+                            <p className="text-center py-8 text-sm" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                                {query ? 'No players found' : 'Type to search available players'}
+                            </p>
+                        )}
+                        {results.map(r => {
+                            const onRoster = already(r.userId._id);
+                            return (
+                                <div key={r._id} className="flex items-center gap-3 p-3 rounded-xl"
+                                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    {/* Avatar */}
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
+                                        style={{ background: 'rgba(59,158,255,0.15)', color: '#3b9eff' }}>
+                                        {r.userId.avatar
+                                            ? <img src={r.userId.avatar} className="w-full h-full rounded-xl object-cover" alt="" />
+                                            : r.userId.nickname.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-white truncate">{r.userId.nickname}</p>
+                                        <div className="flex items-center gap-2 text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                                            <span>{r.userId.email}</span>
+                                            {r.rank && <><span>·</span><span style={{ color: '#fbbf24' }}>{r.rank}</span></>}
+                                            {r.elo !== undefined && <><span>·</span><span>{r.elo} ELO</span></>}
+                                        </div>
+                                    </div>
+                                    <button
+                                        disabled={onRoster || inviting === r.userId._id}
+                                        onClick={() => handleInvite(r)}
+                                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase transition-all"
+                                        style={onRoster
+                                            ? { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.2)', cursor: 'not-allowed' }
+                                            : { background: '#00ff0015', color: '#00ff00', border: '1px solid #00ff0030' }}>
+                                        {inviting === r.userId._id
+                                            ? <RefreshCw className="w-3 h-3 animate-spin" />
+                                            : onRoster ? <><Check className="w-3 h-3" /> On Team</> : <><UserPlus className="w-3 h-3" /> Invite</>}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="px-6 pb-5">
+                    <button onClick={onClose} className="w-full py-2.5 rounded-xl text-sm font-bold"
+                        style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                        Close
                     </button>
                 </div>
             </div>
         </div>
     );
 }
+
+// ── Edit Modal ─────────────────────────────────────────────────────────────────
+
+function EditModal({ player, onClose, onSave }: { player: TeamPlayer; onClose: () => void; onSave: (p: TeamPlayer) => void }) {
+    const [form, setForm] = useState({ ...player, number: player.number?.toString() ?? '' });
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="w-full max-w-sm mx-4 rounded-2xl shadow-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <h2 className="text-white font-black">Edit Player</h2>
+                    <button onClick={onClose} style={{ color: 'rgba(255,255,255,0.4)' }}><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <div>
+                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Nickname</label>
+                        <input value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
+                            className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                            style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)' }} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Role</label>
+                            <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as PlayerRole }))}
+                                className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                                style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Status</label>
+                            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as PlayerStatus }))}
+                                className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                                style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                {(['ACTIVE','BENCHED','TRIAL','INACTIVE'] as PlayerStatus[]).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-3 px-5 pb-5">
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                        style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.07)' }}>Cancel</button>
+                    <button onClick={() => onSave({ ...form, number: form.number ? parseInt(form.number) : undefined })}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-black"
+                        style={{ background: '#00ff00', color: '#000' }}>Save</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+

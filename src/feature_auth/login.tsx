@@ -55,6 +55,8 @@ export default function Login() {
                 navigate('/manager');
             } else if (role === 'referee') {
                 navigate('/referee');
+            } else if (role === 'scouter') {
+                navigate('/scouter');
             } else {
                 navigate('/player'); // Default for players and uncertain roles
             }

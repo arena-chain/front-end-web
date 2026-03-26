@@ -13,6 +13,7 @@ export interface AdminMatch {
     team2Id: string | { _id: string; name: string; logo?: string };
     scheduledStart: string;
     scheduledEnd?: string;
+    matchOrder?: number;
     refereeId?: string | { _id: string; nickname?: string };
     status: MatchStatus;
     team1GamesWon?: number;

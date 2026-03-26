@@ -113,76 +113,39 @@ export function TopNavbar() {
                         {/* Divider */}
                         <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-                        {/* Download — Windows only */}
-                        <div className="relative group">
+                        {/* Download — navigates to /download */}
+                        <Link to="/download" className="relative group inline-flex">
                             <button
-                                className="relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl text-[10.5px] font-black uppercase tracking-widest transition-all duration-200"
-                                style={{
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.13)',
-                                    color: 'rgba(255,255,255,0.75)',
-                                }}
-                                onMouseEnter={e => { const el = e.currentTarget; el.style.background = 'rgba(255,255,255,0.1)'; el.style.borderColor = 'rgba(255,255,255,0.25)'; el.style.color = '#fff'; }}
-                                onMouseLeave={e => { const el = e.currentTarget; el.style.background = 'rgba(255,255,255,0.05)'; el.style.borderColor = 'rgba(255,255,255,0.13)'; el.style.color = 'rgba(255,255,255,0.75)'; }}>
-                                {/* shimmer */}
+                                className="relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl text-[10.5px] font-black uppercase tracking-widest text-black transition-all duration-200"
+                                style={{ background: 'linear-gradient(135deg, #00ff00 0%, #00cc44 100%)', boxShadow: '0 0 18px rgba(0,255,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(0,255,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 18px rgba(0,255,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2)'; }}
+                            >
                                 <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none"
-                                    style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)' }} />
-                                {/* Windows logo SVG */}
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                                    style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)' }} />
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-black">
                                     <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
                                 </svg>
                                 <span>Download</span>
                                 {showDlBadge && (
-                                    <span className="absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full leading-none"
-                                        style={{ background: '#00ff00', color: '#000', animation: 'scale-in 0.3s ease-out forwards' }}>
+                                    <span className="absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full leading-none bg-black/20 text-black">
                                         FREE
                                     </span>
                                 )}
                             </button>
-
-                            {/* Hover tooltip card */}
-                            <div className="absolute top-full right-0 mt-2.5 w-56 rounded-2xl overflow-hidden opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200"
-                                style={{ background: 'rgba(6,6,6,0.98)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,255,0,0.06)', transform: 'translateY(0)' }}>
-                                {/* Header */}
-                                <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#00ff00"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-white">Windows Client</span>
-                                    </div>
-                                    <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Windows 10 / 11 · 64-bit</p>
-                                </div>
-                                {/* Details */}
-                                <div className="px-4 py-3 space-y-1.5">
-                                    {[['Version', 'v2.4.1 — Latest'], ['Size', '148 MB'], ['Format', '.exe Installer']].map(([k,v]) => (
-                                        <div key={k} className="flex items-center justify-between">
-                                            <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>{k}</span>
-                                            <span className="text-[10px] font-black text-white">{v}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                {/* CTA */}
-                                <div className="px-4 pb-4">
-                                    <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10.5px] font-black uppercase tracking-widest text-black transition-all duration-200"
-                                        style={{ background: 'linear-gradient(135deg,#00ff00,#00cc44)', boxShadow: '0 0 16px rgba(0,255,0,0.3)' }}
-                                        onMouseEnter={e => (e.currentTarget.style.boxShadow='0 0 26px rgba(0,255,0,0.55)')}
-                                        onMouseLeave={e => (e.currentTarget.style.boxShadow='0 0 16px rgba(0,255,0,0.3)')}>
-                                        <Download size={12} /> Download Now · Free
-                                    </button>
-                                    <p className="text-center text-[8px] font-bold mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>No account required to download</p>
-                                </div>
-                            </div>
-                        </div>
+                        </Link>
 
                         {/* Divider */}
                         <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-                        {/* Log In */}
+                        {/* Log In — more visible outline */}
                         <Link to="/login">
                             <button
                                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10.5px] font-black uppercase tracking-widest transition-all duration-200"
-                                style={{ color: 'rgba(255,255,255,0.65)', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }}
-                                onMouseEnter={e => { const el = e.currentTarget; el.style.color = '#fff'; el.style.borderColor = 'rgba(255,255,255,0.28)'; el.style.background = 'rgba(255,255,255,0.06)'; }}
-                                onMouseLeave={e => { const el = e.currentTarget; el.style.color = 'rgba(255,255,255,0.65)'; el.style.borderColor = 'rgba(255,255,255,0.1)'; el.style.background = 'transparent'; }}>
+                                style={{ color: '#fff', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(0,255,0,0.35)' }}
+                                onMouseEnter={e => { const el = e.currentTarget; el.style.background = 'rgba(0,255,0,0.1)'; el.style.borderColor = 'rgba(0,255,0,0.5)'; el.style.color = '#00ff00'; }}
+                                onMouseLeave={e => { const el = e.currentTarget; el.style.background = 'rgba(255,255,255,0.06)'; el.style.borderColor = 'rgba(0,255,0,0.35)'; el.style.color = '#fff'; }}
+                            >
                                 <LogIn size={11} />
                                 Log In
                             </button>
@@ -232,12 +195,14 @@ export function TopNavbar() {
                     )}
 
                     <div className="mt-3 pt-4 flex flex-col gap-2.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                        {/* Download mobile — Windows */}
-                        <button className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all"
-                            style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-                            Download for Windows
-                        </button>
+                        {/* Download mobile — navigates to /download */}
+                        <Link to="/download" onClick={() => setMenuOpen(false)}>
+                            <button className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black uppercase tracking-widest text-black transition-all"
+                                style={{ background: 'linear-gradient(135deg, #00ff00, #00cc44)', boxShadow: '0 0 20px rgba(0,255,0,0.3)' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                                Download for Windows
+                            </button>
+                        </Link>
                         <Link to="/login" onClick={() => setMenuOpen(false)}>
                             <button className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all"
                                 style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>

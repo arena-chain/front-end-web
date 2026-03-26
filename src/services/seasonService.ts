@@ -20,7 +20,8 @@ export interface Season {
 
 export interface CreateSeasonDto {
     leagueId: string;
-    rulesId: string;
+    /** Optional at creation time — rules are attached after the season is created */
+    rulesId?: string;
     name: string;
     registrationDeadline: string;
     startDate: string;

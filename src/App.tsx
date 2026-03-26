@@ -1,7 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import Home from './_public/home';
 import NewsPage from './_public/pages/NewsPage';
 import TournamentDetailsPage from './_public/pages/TournamentDetailsPage';
+import DownloadPage from './_public/pages/DownloadPage';
+import LeaguesPage from './_public/pages/LeaguesPage';
 import Login from './feature_auth/login';
 import Register from './feature_auth/register';
 import ForgotPassword from './feature_auth/forgot-password';
@@ -47,13 +50,30 @@ import ManagerSettings from './manager/pages/ManagerSettings';
 import RefereeLayout from './referee/layout/RefereeLayout';
 import RefereeDashboard from './referee/pages/RefereeDashboard';
 
+// Scouter Imports
+import ScouterLayout from './scouter/layout/ScouterLayout';
+import ScouterDashboard from './scouter/pages/ScouterDashboard';
+import ScouterPlayers from './scouter/pages/ScouterPlayers';
+import ScouterPlayerProfile from './scouter/pages/ScouterPlayerProfile';
+import ScouterHighlights from './scouter/pages/ScouterHighlights';
+import ScouterEvaluated from './scouter/pages/ScouterEvaluated';
+import ScouterReports from './scouter/pages/ScouterReports';
+import ScouterRecommendations from './scouter/pages/ScouterRecommendations';
+import ScouterWatchlist from './scouter/pages/ScouterWatchlist';
+
+// NFT
+import NftAvatars from './admin/pages/NftAvatars';
+import NftCollections from './admin/pages/NftCollections';
+import NftManager from './admin/pages/NftManager';
+import PlayerMarketplace from './player/pages/PlayerMarketplace';
+
 // Admin misc
 import AdminLeagues from './admin/pages/Leagues';
 import Reservations from './admin/pages/Reservations';
 import AdminTickets from './admin/pages/Tickets';
 import Partnerships from './admin/pages/Partnerships';
 
-// League Hub
+// League Hub (legacy — kept for fallback)
 import LeagueHubLayout from './admin/pages/league-hub/LeagueHubLayout';
 import WorkflowPage from './admin/pages/league-hub/WorkflowPage';
 import ProgressionPage from './admin/pages/league-hub/ProgressionPage';
@@ -67,14 +87,25 @@ import PrizePoolPage from './admin/pages/league-hub/PrizePoolPage';
 import CheckInsPage from './admin/pages/league-hub/CheckInsPage';
 import DisputesPage from './admin/pages/league-hub/DisputesPage';
 import BracketsPage from './admin/pages/league-hub/BracketsPage';
+import StagesPage from './admin/pages/league-hub/StagesPage';
+// League Hub V2 — new workflow-driven design
+import AdminLeagueHubV2 from './admin/pages/league-hub/AdminLeagueHubV2';
+import AdminSeasonWorkspace from './admin/pages/league-hub/AdminSeasonWorkspace';
+// Public tournament page (Liquipedia-style)
+import TournamentPage from './_public/pages/TournamentPage';
 
 function App() {
   return (
+    <>
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/news" element={<NewsPage />} />
+        <Route path="/download" element={<DownloadPage />} />
         <Route path="/tournaments/:id" element={<TournamentDetailsPage />} />
+        <Route path="/leagues" element={<LeaguesPage />} />
+        <Route path="/leagues/:id" element={<LeaguesPage />} />
+        <Route path="/leagues/:leagueId/seasons/:seasonId" element={<TournamentPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -94,6 +125,9 @@ function App() {
           <Route path="partnerships" element={<Partnerships />} />
           <Route path="matches" element={<Matches />} />
           <Route path="channels" element={<Channels />} />
+          <Route path="nft-avatars" element={<NftAvatars />} />
+          <Route path="nft-collections" element={<NftCollections />} />
+          <Route path="nft-manager" element={<NftManager />} />
           <Route path="settings" element={<Settings />} />
 
           {/* Standalone (MUST come before the :id wildcard) */}
@@ -103,10 +137,16 @@ function App() {
           {/* League list */}
           <Route path="leagues" element={<AdminLeagues />} />
 
-          {/* League Hub — all sub-pages nested under the league's :id */}
-          <Route path="leagues/:id" element={<LeagueHubLayout />}>
+          {/* League Hub V2 — new workflow-driven design */}
+          <Route path="leagues/:id" element={<AdminLeagueHubV2 />} />
+          <Route path="leagues/:id/seasons" element={<Navigate to=".." relative="path" replace />} />
+          <Route path="leagues/:id/seasons/:seasonId" element={<AdminSeasonWorkspace />} />
+
+          {/* League Hub legacy tabs (kept under /admin/leagues/:id/hub for fallback) */}
+          <Route path="leagues/:id/hub" element={<LeagueHubLayout />}>
             <Route index element={<Navigate to="seasons" replace />} />
             <Route path="seasons" element={<SeasonsPage />} />
+            <Route path="stages" element={<StagesPage />} />
             <Route path="rules" element={<RulesPage />} />
             <Route path="rounds" element={<RoundsPage />} />
             <Route path="matches" element={<MatchesPage />} />
@@ -135,6 +175,7 @@ function App() {
           <Route path="leagues" element={<PlayerLeagues />} />
           <Route path="leagues/:id" element={<PlayerLeagues />} />
           <Route path="rankings" element={<PlayerRankings />} />
+          <Route path="marketplace" element={<PlayerMarketplace />} />
           <Route path="profile" element={<PlayerProfile />} />
           <Route path="subscription" element={<PlayerSubscription />} />
           <Route path="payment" element={<PlayerPayment />} />
@@ -155,8 +196,34 @@ function App() {
           <Route index element={<Navigate to="/referee/dashboard" replace />} />
           <Route path="dashboard" element={<RefereeDashboard />} />
         </Route>
+
+        {/* ── Scouter ────────────────────────────────────────────────── */}
+        <Route path="/scouter" element={<ScouterLayout />}>
+          <Route index element={<Navigate to="/scouter/dashboard" replace />} />
+          <Route path="dashboard" element={<ScouterDashboard />} />
+          <Route path="players" element={<ScouterPlayers />} />
+          <Route path="players/:playerUserId" element={<ScouterPlayerProfile />} />
+          <Route path="watchlist" element={<ScouterWatchlist />} />
+          <Route path="reports" element={<ScouterReports />} />
+          <Route path="recommendations" element={<ScouterRecommendations />} />
+          <Route path="highlights" element={<ScouterHighlights />} />
+          <Route path="evaluated" element={<ScouterEvaluated />} />
+        </Route>
       </Routes>
     </Router>
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        style: {
+          background: '#12141a',
+          border: '1px solid rgba(255,255,255,0.09)',
+          color: '#e8e8e8',
+          fontSize: '13px',
+        },
+      }}
+      richColors
+    />
+    </>
   );
 }
 

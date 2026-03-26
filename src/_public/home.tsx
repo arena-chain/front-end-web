@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/core';
 import { Link } from 'react-router-dom';
 import { TopNavbar } from './common/top_navbar';
@@ -437,7 +437,12 @@ export default function Home() {
                 <PartnersCarousel />
 
                 {/* ══════════════════════════════════════════════════════
-                    5. NEWS
+                    5. MOBILE APP
+                ══════════════════════════════════════════════════════ */}
+                <MobileAppSection />
+
+                {/* ══════════════════════════════════════════════════════
+                    6. NEWS
                 ══════════════════════════════════════════════════════ */}
                 <NewsSection />
 
@@ -848,5 +853,370 @@ function BrandCard({ title, logo, color, bg, category }: BrandPartner) {
                     transition: 'width 0.45s ease',
                 }} />
         </div>
+    );
+}
+
+// ─── Mobile App Section ───────────────────────────────────────────────────────
+
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.arenachain';
+const QR_URL = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(PLAY_STORE_URL)}&size=300x300&bgcolor=ffffff&color=0a0a0a&margin=14&format=png`;
+
+// ── Small Phone Screen components ──
+
+function PhoneScreenHome() {
+    return (
+        <div className="w-full h-full flex flex-col" style={{ background: '#080808', padding: '14px 10px 10px' }}>
+            {/* Status bar */}
+            <div className="flex justify-between items-center mb-3">
+                <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>9:41</span>
+                <div className="flex gap-1 items-center">
+                    {[3,2,3].map((h,i) => <div key={i} style={{ width: 3, height: h+2, background: 'rgba(255,255,255,0.5)', borderRadius: 1 }} />)}
+                    <div style={{ width: 12, height: 6, border: '1px solid rgba(255,255,255,0.4)', borderRadius: 2, marginLeft: 2, position: 'relative' }}>
+                        <div style={{ width: '70%', height: '100%', background: '#00ff00', borderRadius: 1 }} />
+                    </div>
+                </div>
+            </div>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-3">
+                <div>
+                    <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>Welcome back,</p>
+                    <p style={{ fontSize: 10, color: '#fff', fontWeight: 900, letterSpacing: '-0.3px' }}>Player_01</p>
+                </div>
+                <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(0,255,0,0.15)', border: '1px solid rgba(0,255,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: '#00ff00' }}>P</span>
+                </div>
+            </div>
+            {/* XP bar */}
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 99, height: 4, marginBottom: 10, overflow: 'hidden' }}>
+                <div style={{ width: '72%', height: '100%', background: 'linear-gradient(90deg, #00cc00, #00ff00)', borderRadius: 99, boxShadow: '0 0 6px rgba(0,255,0,0.6)' }} />
+            </div>
+            {/* Live card */}
+            <div style={{ background: 'linear-gradient(135deg, rgba(0,255,0,0.12), rgba(0,200,0,0.05))', border: '1px solid rgba(0,255,0,0.2)', borderRadius: 10, padding: '8px 8px', marginBottom: 8 }}>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <div style={{ fontSize: 7, color: '#00ff00', fontWeight: 900, letterSpacing: '0.1em', marginBottom: 3 }}>🔴 LIVE TOURNAMENT</div>
+                        <div style={{ fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1.2 }}>CS2 World Cup</div>
+                        <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Finals · 128 players</div>
+                    </div>
+                    <div style={{ background: '#00ff00', color: '#000', fontSize: 7, fontWeight: 900, padding: '3px 6px', borderRadius: 6 }}>JOIN</div>
+                </div>
+                <div style={{ marginTop: 6, background: 'rgba(0,0,0,0.3)', borderRadius: 6, height: 3, overflow: 'hidden' }}>
+                    <div style={{ width: '60%', height: '100%', background: '#00ff00', borderRadius: 6 }} />
+                </div>
+            </div>
+            {/* Stats row */}
+            <div className="flex gap-1.5" style={{ marginBottom: 8 }}>
+                {[{ v: '2,840', l: 'ELO' }, { v: '#142', l: 'Rank' }, { v: '34W', l: 'Wins' }].map((s, i) => (
+                    <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 7, padding: '5px 0', textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, color: '#fff', fontWeight: 900 }}>{s.v}</div>
+                        <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>{s.l}</div>
+                    </div>
+                ))}
+            </div>
+            {/* Bottom nav */}
+            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-around', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 7 }}>
+                {['🏠','🏆','⚔️','💎','👤'].map((icon, i) => (
+                    <div key={i} style={{ fontSize: 11, opacity: i === 0 ? 1 : 0.3 }}>{icon}</div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function PhoneScreenNFT() {
+    return (
+        <div className="w-full h-full flex flex-col" style={{ background: '#080808', padding: '14px 10px 10px' }}>
+            {/* Status bar */}
+            <div className="flex justify-between items-center mb-3">
+                <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>9:41</span>
+                <div className="flex gap-1 items-center">
+                    {[3,2,3].map((h,i) => <div key={i} style={{ width: 3, height: h+2, background: 'rgba(255,255,255,0.5)', borderRadius: 1 }} />)}
+                </div>
+            </div>
+            <p style={{ fontSize: 10, color: '#fff', fontWeight: 900, marginBottom: 8, letterSpacing: '-0.3px' }}>My NFTs</p>
+            {/* NFT Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
+                {[
+                    { name: 'Shadow Warrior', rarity: 'EPIC', color: '#9C27B0' },
+                    { name: 'Dragon Blade', rarity: 'LEGENDARY', color: '#FF9800' },
+                    { name: 'Void Armor', rarity: 'RARE', color: '#2196F3' },
+                    { name: 'Fire Spirit', rarity: 'MYTHIC', color: '#F44336' },
+                ].map((nft, i) => (
+                    <div key={i} style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${nft.color}30`, background: `linear-gradient(135deg, ${nft.color}15, rgba(0,0,0,0.5))`, padding: 6 }}>
+                        <div style={{ width: '100%', aspectRatio: '1', background: `radial-gradient(circle, ${nft.color}30, transparent)`, borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                            {i === 0 ? '🥷' : i === 1 ? '⚔️' : i === 2 ? '🛡️' : '🔥'}
+                        </div>
+                        <div style={{ fontSize: 7, color: '#fff', fontWeight: 900, lineHeight: 1.2 }}>{nft.name}</div>
+                        <div style={{ fontSize: 6, color: nft.color, fontWeight: 700, marginTop: 1 }}>{nft.rarity}</div>
+                    </div>
+                ))}
+            </div>
+            {/* Bottom nav */}
+            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-around', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 7 }}>
+                {['🏠','🏆','⚔️','💎','👤'].map((icon, i) => (
+                    <div key={i} style={{ fontSize: 11, opacity: i === 3 ? 1 : 0.3 }}>{icon}</div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ── Phone Frame ──
+function PhoneFrame({ children, tilt = 0, scale = 1, zIndex = 0, style = {} }: {
+    children: React.ReactNode; tilt?: number; scale?: number; zIndex?: number; style?: React.CSSProperties;
+}) {
+    return (
+        <div style={{
+            width: 200, height: 400,
+            borderRadius: 36,
+            background: 'linear-gradient(145deg, #1c1c1e, #0a0a0a)',
+            border: '1.5px solid rgba(255,255,255,0.12)',
+            boxShadow: '0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.08)',
+            transform: `rotate(${tilt}deg) scale(${scale})`,
+            position: 'absolute',
+            overflow: 'hidden',
+            zIndex,
+            ...style,
+        }}>
+            {/* Side buttons */}
+            <div style={{ position: 'absolute', right: -2, top: 80, width: 3, height: 28, background: 'rgba(255,255,255,0.1)', borderRadius: '0 2px 2px 0' }} />
+            <div style={{ position: 'absolute', left: -2, top: 70, width: 3, height: 20, background: 'rgba(255,255,255,0.08)', borderRadius: '2px 0 0 2px' }} />
+            <div style={{ position: 'absolute', left: -2, top: 100, width: 3, height: 20, background: 'rgba(255,255,255,0.08)', borderRadius: '2px 0 0 2px' }} />
+            {/* Notch */}
+            <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', width: 56, height: 14, background: '#0a0a0a', borderRadius: 99, border: '1px solid rgba(255,255,255,0.06)', zIndex: 10 }}>
+                <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.15)' }} />
+            </div>
+            {/* Screen */}
+            <div style={{ position: 'absolute', inset: 0, borderRadius: 34, overflow: 'hidden', background: '#080808' }}>
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function MobileAppSection() {
+    return (
+        <RevealSection
+            className="relative overflow-hidden"
+            style={{ background: '#030303', paddingTop: 100, paddingBottom: 120 }}
+        >
+            {/* ── Backgrounds ── */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+                backgroundImage: 'linear-gradient(rgba(0,255,0,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,0,0.02) 1px, transparent 1px)',
+                backgroundSize: '50px 50px',
+            }} />
+            {/* Big green glow — behind phones */}
+            <div className="absolute pointer-events-none" style={{
+                right: '10%', top: '50%', transform: 'translateY(-50%)',
+                width: 600, height: 700,
+                background: 'radial-gradient(ellipse, rgba(0,255,0,0.07) 0%, transparent 65%)',
+                filter: 'blur(30px)',
+            }} />
+            {/* Top-left accent glow */}
+            <div className="absolute pointer-events-none" style={{
+                left: '-5%', top: '20%',
+                width: 400, height: 400,
+                background: 'radial-gradient(circle, rgba(0,100,255,0.05) 0%, transparent 65%)',
+                filter: 'blur(50px)',
+            }} />
+
+            <div className="container mx-auto px-6 relative z-10">
+                <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-0">
+
+                    {/* ════ LEFT COLUMN ════ */}
+                    <div className="flex-1 lg:pr-16 text-center lg:text-left">
+
+                        {/* Eyebrow */}
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8"
+                            style={{ background: 'rgba(0,255,0,0.06)', border: '1px solid rgba(0,255,0,0.15)' }}>
+                            <span className="relative flex h-1.5 w-1.5">
+                                <span className="absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#00ff00', animation: 'ping 1s cubic-bezier(0,0,0.2,1) infinite' }} />
+                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#00ff00' }} />
+                            </span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: '#00ff00' }}>Now on Android</span>
+                        </div>
+
+                        {/* Heading */}
+                        <h2 className="font-black uppercase tracking-tighter leading-[0.92] mb-6"
+                            style={{ fontSize: 'clamp(2.8rem, 5vw, 4.5rem)' }}>
+                            Your arena.<br />
+                            <span style={{ color: '#00ff00', textShadow: '0 0 40px rgba(0,255,0,0.3)' }}>Always live.</span><br />
+                            Always with you.
+                        </h2>
+
+                        <p className="text-sm leading-relaxed mb-10 max-w-sm mx-auto lg:mx-0"
+                            style={{ color: 'rgba(255,255,255,0.32)' }}>
+                            Compete, manage your NFTs, track live matches, and connect with your squad —
+                            all from one blazing-fast mobile app.
+                        </p>
+
+                        {/* App metrics */}
+                        <div className="flex items-center gap-6 justify-center lg:justify-start mb-10">
+                            {[
+                                { v: '4.9', s: '★', l: 'Rating' },
+                                { v: '50K+', s: '', l: 'Downloads' },
+                                { v: '#1', s: '', l: 'Esports App' },
+                            ].map((m, i) => (
+                                <React.Fragment key={i}>
+                                    <div className="text-center lg:text-left">
+                                        <div className="font-black text-white" style={{ fontSize: 22, lineHeight: 1 }}>
+                                            {m.v}<span style={{ color: '#00ff00', fontSize: 14 }}>{m.s}</span>
+                                        </div>
+                                        <div className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>{m.l}</div>
+                                    </div>
+                                    {i < 2 && <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.07)' }} />}
+                                </React.Fragment>
+                            ))}
+                        </div>
+
+                        {/* Download row — side by side */}
+                        <div className="flex flex-col sm:flex-row items-stretch gap-4 justify-center lg:justify-start">
+
+                            {/* ── Google Play badge (tall) ── */}
+                            <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer"
+                                className="flex flex-col items-center justify-center gap-3 rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_36px_rgba(0,255,0,0.2)]"
+                                style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)', padding: '24px 32px', minWidth: 180 }}
+                                onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(0,255,0,0.35)')}
+                                onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+                            >
+                                <svg width="44" height="44" viewBox="0 0 24 24" style={{ color: '#00ff00' }} fill="currentColor">
+                                    <path d="M3.18 23.76c.3.17.65.2.98.1l11.93-6.9-2.65-2.65-10.26 9.45ZM.5 1.4A1.5 1.5 0 0 0 0 2.5v19a1.5 1.5 0 0 0 .5 1.1l.06.06 10.64-10.64v-.25L.56 1.34l-.06.06ZM21.3 10.28l-2.87-1.66-2.96 2.96 2.96 2.96 2.89-1.67a1.5 1.5 0 0 0 0-2.59ZM3.18.24 14.44 7.14l-2.65 2.65L.2.34A1.18 1.18 0 0 1 3.18.24Z"/>
+                                </svg>
+                                <div className="text-center">
+                                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 700, letterSpacing: '0.12em', marginBottom: 4 }}>GET IT ON</div>
+                                    <div style={{ fontSize: 20, color: '#fff', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}>Google Play</div>
+                                </div>
+                            </a>
+
+                            {/* ── QR card ── */}
+                            <div className="flex items-center gap-5 rounded-2xl"
+                                style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.07)', padding: '20px 24px' }}>
+                                {/* QR image */}
+                                <div className="relative rounded-xl overflow-hidden shrink-0"
+                                    style={{ background: '#ffffff', padding: 6, border: '1px solid rgba(0,255,0,0.2)', lineHeight: 0 }}>
+                                    <img
+                                        src={QR_URL}
+                                        alt="Scan to download Arena Chain"
+                                        width={140}
+                                        height={140}
+                                        className="block rounded-md"
+                                    />
+                                    {/* Center logo */}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div style={{
+                                            width: 26, height: 26, borderRadius: 6,
+                                            background: '#ffffff', border: '1.5px solid rgba(0,180,0,0.6)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <span style={{ fontSize: 10, fontWeight: 900, color: '#00bb00' }}>A</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Label */}
+                                <div className="flex flex-col gap-1">
+                                    <div style={{ fontSize: 11, color: '#fff', fontWeight: 900, letterSpacing: '0.04em' }}>Scan to Download</div>
+                                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontWeight: 600, lineHeight: 1.6 }}>
+                                        Open your camera &amp;<br />point it at the code
+                                    </div>
+                                    <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
+                                    <a
+                                        href={PLAY_STORE_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ fontSize: 10, color: 'rgba(0,255,0,0.6)', fontWeight: 700, textDecoration: 'none' }}
+                                        onMouseEnter={e => (e.currentTarget.style.color = '#00ff00')}
+                                        onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,255,0,0.6)')}
+                                    >
+                                        Or tap to open Play Store →
+                                    </a>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* ════ RIGHT COLUMN — Phone showcase ════ */}
+                    <div className="relative flex-shrink-0" style={{ width: 420, height: 480 }}>
+
+                        {/* ── Back phone (NFT screen, tilted) ── */}
+                        <PhoneFrame tilt={8} scale={0.82} zIndex={1} style={{ top: 60, right: 10 }}>
+                            <PhoneScreenNFT />
+                        </PhoneFrame>
+
+                        {/* ── Front phone (Home screen) ── */}
+                        <PhoneFrame tilt={-4} scale={1} zIndex={2} style={{ top: 20, left: 20 }}>
+                            <PhoneScreenHome />
+                        </PhoneFrame>
+
+                        {/* ── Floating notification card (top right) ── */}
+                        <div className="absolute z-10" style={{
+                            top: -10, right: -20,
+                            background: 'rgba(10,10,10,0.92)',
+                            border: '1px solid rgba(0,255,0,0.25)',
+                            borderRadius: 14,
+                            padding: '10px 14px',
+                            backdropFilter: 'blur(12px)',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(0,255,0,0.08)',
+                            animation: 'float 4s ease-in-out infinite',
+                            minWidth: 170,
+                        }}>
+                            <div className="flex items-center gap-2.5">
+                                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(0,255,0,0.15)', border: '1px solid rgba(0,255,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🏆</div>
+                                <div>
+                                    <div style={{ fontSize: 9, color: '#00ff00', fontWeight: 900, letterSpacing: '0.05em' }}>QUALIFIED!</div>
+                                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontWeight: 600, marginTop: 1 }}>You're in the Finals</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Floating win card (bottom left) ── */}
+                        <div className="absolute z-10" style={{
+                            bottom: -10, left: -10,
+                            background: 'rgba(10,10,10,0.92)',
+                            border: '1px solid rgba(255,152,0,0.25)',
+                            borderRadius: 14,
+                            padding: '10px 14px',
+                            backdropFilter: 'blur(12px)',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                            animation: 'float 5s ease-in-out infinite 1.5s',
+                            minWidth: 155,
+                        }}>
+                            <div className="flex items-center gap-2.5">
+                                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,152,0,0.15)', border: '1px solid rgba(255,152,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>💰</div>
+                                <div>
+                                    <div style={{ fontSize: 9, color: '#FF9800', fontWeight: 900 }}>PRIZE EARNED</div>
+                                    <div style={{ fontSize: 12, color: '#fff', fontWeight: 900, marginTop: 1 }}>+ $250.00</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Floating match live pill (middle right) ── */}
+                        <div className="absolute z-10" style={{
+                            top: '45%', right: -35,
+                            background: 'rgba(10,10,10,0.9)',
+                            border: '1px solid rgba(255,50,50,0.3)',
+                            borderRadius: 99,
+                            padding: '6px 12px',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            animation: 'float 6s ease-in-out infinite 0.5s',
+                        }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff4444', boxShadow: '0 0 6px #ff4444', display: 'inline-block' }} />
+                            <span style={{ fontSize: 8, color: '#ff4444', fontWeight: 900, letterSpacing: '0.1em' }}>LIVE MATCH</span>
+                        </div>
+
+                        {/* Glow beneath phone stack */}
+                        <div className="absolute pointer-events-none" style={{
+                            bottom: -30, left: '25%', transform: 'translateX(-50%)',
+                            width: 240, height: 50,
+                            background: 'rgba(0,255,0,0.12)',
+                            filter: 'blur(25px)',
+                            borderRadius: '50%',
+                        }} />
+                    </div>
+
+                </div>
+            </div>
+        </RevealSection>
     );
 }

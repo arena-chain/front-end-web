@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     Swords, Plus, Loader2, Search, AlertTriangle, CheckSquare,
     ChevronRight, RefreshCw, X, XCircle, RotateCcw, Play,
-    Gamepad2, ChevronDown, ClockAlert,
+    Gamepad2, ChevronDown, ClockAlert, Calendar, List,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { leagueService, type League } from '../../../services/leagueService';
@@ -19,6 +19,8 @@ const apiErr = (e: unknown) => {
 };
 const fmt = (d: string) =>
     d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtDate = (d: string) =>
+    d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 const STATUS_STYLE: Record<string, string> = {
     SCHEDULED: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
@@ -59,6 +61,9 @@ export default function MatchesPage() {
     const [createForm, setCreateForm]   = useState({ team1Id: '', team2Id: '', scheduledStart: '' });
     const [creating, setCreating]       = useState(false);
     const [expandedId, setExpandedId]   = useState<string | null>(null);
+    const [viewMode, setViewMode]       = useState<'list' | 'schedule'>('schedule');
+    const [seasonMatches, setSeasonMatches] = useState<AdminMatch[]>([]);
+    const [scheduleLoading, setScheduleLoading] = useState(false);
 
     const [resultModal,  setResultModal]  = useState<ResultModal | null>(null);
     const [forfeitModal, setForfeitModal] = useState<ForfeitModal | null>(null);
@@ -120,6 +125,24 @@ export default function MatchesPage() {
     };
 
     const onRoundChange = (rid: string) => { setSelRound(rid); loadMatches(rid); };
+
+    // Load all matches for the season when in schedule view (for calendar)
+    useEffect(() => {
+        if (viewMode !== 'schedule' || !selSeason) {
+            setSeasonMatches([]);
+            return;
+        }
+        let cancelled = false;
+        setScheduleLoading(true);
+        matchAdminService.getBySeason(selSeason)
+            .then(data => { if (!cancelled) setSeasonMatches(Array.isArray(data) ? data : []); })
+            .catch(() => { if (!cancelled) setSeasonMatches([]); })
+            .finally(() => { if (!cancelled) setScheduleLoading(false); });
+        return () => { cancelled = true; };
+    }, [viewMode, selSeason]);
+
+    const roundIdFromMatch = (m: AdminMatch): string =>
+        typeof m.roundId === 'string' ? m.roundId : (m.roundId as { _id: string })._id;
 
     const createMatch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -332,13 +355,29 @@ export default function MatchesPage() {
                         <Swords size={24} className="text-rose-400" />
                         Matches Manager
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Schedule, start, report per-game results, and manage forfeits.</p>
+                    <p className="text-slate-500 text-sm mt-1">Schedule, start, report per-game results, and manage forfeits. Use Schedule view to see rounds and matches (or TBD) even before teams are added.</p>
                 </div>
-                <button onClick={() => setShowCreate(v => !v)}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex rounded-xl border border-white/10 overflow-hidden bg-slate-800/50">
+                        <button
+                            onClick={() => setViewMode('schedule')}
+                            className={cn('flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-all', viewMode === 'schedule' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'text-slate-500 hover:text-white')}
+                        >
+                            <Calendar size={16} /> Schedule
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={cn('flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-all', viewMode === 'list' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'text-slate-500 hover:text-white')}
+                        >
+                            <List size={16} /> List
+                        </button>
+                    </div>
+                    <button onClick={() => setShowCreate(v => !v)}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-black bg-green-400 hover:bg-green-300 transition-all shrink-0">
                     {showCreate ? <X size={16} /> : <Plus size={16} />}
                     {showCreate ? 'Cancel' : 'Schedule Match'}
                 </button>
+                </div>
             </div>
 
             {/* Create form */}
@@ -383,22 +422,106 @@ export default function MatchesPage() {
                     className="bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:border-green-500/50 outline-none">
                     {seasons.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
-                <select value={selRound} onChange={e => onRoundChange(e.target.value)}
-                    className="bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:border-green-500/50 outline-none">
-                    {rounds.map(r => <option key={r._id} value={r._id}>Round {r.roundNumber}</option>)}
-                </select>
-                <div className="relative flex-1 max-w-xs">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search teams…"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:border-green-500/50 outline-none" />
-                </div>
-                <button onClick={() => selRound && loadMatches(selRound)}
-                    className="p-2 rounded-xl border border-white/10 hover:bg-white/5 text-slate-500 hover:text-white transition-all">
+                {viewMode === 'list' && (
+                    <>
+                        <select value={selRound} onChange={e => onRoundChange(e.target.value)}
+                            className="bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:border-green-500/50 outline-none">
+                            {rounds.map(r => <option key={r._id} value={r._id}>Round {r.roundNumber}</option>)}
+                        </select>
+                        <div className="relative flex-1 max-w-xs">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search teams…"
+                                className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:border-green-500/50 outline-none" />
+                        </div>
+                    </>
+                )}
+                <button onClick={() => viewMode === 'schedule' && selSeason ? (matchAdminService.getBySeason(selSeason).then(setSeasonMatches)) : (selRound && loadMatches(selRound))}
+                    className="p-2 rounded-xl border border-white/10 hover:bg-white/5 text-slate-500 hover:text-white transition-all" title="Refresh">
                     <RefreshCw size={16} />
                 </button>
             </div>
 
-            {/* Match list */}
+            {/* Schedule view: rounds + matches (or TBD placeholders) */}
+            {viewMode === 'schedule' && (
+                <div className="space-y-6">
+                    {!selSeason ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <Calendar size={40} className="text-slate-500 mb-4 opacity-50" />
+                            <p className="text-slate-500 font-semibold">Select a season</p>
+                            <p className="text-slate-600 text-sm mt-1">Choose a league and season to see the schedule</p>
+                        </div>
+                    ) : scheduleLoading ? (
+                        <div className="flex justify-center py-20"><Loader2 size={32} className="animate-spin text-green-400" /></div>
+                    ) : rounds.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <Calendar size={40} className="text-slate-500 mb-4 opacity-50" />
+                            <p className="text-slate-500 font-semibold">No rounds yet</p>
+                            <p className="text-slate-600 text-sm mt-1">Generate rounds on the Rounds page first; then matches (or TBD slots) will appear here.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {rounds.map(round => {
+                                const roundMatches = seasonMatches.filter(m => roundIdFromMatch(m) === round._id);
+                                const sortedMatches = [...roundMatches].sort((a, b) => {
+                                    const orderA = a.matchOrder ?? 0;
+                                    const orderB = b.matchOrder ?? 0;
+                                    if (orderA !== orderB) return orderA - orderB;
+                                    return new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime();
+                                });
+                                const placeholders = sortedMatches.length === 0 ? [1, 2] : []; // show 2 TBD slots if no matches
+                                return (
+                                    <div key={round._id} className="bg-slate-800/60 border border-white/8 rounded-2xl overflow-hidden">
+                                        <div className="px-5 py-4 border-b border-white/5 flex flex-wrap items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 font-black text-sm">
+                                                    {round.roundNumber}
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-white font-bold">Round {round.roundNumber}</h3>
+                                                    <p className="text-slate-500 text-xs">{fmtDate(round.startDate)} — {fmtDate(round.endDate)}</p>
+                                                </div>
+                                            </div>
+                                            <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border', STATUS_STYLE[round.status] || STATUS_STYLE.SCHEDULED)}>
+                                                {round.status}
+                                            </span>
+                                        </div>
+                                        <div className="p-4 space-y-2">
+                                            {sortedMatches.map(m => (
+                                                <div key={m._id} className="flex items-center gap-4 p-3 rounded-xl bg-slate-900/60 border border-white/5 flex-wrap">
+                                                    <span className="text-slate-500 text-[10px] shrink-0 w-20">Match {m.matchOrder ?? '—'}</span>
+                                                    <span className="text-white font-bold text-sm truncate">{teamName(m.team1Id)}</span>
+                                                    {(m.team1GamesWon !== undefined && m.team2GamesWon !== undefined) ? (
+                                                        <span className="text-green-400 font-black text-sm px-2 py-0.5 bg-green-500/10 rounded-lg">{m.team1GamesWon} – {m.team2GamesWon}</span>
+                                                    ) : (
+                                                        <span className="text-slate-500 font-black text-xs px-2 py-0.5 bg-white/5 rounded-lg">VS</span>
+                                                    )}
+                                                    <span className="text-white font-bold text-sm truncate">{teamName(m.team2Id)}</span>
+                                                    <span className="text-slate-500 text-[10px] ml-auto shrink-0">{fmt(m.scheduledStart)}</span>
+                                                    <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shrink-0', STATUS_STYLE[m.status])}>{m.status}</span>
+                                                </div>
+                                            ))}
+                                            {placeholders.map(i => (
+                                                <div key={`tbd-${round._id}-${i}`} className="flex items-center gap-4 p-3 rounded-xl bg-slate-900/30 border border-dashed border-white/10 flex-wrap">
+                                                    <span className="text-slate-500 text-[10px] shrink-0 w-20">Match {i}</span>
+                                                    <span className="text-slate-500 font-medium text-sm">TBD</span>
+                                                    <span className="text-slate-600 font-black text-xs px-2 py-0.5 bg-white/5 rounded-lg">VS</span>
+                                                    <span className="text-slate-500 font-medium text-sm">TBD</span>
+                                                    <span className="text-slate-600 text-[10px] ml-auto shrink-0">{fmt(round.startDate)}</span>
+                                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border border-slate-500/30 text-slate-500 shrink-0">Scheduled</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Match list (list view only) */}
+            {viewMode === 'list' && (
+            <>
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 size={32} className="animate-spin text-green-400" />
@@ -498,6 +621,8 @@ export default function MatchesPage() {
                         );
                     })}
                 </div>
+            )}
+            </>
             )}
         </div>
     );

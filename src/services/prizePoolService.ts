@@ -42,9 +42,12 @@ export const prizePoolService = {
     getBySeason: (seasonId: string): Promise<PrizePool[]> =>
         axios.get(`${API}/prize-pools/by-season?seasonId=${seasonId}`).then(r => {
             const d = r.data;
+            if (!d) return [];
             if (Array.isArray(d)) return d;
             if (d && Array.isArray(d.data)) return d.data;
             if (d && Array.isArray(d.pools)) return d.pools;
+            // Backend returns a single object — wrap it
+            if (d && d._id) return [d];
             return [];
         }),
 

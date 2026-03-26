@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import {
     Trophy, Calendar, BookOpen, Flag, Swords, Users, GitBranch,
     DollarSign, ClockAlert, ShieldAlert, Plus, ChevronDown, Loader2, CheckSquare, AlertTriangle,
-    Star, Globe,
+    Star, Globe, Layers,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { LeagueHubProvider, useLeagueHub } from './LeagueHubContext';
@@ -13,6 +13,7 @@ import { leagueService } from '../../../services/leagueService';
 
 const TABS = [
     { to: 'seasons', label: 'Seasons', icon: <Calendar size={14} />, color: 'text-amber-400' },
+    { to: 'stages', label: 'Stages', icon: <Layers size={14} />, color: 'text-violet-400' },
     { to: 'rules', label: 'Rules', icon: <BookOpen size={14} />, color: 'text-blue-400' },
     { to: 'rounds', label: 'Rounds', icon: <Flag size={14} />, color: 'text-orange-400' },
     { to: 'matches', label: 'Matches', icon: <Swords size={14} />, color: 'text-rose-400' },

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, Trophy, Search, Loader2, Globe, Edit2, Trash2,
-    ChevronRight, Calendar, Users, Zap, Star,
+    ChevronRight, Calendar, Zap, Star,
     CheckSquare, AlertTriangle,
 } from 'lucide-react';
 import { leagueService, type League, LeagueLevel } from '../../services/leagueService';
@@ -17,13 +17,6 @@ const LEVEL_COLORS: Record<string, { pill: string; glow: string; border: string;
     NATIONAL: { pill: 'bg-green-500/15 text-green-300 border-green-500/25', glow: 'rgba(34,197,94,0.15)', border: 'border-green-500/20', hex: '#22c55e' },
     REGIONAL: { pill: 'bg-gray-500/15 text-gray-400 border-gray-500/25', glow: 'rgba(107,114,128,0.12)', border: 'border-gray-500/20', hex: '#6b7280' },
 };
-const STATUS_COLORS: Record<string, string> = {
-    PLANNED: 'bg-gray-500/15 text-gray-400 border-gray-500/20',
-    ONGOING: 'bg-primary/10 text-primary border-primary/25',
-    FINISHED: 'bg-white/5 text-text-muted border-white/10',
-};
-const fmtDate = (d: string) =>
-    d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const apiErr = (e: unknown) => {
     const err = e as { response?: { data?: { message?: string } } };
     return err?.response?.data?.message || 'Something went wrong';
@@ -54,7 +47,6 @@ function LeagueCard({
     onManage: (l: League) => void;
 }) {
     const lc = LEVEL_COLORS[league.level] || LEVEL_COLORS.REGIONAL;
-    const sc = STATUS_COLORS[league.status] || STATUS_COLORS.PLANNED;
 
     return (
         <div
@@ -70,23 +62,29 @@ function LeagueCard({
             <div className="p-5 flex flex-col flex-1 gap-4">
                 {/* Header row */}
                 <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border', lc.pill)}>
-                                {league.level}
-                            </span>
-                            <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border', sc)}>
-                                {league.status}
-                            </span>
-                        </div>
-                        <h3 className="text-white font-black text-base uppercase tracking-tight leading-tight truncate">
-                            {league.name}
-                        </h3>
-                        {league.description && (
-                            <p className="text-text-muted text-xs mt-1 line-clamp-2 leading-relaxed">
-                                {league.description}
-                            </p>
+                    <div className="flex gap-4 min-w-0">
+                        {league.logoUrl && (
+                            <img
+                                src={league.logoUrl}
+                                alt={league.name}
+                                className="w-12 h-12 rounded-xl object-contain bg-white/5 border border-white/10 p-1 shrink-0"
+                            />
                         )}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border', lc.pill)}>
+                                    {league.level}
+                                </span>
+                            </div>
+                            <h3 className="text-white font-black text-base uppercase tracking-tight leading-tight truncate">
+                                {league.name}
+                            </h3>
+                            {league.description && (
+                                <p className="text-text-muted text-xs mt-1 line-clamp-2 leading-relaxed">
+                                    {league.description}
+                                </p>
+                            )}
+                        </div>
                     </div>
                     {/* Edit / Delete */}
                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -112,17 +110,7 @@ function LeagueCard({
                             <Globe size={10} style={{ color: lc.hex }} /> {league.regionId}
                         </span>
                     )}
-                    {league.maxTeams && (
-                        <span className="flex items-center gap-1">
-                            <Users size={10} className="text-text-muted" /> {league.maxTeams} Teams
-                        </span>
-                    )}
-                    {league.startDate && (
-                        <span className="flex items-center gap-1">
-                            <Calendar size={10} className="text-text-muted" />
-                            {fmtDate(league.startDate)}
-                        </span>
-                    )}
+                    {/* Assuming gameId here is what you want to keep. If you want to remove it, let me know. */}
                 </div>
 
                 {/* CTA */}
@@ -298,7 +286,7 @@ export default function AdminLeagues() {
                             league={league}
                             onEdit={l => { setEditingLeague(l); setShowModal(true); }}
                             onDelete={handleDelete}
-                            onManage={l => navigate(`/admin/leagues/${l._id}/seasons`)}
+                            onManage={l => navigate(`/admin/leagues/${l._id}`)}
                         />
                     ))}
 
@@ -323,9 +311,9 @@ export default function AdminLeagues() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-white/5 pt-6">
                     {[
                         { label: 'Total', val: leagues.length, icon: <Trophy size={14} />, color: 'text-white' },
-                        { label: 'Ongoing', val: leagues.filter(l => l.status === 'ONGOING').length, icon: <Star size={14} />, color: 'text-primary' },
-                        { label: 'Planned', val: leagues.filter(l => l.status === 'PLANNED').length, icon: <Calendar size={14} />, color: 'text-blue-400' },
-                        { label: 'Finished', val: leagues.filter(l => l.status === 'FINISHED').length, icon: <CheckSquare size={14} />, color: 'text-text-muted' },
+                        { label: 'International', val: leagues.filter(l => l.level === 'INTERNATIONAL').length, icon: <Star size={14} />, color: 'text-primary' },
+                        { label: 'Continental', val: leagues.filter(l => l.level === 'CONTINENTAL').length, icon: <Calendar size={14} />, color: 'text-blue-400' },
+                        { label: 'National', val: leagues.filter(l => l.level === 'NATIONAL').length, icon: <CheckSquare size={14} />, color: 'text-text-muted' },
                     ].map(s => (
                         <div key={s.label} className="bg-surface border border-white/5 rounded-2xl p-4 flex items-center gap-3">
                             <span className={cn('opacity-60', s.color)}>{s.icon}</span>

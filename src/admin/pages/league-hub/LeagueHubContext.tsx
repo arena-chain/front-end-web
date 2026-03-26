@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { leagueService, type League } from '../../../services/leagueService';
 import { seasonService, type Season } from '../../../services/seasonService';
-import { leagueRulesService, type LeagueRule } from '../../../services/leagueRulesService';
+import { leagueRulesService, type SeasonRule } from '../../../services/leagueRulesService';
+import { stageService, type Stage } from '../../../services/stageService';
 
 interface LeagueHubCtx {
     // Leagues
@@ -18,10 +19,21 @@ interface LeagueHubCtx {
     setSelectedSeason: (s: Season | null) => void;
     refetchSeasons: () => void;
 
-    // Rules (global, needed for season creation)
-    rules: LeagueRule[];
+    // Rules — scoped to the selected season
+    seasonRules: SeasonRule[];
+    seasonRulesLoading: boolean;
+    refetchSeasonRules: () => void;
+    /** @deprecated use seasonRules */
+    rules: SeasonRule[];
+    /** @deprecated use seasonRulesLoading */
     rulesLoading: boolean;
+    /** @deprecated use refetchSeasonRules */
     refetchRules: () => void;
+
+    // Stages — scoped to the selected season
+    stages: Stage[];
+    stagesLoading: boolean;
+    refetchStages: () => void;
 
     // Toast
     toast: { msg: string; type: 'ok' | 'err' } | null;
@@ -45,8 +57,11 @@ export function LeagueHubProvider({ children }: { children: ReactNode }) {
     const [seasonsLoading, setSeasonsLoading] = useState(false);
     const [selectedSeason, setSelectedSeason] = useState<Season | null>(null);
 
-    const [rules, setRules] = useState<LeagueRule[]>([]);
-    const [rulesLoading, setRulesLoading] = useState(false);
+    const [seasonRules, setSeasonRules] = useState<SeasonRule[]>([]);
+    const [seasonRulesLoading, setSeasonRulesLoading] = useState(false);
+
+    const [stages, setStages] = useState<Stage[]>([]);
+    const [stagesLoading, setStagesLoading] = useState(false);
 
     const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
 
@@ -74,28 +89,54 @@ export function LeagueHubProvider({ children }: { children: ReactNode }) {
         finally { setSeasonsLoading(false); }
     }, [selectedLeague]);
 
-    const refetchRules = useCallback(async () => {
-        setRulesLoading(true);
-        try { setRules(await leagueRulesService.getAll()); }
-        catch { notify('Failed to load rules', 'err'); }
-        finally { setRulesLoading(false); }
-    }, []);
+    const refetchSeasonRules = useCallback(async () => {
+        if (!selectedSeason) { setSeasonRules([]); return; }
+        setSeasonRulesLoading(true);
+        try { setSeasonRules(await leagueRulesService.getBySeasonId(selectedSeason._id)); }
+        catch { notify('Failed to load season rules', 'err'); }
+        finally { setSeasonRulesLoading(false); }
+    }, [selectedSeason]);
+
+    const refetchStages = useCallback(async () => {
+        if (!selectedSeason) { setStages([]); return; }
+        setStagesLoading(true);
+        try { setStages(await stageService.getBySeason(selectedSeason._id)); }
+        catch { notify('Failed to load stages', 'err'); }
+        finally { setStagesLoading(false); }
+    }, [selectedSeason]);
 
     // Initial load
-    useEffect(() => { refetchLeagues(); refetchRules(); }, []);
+    useEffect(() => { refetchLeagues(); }, []);
 
     // When league changes, re-load seasons and reset season selection
     useEffect(() => {
         setSelectedSeason(null);
         setSeasons([]);
+        setSeasonRules([]);
         if (selectedLeague) refetchSeasons();
     }, [selectedLeague?._id]);
+
+    // When season changes, load its rules and stages
+    useEffect(() => {
+        setSeasonRules([]);
+        setStages([]);
+        if (selectedSeason) {
+            refetchSeasonRules();
+            refetchStages();
+        }
+    }, [selectedSeason?._id]);
 
     return (
         <LeagueHubContext.Provider value={{
             leagues, leaguesLoading, selectedLeague, setSelectedLeague, refetchLeagues,
             seasons, seasonsLoading, selectedSeason, setSelectedSeason, refetchSeasons,
-            rules, rulesLoading, refetchRules,
+            seasonRules, seasonRulesLoading, refetchSeasonRules,
+            // backward-compat aliases
+            rules: seasonRules,
+            rulesLoading: seasonRulesLoading,
+            refetchRules: refetchSeasonRules,
+            // Stages
+            stages, stagesLoading, refetchStages,
             toast, notify,
         }}>
             {children}

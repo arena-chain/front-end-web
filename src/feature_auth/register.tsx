@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Input } from '../components/ui/core';
-import { Gamepad2, ArrowLeft, Users, Shield, User } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Users, Shield, User, Binoculars } from 'lucide-react';
 import { toast } from 'sonner';
 import { AuthService } from '../services/auth.service';
 
-type UserRole = 'player' | 'team_manager' | 'referee';
+type UserRole = 'player' | 'team_manager' | 'referee' | 'scouter';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -21,7 +21,9 @@ export default function Register() {
         region: 'EUROPE',
         // Role specific fields
         organizationName: '',
-        level: ''
+        level: '',
+        scouterLevel: 'REGIONAL',
+        notes: ''
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,6 +63,14 @@ export default function Register() {
                     nickname: formData.nickname,
                     level: formData.level || 'Junior'
                 });
+            } else if (selectedRole === 'scouter') {
+                await AuthService.registerScouter({
+                    email: formData.email,
+                    password: formData.password,
+                    nickname: formData.nickname,
+                    level: formData.scouterLevel as 'REGIONAL' | 'NATIONAL' | 'INTERNATIONAL',
+                    notes: formData.notes || undefined
+                });
             }
 
             toast.success("Account created successfully! Please verify your email.");
@@ -99,7 +109,7 @@ export default function Register() {
                 </div>
 
                 {/* Role Selection */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <RoleCard
                         role="player"
                         selected={selectedRole === 'player'}
@@ -120,6 +130,13 @@ export default function Register() {
                         onClick={() => setSelectedRole('referee')}
                         icon={<Shield className="w-6 h-6" />}
                         label="Referee"
+                    />
+                    <RoleCard
+                        role="scouter"
+                        selected={selectedRole === 'scouter'}
+                        onClick={() => setSelectedRole('scouter')}
+                        icon={<Binoculars className="w-6 h-6" />}
+                        label="Scouter"
                     />
                 </div>
 
@@ -191,6 +208,33 @@ export default function Register() {
                         </div>
                     )}
 
+                    {selectedRole === 'scouter' && (
+                        <div className="space-y-4 animate-fade-in-up">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-text-muted ml-1">Scouter Level</label>
+                                <select
+                                    name="scouterLevel"
+                                    value={formData.scouterLevel}
+                                    onChange={(e: any) => setFormData({ ...formData, scouterLevel: e.target.value })}
+                                    className="w-full px-4 py-3 bg-surface border border-white/10 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all duration-200 text-white text-sm appearance-none cursor-pointer"
+                                >
+                                    <option value="REGIONAL">Regional</option>
+                                    <option value="NATIONAL">National</option>
+                                    <option value="INTERNATIONAL">International</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-text-muted ml-1">Notes (optional)</label>
+                                <Input
+                                    name="notes"
+                                    value={formData.notes}
+                                    onChange={handleChange}
+                                    placeholder="e.g. Scouting for EU leagues"
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-wider text-text-muted ml-1">Password</label>
@@ -220,7 +264,7 @@ export default function Register() {
 
                     <div className="pt-6">
                         <Button className="w-full" size="lg" isLoading={loading}>
-                            Create {selectedRole === 'team_manager' ? 'Manager' : selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Account
+                            Create {selectedRole === 'team_manager' ? 'Manager' : selectedRole === 'scouter' ? 'Scouter' : selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Account
                         </Button>
                     </div>
                 </form>
