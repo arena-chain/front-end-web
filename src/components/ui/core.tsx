@@ -47,18 +47,28 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
-export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-    ({ className, ...props }, ref) => {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+    rightElement?: React.ReactNode;
+}
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+    ({ className, rightElement, ...props }, ref) => {
         return (
             <div className="relative group">
                 <input
                     ref={ref}
                     className={cn(
                         "w-full bg-surface border-2 border-white/5 px-4 py-3 text-white outline-none transition-all placeholder:text-text-muted focus:border-primary",
+                        rightElement ? "pr-12" : null,
                         className
                     )}
                     {...props}
                 />
+                {rightElement ? (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {rightElement}
+                    </div>
+                ) : null}
             </div>
         );
     }

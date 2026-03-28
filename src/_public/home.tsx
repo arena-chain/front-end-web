@@ -11,6 +11,7 @@ import steamLogo from '../assets/steam.png';
 import { NewsSection } from './components/NewsSection';
 import { HomeTournaments } from './components/HomeTournaments';
 import { TypewriterText } from './components/TypewriterText';
+import { HeroLeagueSpotlight } from './components/HeroLeagueSpotlight';
 
 // ─── Scroll-reveal hook ───────────────────────────────────────────────────────
 function useReveal(threshold = 0.15) {
@@ -254,20 +255,7 @@ export default function Home() {
 
                     {/* — Main content — */}
                     <div className="container relative z-10 px-6 mx-auto text-center">
-                        {/* Live badge */}
-                        <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full mb-10"
-                            style={{
-                                background: 'rgba(0,255,0,0.05)',
-                                border: '1px solid rgba(0,255,0,0.2)',
-                                opacity: 0,
-                                animation: 'fadeInUp 0.7s ease-out 0.1s forwards',
-                            }}>
-                            <span className="relative flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#00ff00', animation: 'ping 1s cubic-bezier(0,0,0.2,1) infinite' }} />
-                                <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: '#00ff00' }} />
-                            </span>
-                            <span className="text-xs font-black uppercase tracking-[0.3em]" style={{ color: '#00ff00' }}>Live · Season 4 Active</span>
-                        </div>
+                        <HeroLeagueSpotlight />
 
                         {/* Main title */}
                         <h1 className="font-black tracking-tighter uppercase leading-[0.9] mb-6 select-none"

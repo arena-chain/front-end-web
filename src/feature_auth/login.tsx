@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input } from '../components/ui/core';
-import { Gamepad2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Gamepad2, ArrowLeft, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { AuthService } from '../services/auth.service';
 
 export default function Login() {
@@ -10,6 +10,7 @@ export default function Login() {
     const [searchParams] = useSearchParams();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -93,8 +94,6 @@ export default function Login() {
 
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">Welcome Back</h1>
                     <p className="text-text-muted text-sm mb-2">Enter your credentials to access the arena.</p>
-
-                    <p className="text-text-muted text-sm">Enter your credentials to access the arena.</p>
                 </div>
 
                 {error && (
@@ -121,10 +120,20 @@ export default function Login() {
                             <Link to="/forgot-password" className="text-xs text-primary hover:text-primary-light transition-colors">Forgot Password?</Link>
                         </div>
                         <Input
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            rightElement={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    className="p-1 text-text-muted hover:text-white transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            }
                         />
                     </div>
 
