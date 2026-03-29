@@ -96,7 +96,11 @@ export default function Users() {
                     break;
                 }
                 case 'player':
+                    data = await UserService.getPlayers();
+                    break;
                 case 'team_manager':
+                    data = await UserService.getTeamManagers();
+                    break;
                 case 'referee':
                 case 'admin': {
                     const all = await UserService.getAllUsers();
@@ -134,9 +138,12 @@ export default function Users() {
             if (!confirm('Block this user? They will not be able to sign in until unblocked.')) return;
         }
         try {
-            if (currentStatus) await UserService.blockUser(userId);
-            else await UserService.unblockUser(userId);
-            fetchUsers();
+            if (currentStatus) {
+                await UserService.blockUser(userId);
+            } else {
+                await UserService.unblockUser(userId);
+            }
+            fetchUsers(); // Refresh list
         } catch (error) {
             console.error('Action failed:', error);
             alert('Failed to update user status');
@@ -171,7 +178,7 @@ export default function Users() {
                     password: formData.password,
                     nickname: formData.nickname,
                     organizationName: formData.organizationName,
-                    role: 'team-manager',
+                    role: 'team-manager'
                 });
             } else if (activeTab === 'referee') {
                 await AuthService.registerReferee({
@@ -188,7 +195,7 @@ export default function Users() {
                     nickname: formData.nickname,
                     adminLevel: 1,
                     permissions: [],
-                    role: 'admin',
+                    role: 'admin'
                 });
             }
 
@@ -263,6 +270,7 @@ export default function Users() {
                 </div>
             </div>
 
+            {/* Tabs */}
             <div className="flex flex-wrap gap-2 border-b border-white/5 pb-1">
                 <TabButton
                     active={activeTab === 'all'}
@@ -308,6 +316,7 @@ export default function Users() {
                 />
             </div>
 
+            {/* Filters & Search */}
             <div className="flex flex-col sm:flex-row gap-4 bg-surface border border-white/5 p-4 rounded-xl">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -502,7 +511,6 @@ export default function Users() {
                 </div>
             </div>
 
-            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={addModalTitle}>
                 <form onSubmit={handleAddUser} className="space-y-4 p-6">
                     <div>
                         <label className="block text-sm font-medium text-text-muted mb-1">Email</label>
@@ -543,12 +551,6 @@ export default function Users() {
                     )}
 
                     <div className="flex gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)} className="flex-1">
-                            Cancel
-                        </Button>
-                        <Button type="submit" className="flex-1">
-                            Create User
-                        </Button>
                     </div>
                 </form>
             </Modal>

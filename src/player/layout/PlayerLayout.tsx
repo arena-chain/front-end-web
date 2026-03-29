@@ -14,11 +14,22 @@ import {
     Search,
     Crown,
     Store,
+    Radio,
+    Video,
+    Users,
+    ChevronLeft,
+    ChevronRight,
+    Circle,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { channelService, type ChannelRecord } from '../../services/channel.service';
+
 
 // ─── Top nav links (shown in the horizontal top bar) ─────────────────────────
 const TOP_NAV_LINKS = [
+    { to: '/player/channel', label: 'Channel', icon: <Video size={16} /> },
+    { to: '/player/go-live', label: 'Go Live', icon: <Radio size={16} /> },
+    { to: '/player/all-lives', label: 'Lives', icon: <Users size={16} /> },
     { to: '/player/marketplace', label: 'Marketplace', icon: <Store size={16} /> },
     { to: '/player/market', label: 'Get Tickets', icon: <DollarSign size={16} /> },
     { to: '/player/rankings', label: 'Rankings', icon: <Crown size={16} /> },
@@ -39,7 +50,11 @@ const SIDE_NAV_BOTTOM = [
 
 export default function PlayerLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [channels, setChannels] = useState<ChannelRecord[]>([]);
+    const [loadingChannels, setLoadingChannels] = useState(false);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -47,20 +62,37 @@ export default function PlayerLayout() {
         navigate('/');
     };
 
+    React.useEffect(() => {
+        void loadSidebarChannels();
+    }, []);
+
+    async function loadSidebarChannels() {
+        setLoadingChannels(true);
+        try {
+            // In a real app, we'd have a separate "Following" endpoint
+            const all = await channelService.getAllChannels();
+            setChannels(all.slice(0, 12)); // Just a mix for the MVP
+        } catch (error) {
+            console.error('Failed to load sidebar channels', error);
+        } finally {
+            setLoadingChannels(false);
+        }
+    }
+
     return (
         <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-text">
             {/* ═══ Unified Shell ═══ */}
             <div className="flex flex-1 bg-[#111214] rounded-[24px] overflow-hidden">
-            {/* ═══ Left Icon Sidebar ═══ */}
-            <aside className="relative flex flex-col shrink-0 w-[72px] h-full z-40">
-                {/* Logo */}
-                <div className="h-16 flex items-center justify-center shrink-0">
-                    <NavLink to="/player/dashboard">
-                        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black font-black text-lg shadow-[0_0_20px_rgba(0,255,136,0.4)] hover:shadow-[0_0_25px_rgba(0,255,136,0.6)] transition-shadow">
-                            A
-                        </div>
-                    </NavLink>
-                </div>
+                {/* ═══ Left Icon Sidebar (Slim) ═══ */}
+                <aside className="relative flex flex-col shrink-0 w-[68px] h-full z-40 bg-[#060708] border-r border-white/5">
+                    {/* Logo */}
+                    <div className="h-16 flex items-center justify-center shrink-0">
+                        <NavLink to="/player/dashboard">
+                            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black font-black text-lg shadow-[0_0_20px_rgba(0,255,136,0.3)] hover:scale-105 transition-all">
+                                A
+                            </div>
+                        </NavLink>
+                    </div>
 
                 {/* Main nav icons */}
                 <nav className="flex-1 flex flex-col items-center gap-1 py-4">
@@ -70,44 +102,116 @@ export default function PlayerLayout() {
                     <LeaguesIcon />
                 </nav>
 
-                {/* Bottom icons */}
-                <div className="flex flex-col items-center gap-1 pb-3">
-                    {SIDE_NAV_BOTTOM.map(link => (
-                        <SideIcon key={link.to} {...link} />
-                    ))}
-                    <div className="my-1 w-6 border-t border-white/10" />
-                    <button
-                        onClick={handleLogout}
-                        title="Logout"
-                        className="w-11 h-11 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all"
-                    >
-                        <LogOut size={20} />
-                    </button>
-                </div>
-            </aside>
-
-            {/* ═══ Right: Top bar + Content ═══ */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
-                {/* ── Top Navbar ── */}
-                <header className="h-16 shrink-0 flex items-center justify-between px-6 z-30">
-                    {/* Left: Top nav links */}
-                    <nav className="flex items-center gap-1">
-                        {TOP_NAV_LINKS.map(link => (
-                            <NavLink
-                                key={link.to}
-                                to={link.to}
-                                className={({ isActive }) => cn(
-                                    "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200",
-                                    isActive
-                                        ? "bg-primary/10 text-primary border border-primary/20"
-                                        : "text-text-muted hover:text-white hover:bg-white/5"
-                                )}
-                            >
-                                {link.icon}
-                                <span className="hidden sm:inline">{link.label}</span>
-                            </NavLink>
+                    {/* Bottom icons */}
+                    <div className="flex flex-col items-center gap-2 pb-4">
+                        {SIDE_NAV_BOTTOM.map(link => (
+                            <SideIcon key={link.to} {...link} />
                         ))}
-                    </nav>
+                        <div className="my-1 w-6 border-t border-white/5" />
+                        <button
+                            onClick={handleLogout}
+                            title="Logout"
+                            className="w-11 h-11 flex items-center justify-center rounded-xl text-white/20 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                        >
+                            <LogOut size={20} />
+                        </button>
+                    </div>
+                </aside>
+
+                {/* ═══ Kick-style Category/Following Sidebar ═══ */}
+                <aside className={cn(
+                    "relative flex flex-col shrink-0 bg-[#0f1115] border-r border-white/5 transition-all duration-500 ease-in-out z-30 group/sidebar",
+                    isSidebarCollapsed ? "w-0 opacity-0 invisible" : "w-[240px] opacity-100"
+                )}>
+                    {/* Collapse Toggle */}
+                    <button
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className="absolute -right-3 top-20 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black shadow-lg z-50 hover:scale-110 transition-transform"
+                    >
+                        {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                    </button>
+
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide py-6 px-4 space-y-8">
+                        {/* Suivis Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between px-2">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 italic">Suivis</span>
+                                <div className="w-1 h-1 rounded-full bg-primary/40 animate-pulse" />
+                            </div>
+                            <div className="space-y-1">
+                                {loadingChannels ? (
+                                    <div className="space-y-4 px-2">
+                                        {[1, 2, 3].map(i => <div key={i} className="h-10 bg-white/5 rounded-xl animate-pulse" />)}
+                                    </div>
+                                ) : (
+                                    channels.slice(0, 4).map(ch => (
+                                        <ChannelSidebarItem key={ch._id} channel={ch} />
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Recommandées Section */}
+                        <div className="space-y-4">
+                            <div className="px-2">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 italic">Recommandées</span>
+                            </div>
+                            <div className="space-y-1">
+                                {channels.slice(4).map(ch => (
+                                    <ChannelSidebarItem key={ch._id} channel={ch} />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sidebar Footer */}
+                    <div className={cn(
+                        "p-4 border-t border-white/5 bg-black/20",
+                        isSidebarCollapsed && "hidden"
+                    )}>
+                        <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10">
+                            <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1 italic">Vérifié par Arena</p>
+                            <p className="text-[11px] text-white/40 leading-relaxed font-medium">Découvrez les meilleurs talents du studio.</p>
+                        </div>
+                    </div>
+                </aside>
+
+                {/* ═══ Right: Top bar + Content ═══ */}
+                <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#060708]">
+                    {/* ── Top Navbar ── */}
+                    <header className="h-16 shrink-0 flex items-center justify-between px-8 z-30 border-b border-white/5 backdrop-blur-md bg-[#0a0c0f]/80">
+                        <div className="flex items-center gap-6">
+                            {isSidebarCollapsed && (
+                                <button
+                                    onClick={() => setIsSidebarCollapsed(false)}
+                                    className="w-9 h-9 rounded-xl border border-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-all"
+                                >
+                                    <ChevronRight size={18} />
+                                </button>
+                            )}
+                            {/* Left: Top nav links */}
+                            <nav className="flex items-center gap-2">
+                                {TOP_NAV_LINKS.map(link => (
+                                    <NavLink
+                                        key={link.to}
+                                        to={link.to}
+                                        className={({ isActive }) => cn(
+                                            "flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300",
+                                            isActive
+                                                ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(0,255,135,0.1)]"
+                                                : "text-white/40 hover:text-white hover:bg-white/5"
+                                        )}
+                                    >
+                                        {({ isActive }) => (
+                                            <>
+                                                {isActive ? <Circle size={4} className="fill-primary animate-pulse" /> : <span className="opacity-40">{link.icon}</span>}
+                                                <span className="hidden xl:inline">{link.label}</span>
+                                            </>
+                                        )}
+                                    </NavLink>
+                                ))}
+                            </nav>
+                        </div>
 
                     {/* Right: Search + Bell + Profile */}
                     <div className="flex items-center gap-4">
@@ -125,65 +229,117 @@ export default function PlayerLayout() {
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
                         </button>
 
-                        {/* Profile */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all"
-                            >
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-emerald-600 p-[2px]">
-                                    <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
+                            {/* Profile */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                    className="flex items-center gap-3 p-1 rounded-2xl border border-transparent hover:border-white/10 hover:bg-white/5 transition-all"
+                                >
+                                    <div className="w-9 h-9 rounded-2xl bg-[#16191d] border border-white/10 flex items-center justify-center p-0.5 overflow-hidden">
                                         <img
                                             src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
                                             alt="Player"
-                                            className="w-full h-full rounded-full"
+                                            className="w-full h-full rounded-xl object-cover"
                                         />
                                     </div>
-                                </div>
-                                <div className="hidden md:flex flex-col items-start">
-                                    <span className="text-xs font-bold text-white leading-none">Player One</span>
-                                    <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase font-bold mt-0.5">PRO</span>
-                                </div>
-                                <ChevronDown size={12} className="text-text-muted hidden md:block" />
-                            </button>
-
-                            {isProfileOpen && (
-                                <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
-                                    <div className="absolute right-0 top-full mt-2 w-52 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                                        <div className="p-3 border-b border-white/5">
-                                            <p className="text-sm font-bold text-white">Player One</p>
-                                            <p className="text-[11px] text-text-muted">player.one@arena.com</p>
-                                        </div>
-                                        <div className="p-1.5">
-                                            <button onClick={() => { navigate('/player/profile'); setIsProfileOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-muted hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                                                <User size={15} /> Profile
-                                            </button>
-                                            <button onClick={() => { navigate('/player/settings'); setIsProfileOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-muted hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                                                <Settings size={15} /> Settings
-                                            </button>
-                                        </div>
-                                        <div className="p-1.5 border-t border-white/5">
-                                            <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                                                <LogOut size={15} /> Logout
-                                            </button>
+                                    <div className="hidden md:flex flex-col items-start">
+                                        <span className="text-[11px] font-black text-white leading-none uppercase tracking-tighter italic">Player One</span>
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                            <span className="text-[9px] text-primary font-black uppercase tracking-widest leading-none">Elite</span>
                                         </div>
                                     </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </header>
+                                    <ChevronDown size={14} className="text-white/20 ml-1 hidden md:block" />
+                                </button>
 
-                {/* ── Page Content ── */}
-                <main className="flex-1 overflow-auto bg-[#0a0b0d] rounded-tl-[20px]">
-                    <div className="p-6">
-                        <Outlet />
-                    </div>
-                </main>
-            </div>
+                                {isProfileOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                                        <div className="absolute right-0 top-full mt-3 w-60 bg-[#0c0e11] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-3xl animate-in fade-in zoom-in duration-200">
+                                            <div className="p-5 border-b border-white/5 bg-white/5">
+                                                <p className="text-sm font-black text-white italic">PLAYER ONE</p>
+                                                <p className="text-[10px] text-white/40 font-bold tracking-wider mt-0.5 uppercase">player.one@arena.com</p>
+                                            </div>
+                                            <div className="p-2">
+                                                {[
+                                                    { to: '/player/profile', label: 'Mon Profil', icon: User },
+                                                    { to: '/player/settings', label: 'Paramètres', icon: Settings },
+                                                ].map(item => (
+                                                    <button key={item.to} onClick={() => { navigate(item.to); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                                                        <item.icon size={15} className="opacity-40" /> {item.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="p-2 border-t border-white/5">
+                                                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-400 hover:bg-red-400/10 rounded-xl transition-all">
+                                                    <LogOut size={15} /> Déconnexion
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* ── Page Content ── */}
+                    <main className="flex-1 overflow-auto bg-[#0a0c0f] scrollbar-hide">
+                        <div className={cn(
+                            "transition-all duration-500",
+                            location.pathname.startsWith('/watch/') ? "p-0" : "p-8"
+                        )}>
+                            <Outlet />
+                        </div>
+                    </main>
+                </div>
             </div>
         </div>
+    );
+
+}
+
+// ─── Channel Sidebar Item ──────────────────────────────────────────────
+
+function ChannelSidebarItem({ channel }: { channel: ChannelRecord }) {
+    const isLive = channel.isActive; // In a real app check isLive
+    const viewers = Math.floor(Math.random() * 1000) + 100; // Simulated viewers
+
+    return (
+        <NavLink
+            to={`/watch/${channel._id}`}
+            className={({ isActive }) => cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-300 group/item",
+                isActive ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-white/5"
+            )}
+        >
+            <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-2xl bg-[#16191d] border border-white/5 flex items-center justify-center p-0.5 overflow-hidden group-hover/item:border-primary/30 transition-colors">
+                    <img
+                        src={channel.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${channel.name}`}
+                        alt=""
+                        className="w-full h-full rounded-xl object-cover"
+                    />
+                </div>
+                {isLive && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-primary rounded-full border-2 border-[#0f1115] shadow-[0_0_8px_rgba(0,255,135,0.8)]" />
+                )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-black text-white/80 truncate uppercase tracking-tighter italic group-hover/item:text-primary transition-colors">{channel.name}</p>
+                    {isLive && (
+                        <div className="flex items-center gap-1 shrink-0">
+                            <Circle size={4} className="fill-primary" />
+                            <span className="text-[10px] font-black text-primary italic">{viewers > 1000 ? (viewers / 1000).toFixed(1) + 'k' : viewers}</span>
+                        </div>
+                    )}
+                </div>
+                <p className="text-[10px] font-bold text-white/20 truncate uppercase tracking-widest leading-none mt-0.5">
+                    {channel.categories[0] || "Discussion"}
+                </p>
+            </div>
+        </NavLink>
     );
 }
 

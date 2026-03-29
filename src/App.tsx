@@ -67,6 +67,12 @@ import NftAvatars from './admin/pages/NftAvatars';
 import NftCollections from './admin/pages/NftCollections';
 import NftManager from './admin/pages/NftManager';
 import PlayerMarketplace from './player/pages/PlayerMarketplace';
+import ChannelStudioPage from './university/pages/ChannelStudioPage';
+import GoLivePage from './university/pages/GoLivePage';
+import AllLivesPage from './university/pages/AllLivesPage';
+import WatchChannelPage from './university/pages/WatchChannelPage';
+import ChannelDetailPage from './university/pages/ChannelDetailPage.tsx';
+
 
 // Admin misc
 import AdminLeagues from './admin/pages/Leagues';
@@ -95,135 +101,141 @@ import AdminSeasonWorkspace from './admin/pages/league-hub/AdminSeasonWorkspace'
 // Public tournament page (Liquipedia-style)
 import TournamentPage from './_public/pages/TournamentPage';
 
+
 function App() {
   return (
     <>
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/news" element={<NewsPage />} />
-        <Route path="/download" element={<DownloadPage />} />
-        <Route path="/tournaments/:id" element={<TournamentDetailsPage />} />
-        <Route path="/leagues" element={<LeaguesPage />} />
-        <Route path="/leagues/:id" element={<LeaguesPage />} />
-        <Route path="/leagues/:leagueId/seasons/:seasonId" element={<TournamentPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/news" element={<NewsPage />} />
+          <Route path="/download" element={<DownloadPage />} />
+          <Route path="/tournaments/:id" element={<TournamentDetailsPage />} />
+          <Route path="/leagues" element={<LeaguesPage />} />
+          <Route path="/leagues/:id" element={<LeaguesPage />} />
+          <Route path="/leagues/:leagueId/seasons/:seasonId" element={<TournamentPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/watch/:channelId" element={<WatchChannelPage />} />
 
-        {/* ── Admin ──────────────────────────────────────────────────── */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard" element={<Overview />} />
-          <Route path="users" element={<Users />} />
-          <Route path="tournaments" element={<Tournaments />} />
-          <Route path="tournaments/:id" element={<TournamentDetails />} />
-          <Route path="tickets" element={<AdminTickets />} />
-          <Route path="reservations" element={<Reservations />} />
-          <Route path="games" element={<Games />} />
-          <Route path="partnerships" element={<Partnerships />} />
-          <Route path="matches" element={<Matches />} />
-          <Route path="channels" element={<Channels />} />
-          <Route path="nft-avatars" element={<NftAvatars />} />
-          <Route path="nft-collections" element={<NftCollections />} />
-          <Route path="nft-manager" element={<NftManager />} />
-          <Route path="settings" element={<Settings />} />
+          {/* ── Admin ──────────────────────────────────────────────────── */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<Overview />} />
+            <Route path="users" element={<Users />} />
+            <Route path="tournaments" element={<Tournaments />} />
+            <Route path="tournaments/:id" element={<TournamentDetails />} />
+            <Route path="tickets" element={<AdminTickets />} />
+            <Route path="reservations" element={<Reservations />} />
+            <Route path="games" element={<Games />} />
+            <Route path="partnerships" element={<Partnerships />} />
+            <Route path="matches" element={<Matches />} />
+            <Route path="channels" element={<Channels />} />
+            <Route path="nft-avatars" element={<NftAvatars />} />
+            <Route path="nft-collections" element={<NftCollections />} />
+            <Route path="nft-manager" element={<NftManager />} />
+            <Route path="settings" element={<Settings />} />
 
-          {/* Standalone (MUST come before the :id wildcard) */}
-          <Route path="leagues/workflow" element={<WorkflowPage />} />
-          <Route path="leagues/progression" element={<ProgressionPage />} />
+            {/* Standalone (MUST come before the :id wildcard) */}
+            <Route path="leagues/workflow" element={<WorkflowPage />} />
+            <Route path="leagues/progression" element={<ProgressionPage />} />
 
-          {/* League list */}
-          <Route path="leagues" element={<AdminLeagues />} />
+            {/* League list */}
+            <Route path="leagues" element={<AdminLeagues />} />
 
-          {/* League Hub V2 — new workflow-driven design */}
-          <Route path="leagues/:id" element={<AdminLeagueHubV2 />} />
-          <Route path="leagues/:id/seasons" element={<Navigate to=".." relative="path" replace />} />
-          <Route path="leagues/:id/seasons/:seasonId" element={<AdminSeasonWorkspace />} />
+            {/* League Hub V2 — new workflow-driven design */}
+            <Route path="leagues/:id" element={<AdminLeagueHubV2 />} />
+            <Route path="leagues/:id/seasons" element={<Navigate to=".." relative="path" replace />} />
+            <Route path="leagues/:id/seasons/:seasonId" element={<AdminSeasonWorkspace />} />
 
-          {/* League Hub legacy tabs (kept under /admin/leagues/:id/hub for fallback) */}
-          <Route path="leagues/:id/hub" element={<LeagueHubLayout />}>
-            <Route index element={<Navigate to="seasons" replace />} />
-            <Route path="seasons" element={<SeasonsPage />} />
-            <Route path="stages" element={<StagesPage />} />
-            <Route path="rules" element={<RulesPage />} />
-            <Route path="rounds" element={<RoundsPage />} />
-            <Route path="matches" element={<MatchesPage />} />
-            <Route path="teams" element={<TeamsPage />} />
-            <Route path="rosters" element={<RostersPage />} />
-            <Route path="brackets" element={<BracketsPage />} />
-            <Route path="prize-pools" element={<PrizePoolPage />} />
-            <Route path="check-ins" element={<CheckInsPage />} />
-            <Route path="disputes" element={<DisputesPage />} />
+            {/* League Hub legacy tabs (kept under /admin/leagues/:id/hub for fallback) */}
+            <Route path="leagues/:id/hub" element={<LeagueHubLayout />}>
+              <Route index element={<Navigate to="seasons" replace />} />
+              <Route path="seasons" element={<SeasonsPage />} />
+              <Route path="stages" element={<StagesPage />} />
+              <Route path="rules" element={<RulesPage />} />
+              <Route path="rounds" element={<RoundsPage />} />
+              <Route path="matches" element={<MatchesPage />} />
+              <Route path="teams" element={<TeamsPage />} />
+              <Route path="rosters" element={<RostersPage />} />
+              <Route path="brackets" element={<BracketsPage />} />
+              <Route path="prize-pools" element={<PrizePoolPage />} />
+              <Route path="check-ins" element={<CheckInsPage />} />
+              <Route path="disputes" element={<DisputesPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* ── Player ─────────────────────────────────────────────────── */}
-        <Route path="/player" element={<PlayerLayout />}>
-          <Route index element={<Navigate to="/player/dashboard" replace />} />
-          <Route path="dashboard" element={<PlayerDashboard />} />
-          <Route path="tournaments" element={<PlayerTournaments />} />
-          <Route path="tournaments/:id" element={<PlayerTournamentDetails />} />
-          <Route path="market" element={<PlayerTicketMarket />} />
-          <Route path="tournaments/:id/tickets" element={<TicketBooking />} />
-          <Route path="reservation-confirmation" element={<ReservationConfirmation />} />
-          <Route path="my-tickets" element={<MyTickets />} />
-          <Route path="tickets" element={<BookingHistory />} />
-          <Route path="tickets/:id" element={<TicketDetails />} />
-          <Route path="matches" element={<PlayerMatches />} />
-          <Route path="leagues" element={<PlayerLeagues />} />
-          <Route path="leagues/:id" element={<PlayerLeagues />} />
-          <Route path="rankings" element={<PlayerRankings />} />
-          <Route path="marketplace" element={<PlayerMarketplace />} />
-          <Route path="profile" element={<PlayerProfile />} />
-          <Route path="subscription" element={<PlayerSubscription />} />
-          <Route path="payment" element={<PlayerPayment />} />
-        </Route>
+          {/* ── Player ─────────────────────────────────────────────────── */}
+          <Route path="/player" element={<PlayerLayout />}>
+            <Route index element={<Navigate to="/player/dashboard" replace />} />
+            <Route path="dashboard" element={<PlayerDashboard />} />
+            <Route path="tournaments" element={<PlayerTournaments />} />
+            <Route path="tournaments/:id" element={<PlayerTournamentDetails />} />
+            <Route path="market" element={<PlayerTicketMarket />} />
+            <Route path="tournaments/:id/tickets" element={<TicketBooking />} />
+            <Route path="reservation-confirmation" element={<ReservationConfirmation />} />
+            <Route path="my-tickets" element={<MyTickets />} />
+            <Route path="tickets" element={<BookingHistory />} />
+            <Route path="tickets/:id" element={<TicketDetails />} />
+            <Route path="matches" element={<PlayerMatches />} />
+            <Route path="leagues" element={<PlayerLeagues />} />
+            <Route path="leagues/:id" element={<PlayerLeagues />} />
+            <Route path="rankings" element={<PlayerRankings />} />
+            <Route path="marketplace" element={<PlayerMarketplace />} />
+            <Route path="channel" element={<ChannelStudioPage />} />
+            <Route path="channel/:channelId/detail" element={<ChannelDetailPage />} />
+            <Route path="go-live" element={<GoLivePage />} />
+            <Route path="all-lives" element={<AllLivesPage />} />
+            <Route path="profile" element={<PlayerProfile />} />
+            <Route path="subscription" element={<PlayerSubscription />} />
+            <Route path="payment" element={<PlayerPayment />} />
+          </Route>
 
-        {/* ── Manager ────────────────────────────────────────────────── */}
-        <Route path="/manager" element={<ManagerLayout />}>
-          <Route index element={<Navigate to="/manager/dashboard" replace />} />
-          <Route path="dashboard" element={<ManagerDashboard />} />
-          <Route path="roster" element={<ManagerRoster />} />
-          <Route path="tournaments" element={<ManagerTournaments />} />
-          <Route path="scrims" element={<ManagerScrims />} />
-          <Route path="settings" element={<ManagerSettings />} />
-        </Route>
+          {/* ── Manager ────────────────────────────────────────────────── */}
+          <Route path="/manager" element={<ManagerLayout />}>
+            <Route index element={<Navigate to="/manager/dashboard" replace />} />
+            <Route path="dashboard" element={<ManagerDashboard />} />
+            <Route path="roster" element={<ManagerRoster />} />
+            <Route path="tournaments" element={<ManagerTournaments />} />
+            <Route path="scrims" element={<ManagerScrims />} />
+            <Route path="settings" element={<ManagerSettings />} />
+          </Route>
 
-        {/* ── Referee ────────────────────────────────────────────────── */}
-        <Route path="/referee" element={<RefereeLayout />}>
-          <Route index element={<Navigate to="/referee/dashboard" replace />} />
-          <Route path="dashboard" element={<RefereeDashboard />} />
-        </Route>
+          {/* ── Referee ────────────────────────────────────────────────── */}
+          <Route path="/referee" element={<RefereeLayout />}>
+            <Route index element={<Navigate to="/referee/dashboard" replace />} />
+            <Route path="dashboard" element={<RefereeDashboard />} />
+          </Route>
 
-        {/* ── Scouter ────────────────────────────────────────────────── */}
-        <Route path="/scouter" element={<ScouterLayout />}>
-          <Route index element={<Navigate to="/scouter/dashboard" replace />} />
-          <Route path="dashboard" element={<ScouterDashboard />} />
-          <Route path="players" element={<ScouterPlayers />} />
-          <Route path="players/:playerUserId" element={<ScouterPlayerProfile />} />
-          <Route path="watchlist" element={<ScouterWatchlist />} />
-          <Route path="reports" element={<ScouterReports />} />
-          <Route path="recommendations" element={<ScouterRecommendations />} />
-          <Route path="highlights" element={<ScouterHighlights />} />
-          <Route path="evaluated" element={<ScouterEvaluated />} />
-        </Route>
-      </Routes>
-    </Router>
-    <Toaster
-      position="top-right"
-      toastOptions={{
-        style: {
-          background: '#12141a',
-          border: '1px solid rgba(255,255,255,0.09)',
-          color: '#e8e8e8',
-          fontSize: '13px',
-        },
-      }}
-      richColors
-    />
+          {/* ── Scouter ────────────────────────────────────────────────── */}
+          <Route path="/scouter" element={<ScouterLayout />}>
+            <Route index element={<Navigate to="/scouter/dashboard" replace />} />
+            <Route path="dashboard" element={<ScouterDashboard />} />
+            <Route path="players" element={<ScouterPlayers />} />
+            <Route path="players/:playerUserId" element={<ScouterPlayerProfile />} />
+            <Route path="watchlist" element={<ScouterWatchlist />} />
+            <Route path="reports" element={<ScouterReports />} />
+            <Route path="recommendations" element={<ScouterRecommendations />} />
+            <Route path="highlights" element={<ScouterHighlights />} />
+            <Route path="evaluated" element={<ScouterEvaluated />} />
+          </Route>
+        </Routes>
+      </Router>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#12141a',
+            border: '1px solid rgba(255,255,255,0.09)',
+            color: '#e8e8e8',
+            fontSize: '13px',
+          },
+        }}
+        richColors
+      />
     </>
   );
 }

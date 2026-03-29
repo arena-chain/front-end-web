@@ -94,6 +94,8 @@ export default function Login() {
 
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">Welcome Back</h1>
                     <p className="text-text-muted text-sm mb-2">Enter your credentials to access the arena.</p>
+
+                    <p className="text-text-muted text-sm">Enter your credentials to access the arena.</p>
                 </div>
 
                 {error && (
