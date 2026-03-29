@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
     Swords, Clock, Trophy, Zap, Target,
     ChevronRight, Flame, Star, Activity,
     Users, Crown, UserPlus, MessageCircle,
-    Globe, Search,
+    Globe, Search, X, Smartphone, Monitor, ArrowRight,
 } from 'lucide-react';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { cn } from '../../lib/utils';
@@ -60,17 +62,57 @@ const FRIENDS: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── Rank config ─────────────────────────────────────────────────────────────
+
+const RANK_CONFIG: Record<string, { emoji: string; color: string; min: number; max: number; next: string }> = {
+    Radiant:  { emoji: '👑', color: '#ffd700', min: 4000, max: 5000, next: '' },
+    Immortal: { emoji: '💀', color: '#ff4655', min: 3500, max: 4000, next: 'Radiant' },
+    Diamond:  { emoji: '💎', color: '#a855f7', min: 2500, max: 3500, next: 'Immortal' },
+    Platinum: { emoji: '🔷', color: '#3b82f6', min: 2000, max: 2500, next: 'Diamond' },
+    Gold:     { emoji: '🥇', color: '#f59e0b', min: 1500, max: 2000, next: 'Platinum' },
+    Silver:   { emoji: '🥈', color: '#94a3b8', min: 1000, max: 1500, next: 'Gold' },
+    Bronze:   { emoji: '🥉', color: '#b45309', min:  500, max: 1000, next: 'Silver' },
+};
+
+interface PlayerStats { elo: number; rank: string; }
+
+type AppModalType = 'match' | 'scrims' | null;
+
 export default function PlayerDashboard() {
     const navigate = useNavigate();
-    const [finding, setFinding] = useState(false);
+    const outletCtx = useOutletContext<{ profile?: { _id?: string } | null } | null>();
+    const [appModal, setAppModal] = useState<AppModalType>(null);
+    const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
+    const [statsLoading, setStatsLoading] = useState(true);
 
-    const handleFindMatch = () => {
-        setFinding(true);
-        setTimeout(() => setFinding(false), 3000);
-    };
+    useEffect(() => {
+        const fetchStats = async () => {
+            setStatsLoading(true);
+            const token = localStorage.getItem('token');
+            const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            try {
+                const res = await axios.get(`${API}/player/me`, { headers });
+                setPlayerStats({ elo: res.data.elo ?? 0, rank: res.data.rank ?? 'Unranked' });
+            } catch {
+                try {
+                    const res = await axios.get(`${API}/player`, { headers });
+                    const uid = outletCtx?.profile?._id;
+                    const me = (res.data as { _id: string; userId?: { _id?: string } | string; elo?: number; rank?: string }[]).find(
+                        p => p._id === uid || (typeof p.userId === 'object' ? p.userId?._id === uid : p.userId === uid)
+                    );
+                    if (me) setPlayerStats({ elo: me.elo ?? 0, rank: me.rank ?? 'Unranked' });
+                } catch { /* silently fail */ }
+            } finally {
+                setStatsLoading(false);
+            }
+        };
+        fetchStats();
+    }, [outletCtx?.profile?._id]);
 
     return (
         <div className="flex gap-4 h-full animate-fade-in-up overflow-hidden">
+        {appModal && <AppRequiredModal type={appModal} onClose={() => setAppModal(null)} />}
 
         {/* ── Main content ─────────────────────────────────────────── */}
         <div className="flex flex-col gap-4 flex-1 min-w-0 overflow-y-auto pr-1">
@@ -109,27 +151,18 @@ export default function PlayerDashboard() {
 
                         <div className="flex items-center gap-3 flex-wrap">
                             <button
-                                onClick={handleFindMatch}
+                                onClick={() => setAppModal('match')}
                                 className="flex items-center gap-2.5 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest text-black transition-all duration-200 hover:scale-105 active:scale-95"
                                 style={{
-                                    background: finding ? 'rgba(0,255,0,0.7)' : '#00ff00',
+                                    background: '#00ff00',
                                     boxShadow: '0 0 24px rgba(0,255,0,0.4), 0 4px 20px rgba(0,0,0,0.4)',
                                 }}
                             >
-                                {finding ? (
-                                    <>
-                                        <span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
-                                        Searching…
-                                    </>
-                                ) : (
-                                    <>
-                                        <Swords size={16} />
-                                        Find Match
-                                    </>
-                                )}
+                                <Swords size={16} />
+                                Find Match
                             </button>
                             <button
-                                onClick={() => navigate('/player/tournaments')}
+                                onClick={() => setAppModal('scrims')}
                                 className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm uppercase tracking-widest text-white/70 border border-white/10 hover:border-white/25 hover:text-white transition-all duration-200 bg-white/[0.03]"
                             >
                                 <Clock size={15} />
@@ -139,18 +172,48 @@ export default function PlayerDashboard() {
                     </div>
 
                     {/* Right: Rank card */}
-                    <div className="shrink-0 flex flex-col items-center justify-center rounded-2xl border border-white/10 px-8 py-5 text-center"
-                        style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)' }}>
-                        <div className="relative mb-2">
-                            <div className="text-5xl" style={{ filter: 'drop-shadow(0 0 12px rgba(185,162,80,0.6))' }}>💎</div>
-                        </div>
-                        <div className="text-xl font-black text-white uppercase tracking-tight">Diamond II</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: '#00ff00' }}>Top 5% · 2,840 MMR</div>
-                        <div className="w-full mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                            <div className="h-full rounded-full" style={{ width: '65%', background: 'linear-gradient(90deg, #b9a250, #ffd700)', boxShadow: '0 0 6px rgba(255,215,0,0.4)' }} />
-                        </div>
-                        <div className="text-[9px] font-bold text-white/30 mt-1 uppercase tracking-widest">650 / 1000 to Diamond I</div>
-                    </div>
+                    {(() => {
+                        const cfg = RANK_CONFIG[playerStats?.rank ?? ''] ?? RANK_CONFIG['Diamond'];
+                        const elo = playerStats?.elo ?? 0;
+                        const progress = cfg ? Math.min(100, Math.round(((elo - cfg.min) / (cfg.max - cfg.min)) * 100)) : 0;
+                        const toNext = cfg ? Math.max(0, cfg.max - elo) : 0;
+                        return (
+                            <div className="shrink-0 flex flex-col items-center justify-center rounded-2xl border px-8 py-5 text-center transition-all"
+                                style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)', borderColor: cfg ? `${cfg.color}30` : 'rgba(255,255,255,0.1)' }}>
+                                {statsLoading ? (
+                                    <div className="flex flex-col items-center gap-2 w-28">
+                                        <div className="w-12 h-12 rounded-full bg-white/5 animate-pulse" />
+                                        <div className="h-4 w-24 bg-white/5 rounded animate-pulse" />
+                                        <div className="h-3 w-20 bg-white/5 rounded animate-pulse" />
+                                        <div className="h-1.5 w-full bg-white/5 rounded-full animate-pulse mt-1" />
+                                    </div>
+                                ) : playerStats ? (
+                                    <>
+                                        <div className="text-5xl mb-2" style={{ filter: `drop-shadow(0 0 14px ${cfg.color}60)` }}>
+                                            {cfg.emoji}
+                                        </div>
+                                        <div className="text-xl font-black text-white uppercase tracking-tight">{playerStats.rank}</div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: cfg.color }}>
+                                            {elo.toLocaleString()} ELO
+                                        </div>
+                                        <div className="w-full mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                            <div className="h-full rounded-full transition-all duration-700"
+                                                style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${cfg.color}80, ${cfg.color})`, boxShadow: `0 0 6px ${cfg.color}60` }} />
+                                        </div>
+                                        <div className="text-[9px] font-bold text-white/30 mt-1 uppercase tracking-widest">
+                                            {cfg.next ? `${toNext.toLocaleString()} ELO to ${cfg.next}` : 'Max Rank'}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="text-5xl mb-2 opacity-30">?</div>
+                                        <div className="text-sm font-black text-white/30 uppercase tracking-tight">No Rank</div>
+                                        <div className="text-[9px] font-bold text-white/20 mt-1">Play matches to rank up</div>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
 
@@ -691,3 +754,89 @@ function HudStat({ icon, label, value, sub, color }: {
     );
 }
 
+// ─── App Required Modal ───────────────────────────────────────────────────────
+
+function AppRequiredModal({ type, onClose }: { type: 'match' | 'scrims'; onClose: () => void }) {
+    const isScrims = type === 'scrims';
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+            onClick={onClose}
+        >
+            <div
+                className="relative w-full max-w-md rounded-3xl overflow-hidden border border-white/10"
+                style={{ background: 'linear-gradient(135deg, #0d0d0f 0%, #0a1a0a 100%)' }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Glow top */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-24 rounded-full blur-[60px] pointer-events-none"
+                    style={{ background: 'rgba(0,255,0,0.12)' }} />
+
+                {/* Close */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
+                >
+                    <X size={14} />
+                </button>
+
+                <div className="relative p-8 text-center">
+                    {/* Icon */}
+                    <div className="flex items-center justify-center mb-5">
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center border border-[rgba(0,255,0,0.25)]"
+                            style={{ background: 'rgba(0,255,0,0.08)', boxShadow: '0 0 30px rgba(0,255,0,0.15)' }}>
+                            {isScrims ? <Clock size={28} style={{ color: '#00ff00' }} /> : <Swords size={28} style={{ color: '#00ff00' }} />}
+                        </div>
+                    </div>
+
+                    {/* Title */}
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-2" style={{ color: 'rgba(0,255,0,0.6)' }}>
+                        App Required
+                    </p>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-white leading-tight mb-3">
+                        {isScrims ? 'Schedule Scrims' : 'Find Match'}
+                    </h2>
+                    <p className="text-sm text-white/40 leading-relaxed mb-8">
+                        {isScrims
+                            ? 'Scrim scheduling and team coordination are available exclusively on the ArenaChain mobile and desktop apps for the best competitive experience.'
+                            : 'Real-time matchmaking requires the ArenaChain mobile or desktop app to ensure the lowest latency and best competitive performance.'}
+                    </p>
+
+                    {/* App options */}
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="flex flex-col items-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-[rgba(0,255,0,0.3)] hover:bg-[rgba(0,255,0,0.05)] transition-all cursor-pointer group">
+                            <Smartphone size={28} className="text-white/50 group-hover:text-[#00ff00] transition-colors" />
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-white group-hover:text-[#00ff00] transition-colors">Mobile App</p>
+                                <p className="text-[10px] text-white/30 mt-0.5">iOS & Android</p>
+                            </div>
+                            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 group-hover:text-[#00ff00]/60 transition-colors">
+                                Download <ArrowRight size={9} />
+                            </span>
+                        </div>
+                        <div className="flex flex-col items-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-[rgba(0,255,0,0.3)] hover:bg-[rgba(0,255,0,0.05)] transition-all cursor-pointer group">
+                            <Monitor size={28} className="text-white/50 group-hover:text-[#00ff00] transition-colors" />
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-white group-hover:text-[#00ff00] transition-colors">Desktop App</p>
+                                <p className="text-[10px] text-white/30 mt-0.5">Windows & macOS</p>
+                            </div>
+                            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 group-hover:text-[#00ff00]/60 transition-colors">
+                                Download <ArrowRight size={9} />
+                            </span>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={onClose}
+                        className="w-full py-2.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] text-white/40 hover:text-white text-xs font-black uppercase tracking-widest transition-all"
+                    >
+                        Maybe Later
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}

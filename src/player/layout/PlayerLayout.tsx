@@ -111,18 +111,120 @@ export default function PlayerLayout() {
     return (
         <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-text">
             {/* ═══ Unified Shell ═══ */}
-            <div className="flex flex-1 bg-[#111214] rounded-3xl overflow-hidden">
-                {/* ═══ Left Icon Sidebar (Slim) ═══ */}
-                <aside className="relative flex flex-col shrink-0 w-[68px] h-full z-40 bg-[#060708] border-r border-white/5">
-                    {/* Logo */}
-                    <div className="h-16 flex items-center justify-center shrink-0">
+            <div className="flex flex-col flex-1 bg-[#111214] rounded-3xl overflow-hidden">
+                {/* ═══ Full-width Unified Header ═══ */}
+                <header className="h-16 shrink-0 flex items-center z-30 border-b border-white/5 bg-[#060708]">
+                    {/* Logo — sits above the icon sidebar */}
+                    <div className="w-[68px] h-full flex items-center justify-center shrink-0 border-r border-white/5">
                         <NavLink to="/player/dashboard">
                             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black font-black text-lg shadow-[0_0_20px_rgba(0,255,136,0.3)] hover:scale-105 transition-all">
                                 A
                             </div>
                         </NavLink>
                     </div>
+                    {/* Nav links + right controls */}
+                    <div className="flex flex-1 items-center justify-between px-8">
+                        <div className="flex items-center gap-6">
+                            {isSidebarCollapsed && (
+                                <button
+                                    onClick={() => setIsSidebarCollapsed(false)}
+                                    className="w-9 h-9 rounded-xl border border-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-all"
+                                >
+                                    <ChevronRight size={18} />
+                                </button>
+                            )}
+                            <nav className="flex items-center gap-2">
+                                {TOP_NAV_LINKS.map(link => (
+                                    <NavLink
+                                        key={link.to}
+                                        to={link.to}
+                                        className={({ isActive }) => cn(
+                                            "flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300",
+                                            isActive
+                                                ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(0,255,135,0.1)]"
+                                                : "text-white/40 hover:text-white hover:bg-white/5"
+                                        )}
+                                    >
+                                        {({ isActive }) => (
+                                            <>
+                                                {isActive ? <Circle size={4} className="fill-primary animate-pulse" /> : <span className="opacity-40">{link.icon}</span>}
+                                                <span className="hidden xl:inline">{link.label}</span>
+                                            </>
+                                        )}
+                                    </NavLink>
+                                ))}
+                            </nav>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="hidden lg:flex items-center relative w-64">
+                                <Search className="absolute left-3 w-4 h-4 text-text-muted" />
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    className="w-full bg-white/5 border border-white/5 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-primary/40 transition-colors"
+                                />
+                            </div>
+                            <button className="relative p-2 rounded-xl hover:bg-white/5 text-text-muted hover:text-white transition-colors">
+                                <Bell size={18} />
+                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                            </button>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                    className="flex items-center gap-3 p-1 rounded-2xl border border-transparent hover:border-white/10 hover:bg-white/5 transition-all"
+                                >
+                                    <div className="w-9 h-9 rounded-2xl bg-[#16191d] border border-white/10 flex items-center justify-center p-0.5 overflow-hidden">
+                                        <img
+                                            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+                                            alt="Player"
+                                            className="w-full h-full rounded-xl object-cover"
+                                        />
+                                    </div>
+                                    <div className="hidden md:flex flex-col items-start">
+                                        <span className="text-[11px] font-black text-white leading-none uppercase tracking-tighter italic">Player One</span>
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                            <span className="text-[9px] text-primary font-black uppercase tracking-widest leading-none">Elite</span>
+                                        </div>
+                                    </div>
+                                    <ChevronDown size={14} className="text-white/20 ml-1 hidden md:block" />
+                                </button>
+                                {isProfileOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                                        <div className="absolute right-0 top-full mt-3 w-60 bg-[#0c0e11] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-3xl animate-in fade-in zoom-in duration-200">
+                                            <div className="p-5 border-b border-white/5 bg-white/5">
+                                                <p className="text-sm font-black text-white italic">PLAYER ONE</p>
+                                                <p className="text-[10px] text-white/40 font-bold tracking-wider mt-0.5 uppercase">player.one@arena.com</p>
+                                            </div>
+                                            <div className="p-2">
+                                                {[
+                                                    { to: '/player/profile', label: 'Mon Profil', icon: User },
+                                                    { to: '/player/settings', label: 'Paramètres', icon: Settings },
+                                                ].map(item => (
+                                                    <button key={item.to} onClick={() => { navigate(item.to); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                                                        <item.icon size={15} className="opacity-40" /> {item.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="p-2 border-t border-white/5">
+                                                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-400 hover:bg-red-400/10 rounded-xl transition-all">
+                                                    <LogOut size={15} /> Déconnexion
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </header>
 
+                {/* ═══ Body: Sidebars + Content ═══ */}
+                <div className="flex flex-1 overflow-hidden">
+
+                {/* ═══ Left Icon Sidebar (Slim) ═══ */}
+                <aside className="relative flex flex-col shrink-0 w-[68px] h-full z-40 bg-[#060708] border-r border-white/5">
                 {/* Main nav icons */}
                 <nav className="flex-1 flex flex-col items-center gap-1 py-4">
                     {SIDE_NAV_LINKS.map(link => (
@@ -205,113 +307,7 @@ export default function PlayerLayout() {
                     </div>
                 </aside>
 
-                {/* ═══ Right: Top bar + Content ═══ */}
-                <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#060708]">
-                    {/* ── Top Navbar ── */}
-                    <header className="h-16 shrink-0 flex items-center justify-between px-8 z-30 border-b border-white/5 backdrop-blur-md bg-[#0a0c0f]/80">
-                        <div className="flex items-center gap-6">
-                            {isSidebarCollapsed && (
-                                <button
-                                    onClick={() => setIsSidebarCollapsed(false)}
-                                    className="w-9 h-9 rounded-xl border border-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-all"
-                                >
-                                    <ChevronRight size={18} />
-                                </button>
-                            )}
-                            {/* Left: Top nav links */}
-                            <nav className="flex items-center gap-2">
-                                {TOP_NAV_LINKS.map(link => (
-                                    <NavLink
-                                        key={link.to}
-                                        to={link.to}
-                                        className={({ isActive }) => cn(
-                                            "flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300",
-                                            isActive
-                                                ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(0,255,135,0.1)]"
-                                                : "text-white/40 hover:text-white hover:bg-white/5"
-                                        )}
-                                    >
-                                        {({ isActive }) => (
-                                            <>
-                                                {isActive ? <Circle size={4} className="fill-primary animate-pulse" /> : <span className="opacity-40">{link.icon}</span>}
-                                                <span className="hidden xl:inline">{link.label}</span>
-                                            </>
-                                        )}
-                                    </NavLink>
-                                ))}
-                            </nav>
-                        </div>
-
-                    {/* Right: Search + Bell + Profile */}
-                    <div className="flex items-center gap-4">
-                        <div className="hidden lg:flex items-center relative w-64">
-                            <Search className="absolute left-3 w-4 h-4 text-text-muted" />
-                            <input
-                                type="text"
-                                placeholder="Search..."
-                                className="w-full bg-white/5 border border-white/5 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-primary/40 transition-colors"
-                            />
-                        </div>
-
-                        <button className="relative p-2 rounded-xl hover:bg-white/5 text-text-muted hover:text-white transition-colors">
-                            <Bell size={18} />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-                        </button>
-
-                            {/* Profile */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                    className="flex items-center gap-3 p-1 rounded-2xl border border-transparent hover:border-white/10 hover:bg-white/5 transition-all"
-                                >
-                                    <div className="w-9 h-9 rounded-2xl bg-[#16191d] border border-white/10 flex items-center justify-center p-0.5 overflow-hidden">
-                                        <img
-                                            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-                                            alt="Player"
-                                            className="w-full h-full rounded-xl object-cover"
-                                        />
-                                    </div>
-                                    <div className="hidden md:flex flex-col items-start">
-                                        <span className="text-[11px] font-black text-white leading-none uppercase tracking-tighter italic">Player One</span>
-                                        <div className="flex items-center gap-1.5 mt-1">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                            <span className="text-[9px] text-primary font-black uppercase tracking-widest leading-none">Elite</span>
-                                        </div>
-                                    </div>
-                                    <ChevronDown size={14} className="text-white/20 ml-1 hidden md:block" />
-                                </button>
-
-                                {isProfileOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
-                                        <div className="absolute right-0 top-full mt-3 w-60 bg-[#0c0e11] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-3xl animate-in fade-in zoom-in duration-200">
-                                            <div className="p-5 border-b border-white/5 bg-white/5">
-                                                <p className="text-sm font-black text-white italic">PLAYER ONE</p>
-                                                <p className="text-[10px] text-white/40 font-bold tracking-wider mt-0.5 uppercase">player.one@arena.com</p>
-                                            </div>
-                                            <div className="p-2">
-                                                {[
-                                                    { to: '/player/profile', label: 'Mon Profil', icon: User },
-                                                    { to: '/player/settings', label: 'Paramètres', icon: Settings },
-                                                ].map(item => (
-                                                    <button key={item.to} onClick={() => { navigate(item.to); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all">
-                                                        <item.icon size={15} className="opacity-40" /> {item.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            <div className="p-2 border-t border-white/5">
-                                                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-400 hover:bg-red-400/10 rounded-xl transition-all">
-                                                    <LogOut size={15} /> Déconnexion
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </header>
-
-                    {/* ── Page Content ── */}
+                    {/* ═══ Main Content ═══ */}
                     <main className="flex-1 overflow-auto bg-[#0a0c0f] scrollbar-hide">
                         <div className={cn(
                             "transition-all duration-500",
