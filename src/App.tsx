@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Home from './_public/home';
@@ -71,7 +70,7 @@ import ChannelStudioPage from './university/pages/ChannelStudioPage';
 import GoLivePage from './university/pages/GoLivePage';
 import AllLivesPage from './university/pages/AllLivesPage';
 import WatchChannelPage from './university/pages/WatchChannelPage';
-import ChannelDetailPage from './university/pages/ChannelDetailPage.tsx';
+import ChannelDetailPage from './university/pages/ChannelDetailPage';
 
 
 // Admin misc

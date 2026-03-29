@@ -637,10 +637,10 @@ const BRAND_PARTNERS: BrandPartner[] = [
     { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
     { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
     { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'Logitech G',  logo: si('logitechg','00b8f1'),   color: '#00b8f1', bg: 'rgba(0,184,241,0.07)',  category: 'Peripherals'   },
+    { title: 'Logitech G',  logo: si('logitech','00b8f1'),   color: '#00b8f1', bg: 'rgba(0,184,241,0.07)',  category: 'Peripherals'   },
     { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
     { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
-    { title: 'Kingston',    logo: si('kingston','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
+    { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
     // duplicates
     { title: 'Alienware',   logo: si('alienware','00baff'),   color: '#00baff', bg: 'rgba(0,186,255,0.07)',  category: 'Gaming PCs'    },
     { title: 'ASUS ROG',    logo: si('asus','cc0000'),        color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Hardware'      },
@@ -648,10 +648,10 @@ const BRAND_PARTNERS: BrandPartner[] = [
     { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
     { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
     { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'Logitech G',  logo: si('logitechg','00b8f1'),   color: '#00b8f1', bg: 'rgba(0,184,241,0.07)',  category: 'Peripherals'   },
+    { title: 'Logitech G',  logo: si('logitech','00b8f1'),   color: '#00b8f1', bg: 'rgba(0,184,241,0.07)',  category: 'Peripherals'   },
     { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
     { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
-    { title: 'Kingston',    logo: si('kingston','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
+    { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
 ];
 
 // ─── Partners carousel ────────────────────────────────────────────────────────

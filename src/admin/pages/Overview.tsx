@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Users, Trophy, Swords, DollarSign, TrendingUp, Activity } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -82,7 +83,23 @@ export default function AdminDashboard() {
     );
 }
 
-function StatCard({ title, value }: { title: string; value: string }) {
+type StatCardProps = {
+    title: string;
+    value: string;
+    change: string;
+    icon: ReactNode;
+    trend: 'up' | 'down';
+    changeColor?: string;
+};
+
+function StatCard({
+    title,
+    value,
+    change,
+    icon,
+    trend,
+    changeColor = 'text-green-500',
+}: StatCardProps) {
     return (
         <div className="bg-surface border border-white/5 rounded-xl p-6 hover:border-primary/30 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,255,0,0.05)] group">
             <div className="flex items-start justify-between mb-4">
@@ -94,7 +111,7 @@ function StatCard({ title, value }: { title: string; value: string }) {
                     {icon}
                 </div>
             </div>
-            <div className={cn("text-xs font-medium flex items-center gap-1", changeColor)}>
+            <div className={cn('text-xs font-medium flex items-center gap-1', changeColor)}>
                 {trend === 'up' && <TrendingUp className="w-3 h-3" />}
                 {change}
             </div>

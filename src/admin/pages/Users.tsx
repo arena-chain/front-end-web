@@ -511,6 +511,7 @@ export default function Users() {
                 </div>
             </div>
 
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={addModalTitle}>
                 <form onSubmit={handleAddUser} className="space-y-4 p-6">
                     <div>
                         <label className="block text-sm font-medium text-text-muted mb-1">Email</label>
@@ -551,6 +552,10 @@ export default function Users() {
                     )}
 
                     <div className="flex gap-2 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit">Create user</Button>
                     </div>
                 </form>
             </Modal>
