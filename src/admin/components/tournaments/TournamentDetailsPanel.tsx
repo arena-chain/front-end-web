@@ -435,7 +435,7 @@ const TournamentDetailsPanel: React.FC<TournamentDetailsPanelProps> = ({
                     ].map((tab) => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
+                            onClick={() => setActiveTab(tab.id as 'overview' | 'teams' | 'bracket' | 'management')}
                             className={`px-4 py-3 text-sm font-bold transition-all border-b-2 ${activeTab === tab.id
                                 ? 'text-white border-primary'
                                 : 'text-text-muted border-transparent hover:text-white hover:border-white/20'

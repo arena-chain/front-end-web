@@ -160,9 +160,10 @@ export default function BracketsPage() {
             setBracket(b);
             setShowGenForm(false);
             notify('Bracket generated!', 'ok');
-        } catch (e: any) {
-            const msg = e?.response?.data?.message || e?.message || 'Unknown error';
-            console.error('Generation failed', msg, e?.response?.data);
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { message?: string } }; message?: string };
+            const msg = err?.response?.data?.message || err?.message || 'Unknown error';
+            console.error('Generation failed', msg, err?.response?.data);
             notify(`Generation failed: ${msg}`, 'err');
         }
         finally { setGenerating(false); }

@@ -1,7 +1,7 @@
 export interface UserProfile {
     isPro?: boolean;
     isVerified?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface User {

@@ -14,7 +14,7 @@ type Region = 'ALL' | 'EU' | 'NA' | 'AS' | 'AF' | 'OCE' | 'SA';
 type RankTier = 'Radiant' | 'Immortal' | 'Diamond' | 'Platinum' | 'Gold' | 'Silver' | 'Bronze';
 
 interface Player {
-    id: number;
+    id: string | number;
     name: string;
     avatar: string;
     country: string;
@@ -85,17 +85,24 @@ const GAMES = ['All Games', 'Valorant', 'LoL', 'CS2'];
 
 type SortKey = 'elo' | 'winRate' | 'kd' | 'matches';
 
+interface ApiPlayer {
+    _id: string;
+    userId?: { nickname?: string; avatar?: string; country?: string; region?: string };
+    rank?: string;
+    elo?: number;
+    isPro?: boolean;
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function PlayerRankings() {
-    const { profile: myProfile } = useOutletContext<any>() || {};
-    const myNickname = myProfile?.nickname || 'Player One';
+    const myNickname = useOutletContext<{ profile?: { nickname?: string } | null } | null>()?.profile?.nickname || 'Player One';
 
     const [region, setRegion]     = useState<Region>('ALL');
     const [game, setGame]         = useState('All Games');
     const [search, setSearch]     = useState('');
     const [sortBy, setSortBy]     = useState<SortKey>('elo');
-    const [expanded, setExpanded] = useState<number | null>(null);
+    const [expanded, setExpanded] = useState<string | number | null>(null);
     const [tierFilter] = useState<RankTier | 'ALL'>('ALL');
     const [players, setPlayers] = useState<Player[]>([]);
     const [loading, setLoading] = useState(true);
@@ -111,12 +118,12 @@ export default function PlayerRankings() {
                 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
                 const res = await axios.get(`${API_URL}/player`);
 
-                const mappedPlayers: Player[] = res.data.map((p: any) => ({
+                const mappedPlayers: Player[] = (res.data as ApiPlayer[]).map((p) => ({
                     id: p._id,
                     name: p.userId?.nickname || 'Unknown',
                     avatar: p.userId?.avatar || 'Felix',
                     country: p.userId?.country || 'Unknown',
-                    countryCode: countryCodeMap[p.userId?.country?.toUpperCase()] || '🌍',
+                    countryCode: countryCodeMap[p.userId?.country?.toUpperCase() ?? ''] || '🌍',
                     region: (p.userId?.region || 'EU') as Region,
                     tier: (p.rank || 'Diamond') as RankTier,
                     elo: p.elo || 1000,
@@ -142,13 +149,14 @@ export default function PlayerRankings() {
     }, []);
 
     const filtered = useMemo(() => {
-        return MOCK_PLAYERS
+        const data = players.length > 0 ? players : MOCK_PLAYERS;
+        return data
             .filter(p => region === 'ALL' || p.region === region)
             .filter(p => game === 'All Games' || p.game === game)
             .filter(p => tierFilter === 'ALL' || p.tier === tierFilter)
             .filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.country.toLowerCase().includes(search.toLowerCase()))
             .sort((a, b) => b[sortBy] - a[sortBy]);
-    }, [region, game, search, sortBy, tierFilter]);
+    }, [region, game, search, sortBy, tierFilter, players]);
 
     const topThree = filtered.slice(0, 3);
 
@@ -201,6 +209,7 @@ export default function PlayerRankings() {
                         <input value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search player or country…"
                             className="w-full rounded-2xl pl-10 pr-4 py-3 text-sm font-medium text-white placeholder-white/20 outline-none transition-all"
+                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }} />
                     </div>
                     <div className="flex gap-1.5 p-1.5 rounded-2xl" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.06)' }}>
                         {GAMES.map(g => (
@@ -259,6 +268,7 @@ export default function PlayerRankings() {
                             { medal:'🥉', glowColor:'rgba(234,88,12,0.15)',   ring:'rgba(234,88,12,0.4)'    },
                         ];
                         const pc = podiumColors[visualIdx];
+                        const tc = TIER_CONFIG[p.tier] || TIER_CONFIG.Diamond;
                         return (
                             <div key={p.id} className={cn("flex flex-col items-center rounded-3xl p-5 transition-all duration-200 relative overflow-hidden", visualIdx === 1 ? 'pt-0' : 'pt-8')}
                                 style={{ background: '#0d0d0d', border: `1px solid ${pc.ring.replace('0.4','0.2').replace('0.6','0.25')}`, boxShadow: `0 0 30px ${pc.glowColor}` }}>
@@ -442,8 +452,10 @@ export default function PlayerRankings() {
                         </div>
                     )}
                 </div>
-            </div>
+                </>
+            )}
         </div>
+    </div>
     );
 }
 

@@ -56,7 +56,7 @@ export default function TicketDetails() {
         );
     }
 
-    const tournament = typeof ticket.tournament === 'string' ? null : (ticket.tournament as any);
+    const tournament = typeof ticket.tournament === 'string' ? null : ticket.tournament;
 
     const getStatusColor = (status: string) => {
         switch (status) {

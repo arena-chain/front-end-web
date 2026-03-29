@@ -63,8 +63,8 @@ export default function TicketBooking() {
             await ticketService.bookTicket(tournament._id, selectedTicket.name, quantity);
             // Navigate to My Tickets on success
             navigate('/player/my-tickets');
-        } catch (error: any) {
-            alert(`Booking failed: ${error.message}`);
+        } catch (error: unknown) {
+            alert(`Booking failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setBookingLoading(false);
         }

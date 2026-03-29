@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -7,7 +7,6 @@ import {
     Heart,
     MessageSquare,
     Calendar,
-    ArrowLeft,
     Clock,
 } from 'lucide-react';
 import { Badge, Button } from '../../components/ui/core';
@@ -45,11 +44,6 @@ export default function ChannelDetailPage() {
             setLoading(false);
         }
     }
-
-    const totalLikes = useMemo(() => {
-        // Simulated: Aggregate viewer counts or random seed if no likes in DB
-        return (channel?.subscriberCount || 0) * 12 + streams.length * 45;
-    }, [channel, streams]);
 
     const formatDate = (value?: string) => {
         if (!value) return '—';
@@ -138,14 +132,14 @@ export default function ChannelDetailPage() {
                                         </div>
                                         <div className="w-1 h-1 rounded-full bg-white/10" />
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm font-black text-white/80 uppercase tracking-widest italic">{channel.categories[0] || 'Gaming'}</span>
+                                            <span className="text-sm font-black text-white/80 uppercase tracking-widest italic">{channel.categories?.[0] || 'Gaming'}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Tags Row */}
                                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                                    {channel.categories.map(cat => (
+                                    {(channel.categories ?? []).map(cat => (
                                         <Badge key={cat} variant="secondary" className="bg-white/5 border-white/5 text-[9px] font-black px-4 py-1 uppercase tracking-widest transition-colors hover:border-primary/40 hover:text-primary">
                                             {cat}
                                         </Badge>
@@ -194,7 +188,7 @@ export default function ChannelDetailPage() {
                     ].map((tab, idx) => (
                         <button
                             key={`${tab.id}-${idx}`}
-                            onClick={() => setActiveTab(tab.id as any)}
+                            onClick={() => setActiveTab(tab.id as 'videos' | 'community' | 'about')}
                             className={cn(
                                 "pb-4 text-xs font-black uppercase tracking-[0.25em] transition-all relative group/tab italic",
                                 activeTab === tab.id && idx !== 0 ? "text-primary invisible" : "", // Small hack for multi-videos tabs
@@ -313,7 +307,7 @@ export default function ChannelDetailPage() {
                                 <section className="space-y-6">
                                     <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.4em] italic pl-2">Spécialisations</h3>
                                     <div className="flex flex-wrap gap-3">
-                                        {channel.categories.map(cat => (
+                                        {(channel.categories ?? []).map(cat => (
                                             <Link key={cat} to={`/player/all-lives?category=${encodeURIComponent(cat)}`}>
                                                 <div className="px-8 py-4 bg-[#0f1115] border border-white/5 rounded-2xl text-xs font-black text-white uppercase tracking-widest hover:border-primary/40 hover:text-primary transition-all cursor-pointer shadow-lg">
                                                     {cat}

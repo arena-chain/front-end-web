@@ -171,7 +171,7 @@ export default function Reservations() {
                                         <span className="text-sm font-medium text-white">
                                             {typeof reservation.tournament === 'string'
                                                 ? reservation.tournament
-                                                : (reservation.tournament as any).name}
+                                                : reservation.tournament?.name}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">

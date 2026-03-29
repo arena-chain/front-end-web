@@ -83,7 +83,7 @@ export default function PlayerProfile() {
             });
             setEditing(false);
             fetchProfile();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error updating profile:', error);
         }
     };

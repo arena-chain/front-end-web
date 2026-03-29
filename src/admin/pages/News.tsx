@@ -81,13 +81,13 @@ export default function NewsManagement() {
         e.preventDefault();
         setIsCreating(true);
         try {
-            const cleanArticle: any = { ...newArticle };
+            const cleanArticle: Record<string, unknown> = { ...newArticle };
             if (!cleanArticle.sourceUrl) delete cleanArticle.sourceUrl;
             if (!cleanArticle.coverImageUrl) delete cleanArticle.coverImageUrl;
 
             const articleToCreate = {
                 ...cleanArticle,
-                publishedAt: new Date(),
+                publishedAt: new Date().toISOString(),
                 language: 'en',
                 status: 'published' as const,
                 tags: [newArticle.game, newArticle.category]
@@ -106,9 +106,10 @@ export default function NewsManagement() {
             });
             await fetchNews(true);
             alert(`Article "${created.title}" successfully published!`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Creation failed:', error);
-            alert(`Failed to create article: ${error.response?.data?.message || error.message}`);
+            const e = error as { response?: { data?: { message?: string } }; message?: string };
+            alert(`Failed to create article: ${e.response?.data?.message || e.message}`);
         } finally {
             setIsCreating(false);
         }

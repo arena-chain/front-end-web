@@ -32,11 +32,19 @@ export interface TicketType {
     bundles?: Bundle[];     // Optional bundle discounts
 }
 
+export interface TournamentInfo {
+    _id?: string;
+    name?: string;
+    startDate?: string;
+    bannerImageUrl?: string;
+    [key: string]: unknown;
+}
+
 // Ticket interface
 export interface Ticket {
     _id: string;
     ticketNumber: string;
-    tournament: string;      // Tournament ID or populated object
+    tournament: string | TournamentInfo;      // Tournament ID or populated object
     user: string;            // User ID or populated object
     status: TicketStatus;
     price: number;
@@ -54,7 +62,7 @@ export interface Ticket {
 export interface Reservation {
     _id: string;
     user: string;            // User ID or populated object
-    tournament: string;      // Tournament ID or populated object
+    tournament: string | TournamentInfo;      // Tournament ID or populated object
     tickets: string[] | Ticket[];  // Array of ticket IDs or populated tickets
     status: ReservationStatus;
     totalPrice: number;

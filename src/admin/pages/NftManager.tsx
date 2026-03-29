@@ -72,8 +72,8 @@ export default function NftManager() {
             await nftCoreService.delete(id);
             setNfts(prev => prev.filter(n => n._id !== id));
             if (selectedNft?._id === id) setSelectedNft(null);
-        } catch (e: any) {
-            alert(e?.response?.data?.message || 'Delete failed');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Delete failed');
         }
     };
 
@@ -252,8 +252,8 @@ function NftDetailPanel({ nft, onClose, onDelete, onRefresh }: {
             alert('Minted successfully!');
             setMintWallet('');
             onRefresh();
-        } catch (e: any) {
-            alert(e?.response?.data?.message || 'Mint failed');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Mint failed');
         } finally {
             setMinting(false);
         }
@@ -567,8 +567,8 @@ function CreateNftModal({ collections, onClose, onCreated }: {
             }
 
             onCreated(created);
-        } catch (e: any) {
-            alert(e?.response?.data?.message || 'Creation failed');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Creation failed');
         } finally {
             setSaving(false);
         }
@@ -860,8 +860,8 @@ function AddAttributeModal({ nftId, onClose, onAdded }: { nftId: string; onClose
                 maxValue: form.maxValue ? +form.maxValue : undefined,
             });
             onAdded();
-        } catch (e: any) {
-            alert(e?.response?.data?.message || 'Add failed');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Add failed');
         } finally {
             setSaving(false);
         }
@@ -927,8 +927,8 @@ function AirdropModal({ nftId, onClose, onDone }: { nftId: string; onClose: () =
             await nftMintService.airdrop({ nftId, toUserId: userId, walletAddress: wallet || undefined });
             alert('Airdrop successful!');
             onDone();
-        } catch (e: any) {
-            alert(e?.response?.data?.message || 'Airdrop failed');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Airdrop failed');
         } finally {
             setSaving(false);
         }

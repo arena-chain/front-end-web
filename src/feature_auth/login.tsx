@@ -61,9 +61,9 @@ export default function Login() {
             } else {
                 navigate('/player'); // Default for players and uncertain roles
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Login error:', err);
-            const errorMessage = err.message || 'Invalid credentials. Please try again.';
+            const errorMessage = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {

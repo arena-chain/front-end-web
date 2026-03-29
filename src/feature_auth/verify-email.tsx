@@ -30,9 +30,9 @@ export default function VerifyEmail() {
             await AuthService.verifyEmail(email, otp);
             toast.success('Email verified successfully! You can now log in.');
             navigate('/login');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Email verification error:', err);
-            const errorMessage = err.message || 'Verification failed. Please check your code.';
+            const errorMessage = err instanceof Error ? err.message : 'Verification failed. Please check your code.';
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -50,8 +50,8 @@ export default function VerifyEmail() {
         try {
             await AuthService.resendOtp(email);
             toast.success('New verification code sent to your email!');
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to resend code');
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to resend code');
         } finally {
             setResending(false);
         }

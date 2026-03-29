@@ -203,8 +203,9 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
 
             await onSubmit(payload);
             onClose();
-        } catch (err: any) {
-            const msg = err?.response?.data?.message || err?.message || 'Something went wrong';
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } }; message?: string };
+            const msg = e?.response?.data?.message || e?.message || 'Something went wrong';
             setErrors({ name: Array.isArray(msg) ? msg.join(', ') : msg });
         } finally {
             setSubmitting(false);
@@ -285,7 +286,7 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ isOpen, onClose, 
                                 </select>
                                 {selectedGame?.logoUrl || selectedGame?.coverImageUrl ? (
                                     <img
-                                        src={(selectedGame as any).logoUrl || selectedGame.coverImageUrl}
+                                        src={(selectedGame as { logoUrl?: string }).logoUrl || selectedGame.coverImageUrl}
                                         alt=""
                                         className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded object-cover pointer-events-none"
                                     />

@@ -26,9 +26,9 @@ export default function ForgotPassword() {
             setTimeout(() => {
                 navigate(`/reset-password?email=${encodeURIComponent(email)}`);
             }, 2000);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Forgot password error:', err);
-            const errorMessage = err.message || 'Failed to send reset code. Please try again.';
+            const errorMessage = err instanceof Error ? err.message : 'Failed to send reset code. Please try again.';
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {

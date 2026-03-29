@@ -21,6 +21,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Circle,
+    Newspaper,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
@@ -50,11 +51,23 @@ const SIDE_NAV_BOTTOM = [
     { to: '/player/settings', icon: <Settings size={22} />, tooltip: 'Settings' },
 ];
 
+interface PlayerProfileData {
+    _id?: string;
+    id?: string;
+    nickname?: string;
+    email?: string;
+    avatar?: string;
+    role?: string;
+}
+
 export default function PlayerLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<PlayerProfileData | null>(null);
+    const [channels, setChannels] = useState<ChannelRecord[]>([]);
+    const [loadingChannels, setLoadingChannels] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -98,7 +111,7 @@ export default function PlayerLayout() {
     return (
         <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-text">
             {/* ═══ Unified Shell ═══ */}
-            <div className="flex flex-1 bg-[#111214] rounded-[24px] overflow-hidden">
+            <div className="flex flex-1 bg-[#111214] rounded-3xl overflow-hidden">
                 {/* ═══ Left Icon Sidebar (Slim) ═══ */}
                 <aside className="relative flex flex-col shrink-0 w-[68px] h-full z-40 bg-[#060708] border-r border-white/5">
                     {/* Logo */}
@@ -304,7 +317,7 @@ export default function PlayerLayout() {
                             "transition-all duration-500",
                             location.pathname.startsWith('/watch/') ? "p-0" : "p-8"
                         )}>
-                            <Outlet />
+                            <Outlet context={{ profile }} />
                         </div>
                     </main>
                 </div>
@@ -318,7 +331,7 @@ export default function PlayerLayout() {
 
 function ChannelSidebarItem({ channel }: { channel: ChannelRecord }) {
     const isLive = channel.isActive; // In a real app check isLive
-    const viewers = Math.floor(Math.random() * 1000) + 100; // Simulated viewers
+    const [viewers] = useState(() => Math.floor(Math.random() * 1000) + 100); // Simulated viewers, stable on mount
 
     return (
         <NavLink
@@ -352,7 +365,7 @@ function ChannelSidebarItem({ channel }: { channel: ChannelRecord }) {
                     )}
                 </div>
                 <p className="text-[10px] font-bold text-white/20 truncate uppercase tracking-widest leading-none mt-0.5">
-                    {channel.categories[0] || "Discussion"}
+                    {channel.categories?.[0] || "Discussion"}
                 </p>
             </div>
         </NavLink>

@@ -92,8 +92,8 @@ export default function PlayerSettings() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Account settings updated successfully');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to update settings');
+        } catch (error: unknown) {
+            toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to update settings');
         } finally {
             setSaving(false);
         }
@@ -142,8 +142,8 @@ export default function PlayerSettings() {
             });
             setTwoFactor(prev => ({ ...prev, enabled: true, modalOpen: false, loading: false, code: '' }));
             toast.success('Pulse-Gate Secured! 2FA is now active.');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Invalid verification code.');
+        } catch (error: unknown) {
+            toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Invalid verification code.');
             setTwoFactor(prev => ({ ...prev, loading: false }));
         }
     };
@@ -168,8 +168,8 @@ export default function PlayerSettings() {
             });
             toast.success('Access keys rotated successfully.');
             setPasswords({ newPassword: '', confirmPassword: '' });
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to update access keys.');
+        } catch (error: unknown) {
+            toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to update access keys.');
         } finally {
             setResettingPassword(false);
         }
@@ -514,6 +514,6 @@ function IntegrationCard({ icon, name, status, color, onClick }: { icon: React.R
     );
 }
 
-function cn(...classes: any[]) {
+function cn(...classes: unknown[]) {
     return classes.filter(Boolean).join(' ');
 }

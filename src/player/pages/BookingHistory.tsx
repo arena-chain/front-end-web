@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Calendar, Ticket, AlertCircle, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Search, Calendar, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Input, Select, Button } from '../../components/ui/core';
 import type { Ticket as TicketType } from '../../models/ticket';
 import { TicketStatus } from '../../models/ticket';
@@ -59,10 +59,10 @@ export default function BookingHistory() {
 
     const sortedTickets = [...tickets].sort((a, b) => {
         const dateA = a.tournament && typeof a.tournament !== 'string'
-            ? new Date((a.tournament as any).startDate).getTime()
+            ? new Date(a.tournament.startDate ?? a.createdAt).getTime()
             : new Date(a.createdAt).getTime();
         const dateB = b.tournament && typeof b.tournament !== 'string'
-            ? new Date((b.tournament as any).startDate).getTime()
+            ? new Date(b.tournament.startDate ?? b.createdAt).getTime()
             : new Date(b.createdAt).getTime();
         return dateB - dateA;
     });
@@ -72,7 +72,7 @@ export default function BookingHistory() {
 
         let tournamentName = '';
         if (ticket.tournament && typeof ticket.tournament !== 'string') {
-            tournamentName = (ticket.tournament as any).name || '';
+            tournamentName = (typeof ticket.tournament !== 'string' ? ticket.tournament?.name : undefined) || '';
         }
 
         const matchesSearch = ticket.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -134,7 +134,7 @@ export default function BookingHistory() {
                 ) : filteredTickets.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {filteredTickets.map((ticket) => {
-                            const tournament = typeof ticket.tournament === 'string' ? null : (ticket.tournament as any);
+                            const tournament = typeof ticket.tournament === 'string' ? null : ticket.tournament;
                             const status = getStatusConfig(ticket.status);
 
                             return (

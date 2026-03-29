@@ -38,7 +38,7 @@ export default function NewsArticlePage() {
         return (
             <div className={cn("min-h-screen bg-background text-white flex flex-col", !isPlayerView && "pt-0")}>
                 {!isPlayerView && <TopNavbar />}
-                <div className="flex-grow flex items-center justify-center">
+                <div className="grow flex items-center justify-center">
                     <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                         <p className="text-primary font-black uppercase tracking-widest text-xs">Decrypting Signal...</p>
@@ -53,7 +53,7 @@ export default function NewsArticlePage() {
         return (
             <div className={cn("min-h-screen bg-background text-white flex flex-col", !isPlayerView && "pt-0")}>
                 {!isPlayerView && <TopNavbar />}
-                <div className="flex-grow flex items-center justify-center">
+                <div className="grow flex items-center justify-center">
                     <div className="text-center p-12 bg-white/5 rounded-[3rem] border border-dashed border-white/10 max-w-lg">
                         <Shield className="w-16 h-16 text-white/10 mx-auto mb-6" />
                         <h1 className="text-4xl font-black uppercase tracking-tighter mb-4">Transmission Lost</h1>
@@ -72,7 +72,7 @@ export default function NewsArticlePage() {
         <div className={cn("min-h-screen bg-background text-white flex flex-col selection:bg-primary selection:text-black", !isPlayerView && "pt-0")}>
             {!isPlayerView && <TopNavbar />}
 
-            <main className={cn("flex-grow pb-24", isPlayerView ? "pt-4" : "pt-32")}>
+            <main className={cn("grow pb-24", isPlayerView ? "pt-4" : "pt-32")}>
                 <div className="container mx-auto px-6 max-w-4xl">
                     <button
                         onClick={() => window.history.back()}
@@ -170,13 +170,6 @@ export default function NewsArticlePage() {
                         </div>
                     </div>
 
-                    <article className="prose prose-invert prose-lg max-w-none prose-headings:font-bold prose-headings:uppercase prose-p:text-gray-300 prose-p:leading-relaxed prose-a:text-primary">
-                        {article.content.split('\n\n').map((paragraph, idx) => (
-                            <p key={idx} className="mb-6">
-                                {paragraph}
-                            </p>
-                        ))}
-                    </article>
                 </div>
             </main>
 

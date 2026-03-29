@@ -39,8 +39,8 @@ export default function NftCollections() {
         try {
             await nftCollectionService.delete(id);
             setCollections(prev => prev.filter(c => c._id !== id));
-        } catch (e: any) {
-            alert(e?.response?.data?.message || 'Delete failed');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Delete failed');
         }
     };
 
@@ -225,8 +225,8 @@ function CollectionModal({ existing, onClose, onSaved }: {
                 await nftCollectionService.create(form);
             }
             onSaved();
-        } catch (e: any) {
-            alert(e?.response?.data?.message || 'Save failed');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Save failed');
         } finally {
             setSaving(false);
         }

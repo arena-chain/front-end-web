@@ -26,7 +26,7 @@ export default function Register() {
         notes: ''
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
@@ -75,9 +75,9 @@ export default function Register() {
 
             toast.success("Account created successfully! Please verify your email.");
             navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Registration error:', error);
-            toast.error(error.message || "Failed to create account");
+            toast.error(error instanceof Error ? error.message : "Failed to create account");
         } finally {
             setLoading(false);
         }
@@ -170,7 +170,7 @@ export default function Register() {
                         <select
                             name="region"
                             value={formData.region}
-                            onChange={(e: any) => handleChange(e)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange(e)}
                             className="w-full px-4 py-3 bg-surface border border-white/10 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all duration-200 text-white text-sm appearance-none cursor-pointer"
                             required
                         >
@@ -215,7 +215,7 @@ export default function Register() {
                                 <select
                                     name="scouterLevel"
                                     value={formData.scouterLevel}
-                                    onChange={(e: any) => setFormData({ ...formData, scouterLevel: e.target.value })}
+                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, scouterLevel: e.target.value })}
                                     className="w-full px-4 py-3 bg-surface border border-white/10 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all duration-200 text-white text-sm appearance-none cursor-pointer"
                                 >
                                     <option value="REGIONAL">Regional</option>

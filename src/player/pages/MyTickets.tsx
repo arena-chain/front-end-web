@@ -17,9 +17,9 @@ export default function MyTickets() {
         try {
             const data = await ticketService.getMyTickets();
             setTickets(data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to fetch tickets:', err);
-            setError(err.message || 'Failed to load tickets');
+            setError(err instanceof Error ? err.message : 'Failed to load tickets');
         } finally {
             setLoading(false);
         }
@@ -102,7 +102,7 @@ function TicketCard({ ticket }: { ticket: Ticket }) {
                 <div className="flex-1 p-6 md:pr-12 flex flex-col justify-between min-h-[220px]">
                     <div>
                         <div className="flex justify-between items-start mb-4">
-                            <Badge variant={getStatusColor(ticket.status) as any} className="uppercase tracking-wider text-[10px]">
+                            <Badge variant={getStatusColor(ticket.status) as 'secondary' | 'success' | 'warning' | 'danger' | 'primary' | 'info'} className="uppercase tracking-wider text-[10px]">
                                 {ticket.status}
                             </Badge>
                             <span className="text-xs font-mono text-white/30 truncate max-w-[100px]">
@@ -111,13 +111,13 @@ function TicketCard({ ticket }: { ticket: Ticket }) {
                         </div>
 
                         <h3 className="text-xl font-black uppercase tracking-tight mb-2 group-hover:text-primary transition-colors">
-                            {(ticket.tournament as any)?.name || 'Tournament Name'}
+                            {typeof ticket.tournament === 'object' ? ticket.tournament?.name || 'Tournament Name' : 'Tournament Name'}
                         </h3>
 
                         <div className="space-y-3 mt-4">
                             <div className="flex items-center gap-3 text-sm text-gray-300">
                                 <Calendar className="w-4 h-4 text-primary opacity-70" />
-                                <span>{(ticket.tournament as any)?.startDate ? new Date((ticket.tournament as any).startDate).toLocaleDateString() : 'Date TBD'}</span>
+                                <span>{typeof ticket.tournament === 'object' && ticket.tournament?.startDate ? new Date(ticket.tournament.startDate).toLocaleDateString() : 'Date TBD'}</span>
                             </div>
                             <div className="flex items-center gap-3 text-sm text-gray-300">
                                 <TicketIcon className="w-4 h-4 text-primary opacity-70" />
