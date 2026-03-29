@@ -616,7 +616,7 @@ const GAME_PARTNERS: GamePartner[] = [
     { title: 'Epic Games',        image: si('epicgames','ffffff'),    type: 'logo', glow: 'rgba(255,255,255,0.35)', category: 'Platform'  },
     { title: 'EA Sports',         image: si('ea','ff4747'),           type: 'logo', glow: 'rgba(255,71,71,0.5)',   category: 'Publisher' },
     { title: 'Ubisoft',           image: si('ubisoft','ffffff'),      type: 'logo', glow: 'rgba(255,255,255,0.3)', category: 'Publisher' },
-    { title: 'Blizzard',          image: si('battlenet','148eff'),    type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
+    { title: 'Blizzard',          image: si('battledotnet','148eff'), type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
     { title: 'Discord',           image: si('discord','5865f2'),      type: 'logo', glow: 'rgba(88,101,242,0.6)',  category: 'Community' },
     // duplicates for seamless loop
     { title: 'Riot Games',        image: riotLogo,      type: 'logo',  glow: 'rgba(211,41,54,0.6)',   category: 'Publisher' },
@@ -626,7 +626,7 @@ const GAME_PARTNERS: GamePartner[] = [
     { title: 'Epic Games',        image: si('epicgames','ffffff'),    type: 'logo', glow: 'rgba(255,255,255,0.35)', category: 'Platform'  },
     { title: 'EA Sports',         image: si('ea','ff4747'),           type: 'logo', glow: 'rgba(255,71,71,0.5)',   category: 'Publisher' },
     { title: 'Ubisoft',           image: si('ubisoft','ffffff'),      type: 'logo', glow: 'rgba(255,255,255,0.3)', category: 'Publisher' },
-    { title: 'Blizzard',          image: si('battlenet','148eff'),    type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
+    { title: 'Blizzard',          image: si('battledotnet','148eff'), type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
     { title: 'Discord',           image: si('discord','5865f2'),      type: 'logo', glow: 'rgba(88,101,242,0.6)',  category: 'Community' },
 ];
 
@@ -637,7 +637,7 @@ const BRAND_PARTNERS: BrandPartner[] = [
     { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
     { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
     { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'Logitech G',  logo: si('logitech','00b8f1'),   color: '#00b8f1', bg: 'rgba(0,184,241,0.07)',  category: 'Peripherals'   },
+    { title: 'HyperX',        logo: si('hyperx','e20813'),     color: '#e20813', bg: 'rgba(226,8,19,0.07)',   category: 'Peripherals'   },
     { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
     { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
     { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
@@ -648,7 +648,7 @@ const BRAND_PARTNERS: BrandPartner[] = [
     { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
     { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
     { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'Logitech G',  logo: si('logitech','00b8f1'),   color: '#00b8f1', bg: 'rgba(0,184,241,0.07)',  category: 'Peripherals'   },
+    { title: 'HyperX',        logo: si('hyperx','e20813'),     color: '#e20813', bg: 'rgba(226,8,19,0.07)',   category: 'Peripherals'   },
     { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
     { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
     { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },

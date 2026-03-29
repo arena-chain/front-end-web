@@ -6,8 +6,10 @@ import type {
     UpdatePhaseStatusDto,
 } from '../models/tournament';
 import { PhaseName } from '../models/tournament';
+import { getApiBase } from '../lib/apiBase';
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/tournements`; // Note: keeping the spelling from the backend
+// Backend controller path (intentional spelling: `tournements`)
+const API_BASE_URL = `${getApiBase()}/tournements`;
 
 class TournamentService {
     /**

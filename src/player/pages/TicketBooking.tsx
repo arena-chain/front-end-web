@@ -6,6 +6,7 @@ import tournamentService from '../../services/tournamentService';
 import ticketService from '../../services/ticketService';
 import type { Tournament } from '../../models/tournament';
 import type { TicketType } from '../../models/ticket';
+import { placeholderImage } from '../../lib/placeholderImage';
 
 export default function TicketBooking() {
     const { id } = useParams();
@@ -105,7 +106,7 @@ export default function TicketBooking() {
             <div className="relative h-64 md:h-80 w-full overflow-hidden">
                 <div className="absolute inset-0">
                     <img
-                        src={tournament.bannerImageUrl || 'https://via.placeholder.com/1920x600'}
+                        src={tournament.bannerImageUrl || placeholderImage(1920, 600, 'Tournament')}
                         alt={tournament.name}
                         className="w-full h-full object-cover"
                     />

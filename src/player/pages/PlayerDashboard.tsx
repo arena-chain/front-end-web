@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { cn } from '../../lib/utils';
+import { getApiBase } from '../../lib/apiBase';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ export default function PlayerDashboard() {
         const fetchStats = async () => {
             setStatsLoading(true);
             const token = localStorage.getItem('token');
-            const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const API = getApiBase();
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             try {
                 const res = await axios.get(`${API}/player/me`, { headers });

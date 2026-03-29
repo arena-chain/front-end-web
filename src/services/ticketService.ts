@@ -1,6 +1,7 @@
 import type { Ticket, UpdateTicketStatusDto } from '../models/ticket';
+import { getApiBase } from '../lib/apiBase';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = getApiBase();
 
 /**
  * Ticket Service - Handles all ticket-related API calls

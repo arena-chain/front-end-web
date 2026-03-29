@@ -4,6 +4,7 @@ import type { Tournament } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -179,13 +180,12 @@ export default function PlayerTournaments() {
 
 function TournamentCard({ tournament, onClick, featured }: { tournament: Tournament; onClick: () => void; featured?: boolean }) {
     const [hovered, setHovered] = useState(false);
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
     const imgUrl = (() => {
         const url = tournament.bannerImageUrl;
         if (!url) return null;
         if (url.startsWith('http')) return url;
-        return `${API_URL}/${url.startsWith('/') ? url.slice(1) : url}`;
+        return resolveBackendAssetUrl(url);
     })();
 
     const gameTitle = typeof tournament.gameId === 'object' ? (tournament.gameId as any)?.title ?? 'Game' : 'Game';

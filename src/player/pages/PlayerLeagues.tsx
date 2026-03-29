@@ -1,15 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Trophy, Users, Globe, Calendar, Loader2,
     User, Swords, Crown, Star, ChevronRight,
     TrendingUp, Clock, Shield,
     ChevronLeft, Video, Play, Eye, Layers,
-    LayoutList, GitBranch, Shuffle, Grid2X2,
+    LayoutList, GitBranch, Shuffle, Grid2X2, Lock, BookOpen,
 } from 'lucide-react';
 import { leagueService, type League, type LeagueParticipant } from '../../services/leagueService';
 import { seasonService, type Season } from '../../services/seasonService';
 import { stageService, type Stage, type StageType, type StageStatus } from '../../services/stageService';
+import {
+    getMatchesBySeason,
+    getAdminStandings,
+    type AdminMatch,
+    type StandingEntry,
+} from '../../services/adminLeagueService';
 import { cn } from '../../lib/utils';
 
 
@@ -25,50 +31,40 @@ type LeagueFull = League & {
 };
 
 type MatchStatus = 'LIVE' | 'UPCOMING' | 'FINISHED';
-interface MockMatch {
+interface DisplayMatch {
     id: string;
     teamA: string; teamB: string;
     scoreA?: number; scoreB?: number;
     date: Date;
     status: MatchStatus;
     round: string;
+    streamUrl?: string;
 }
 
-// ─── Generate mock matches from league date range ─────────────────────────────
-
-function generateMatches(league: LeagueFull): MockMatch[] {
-    const names = ['ShadowBlade', 'NeonPhoenix', 'VoidHunter', 'CyberWolf',
-        'IronFalcon', 'StormRider', 'GhostSniper', 'BlazeRunner'];
-    const start = new Date(league.startDate || Date.now());
-    const end = new Date(league.endDate || Date.now());
-    const now = new Date();
-    const span = Math.max(1, Math.floor((end.getTime() - start.getTime()) / 86400000));
-    const matches: MockMatch[] = [];
-    const rounds = ['Round of 16', 'Quarterfinals', 'Semifinals', 'Grand Final'];
-
-    for (let i = 0; i < 12; i++) {
-        const dayOffset = Math.floor((i / 12) * span);
-        const matchDate = new Date(start);
-        matchDate.setDate(start.getDate() + dayOffset);
-        matchDate.setHours(14 + (i % 4) * 2, i % 2 === 0 ? 0 : 30, 0, 0);
-
-        const diffMs = matchDate.getTime() - now.getTime();
-        const status: MatchStatus =
-            Math.abs(diffMs) < 90 * 60 * 1000 ? 'LIVE' :
-                diffMs < 0 ? 'FINISHED' : 'UPCOMING';
-
-        matches.push({
-            id: `${league._id}-m${i}`,
-            teamA: names[i % names.length],
-            teamB: names[(i + 3) % names.length],
-            scoreA: status === 'FINISHED' ? Math.floor(Math.random() * 10) + 5 : undefined,
-            scoreB: status === 'FINISHED' ? Math.floor(Math.random() * 10) + 3 : undefined,
-            date: matchDate,
-            status,
-            round: rounds[Math.min(Math.floor(i / 3), rounds.length - 1)],
-        });
-    }
-    return matches;
+function adminMatchToDisplay(m: AdminMatch): DisplayMatch {
+    const t1 = typeof m.team1Id === 'object' && m.team1Id?.name ? m.team1Id.name : 'TBD';
+    const t2 = typeof m.team2Id === 'object' && m.team2Id?.name ? m.team2Id.name : 'TBD';
+    const date = new Date(m.scheduledStart);
+    let status: MatchStatus;
+    if (m.status === 'ONGOING') status = 'LIVE';
+    else if (m.status === 'COMPLETED' || m.status === 'FORFEIT') status = 'FINISHED';
+    else status = 'UPCOMING';
+    const round =
+        typeof m.roundId === 'object' && m.roundId?.roundNumber != null
+            ? `Round ${m.roundId.roundNumber}`
+            : 'Match';
+    const done = m.status === 'COMPLETED' || m.status === 'FORFEIT';
+    return {
+        id: m._id,
+        teamA: t1,
+        teamB: t2,
+        scoreA: done ? m.team1GamesWon : undefined,
+        scoreB: done ? m.team2GamesWon : undefined,
+        date,
+        status,
+        round,
+        streamUrl: m.streamUrl,
+    };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -105,17 +101,22 @@ export default function PlayerLeagues() {
     const [standings, setStandings] = useState<LeagueParticipant[]>([]);
     const [pageLoading, setPageLoading] = useState(true);
     const [standingsLoading, setStandingsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'live' | 'standings' | 'calendar' | 'seasons'>('live');
+    const [activeTab, setActiveTab] = useState<'live' | 'standings' | 'seasons' | 'calendar'>('live');
 
     // Seasons + stages state
     const [seasons, setSeasons] = useState<Season[]>([]);
     const [seasonsLoading, setSeasonsLoading] = useState(false);
+    const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
     const [stageCache, setStageCache] = useState<Record<string, Stage[] | 'loading'>>({});
+
+    const [matches, setMatches] = useState<DisplayMatch[]>([]);
+    const [matchesLoading, setMatchesLoading] = useState(false);
+    const [seasonStandings, setSeasonStandings] = useState<StandingEntry[]>([]);
 
     // Calendar state
     const [calendarDate, setCalendarDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-    const [selectedMatch, setSelectedMatch] = useState<MockMatch | null>(null);
+    const [selectedMatch, setSelectedMatch] = useState<DisplayMatch | null>(null);
 
     useEffect(() => {
         leagueService.getAllLeagues()
@@ -156,7 +157,49 @@ export default function PlayerLeagues() {
             .finally(() => setSeasonsLoading(false));
     }, [selectedLeague]);
 
-    const matches = useMemo(() => selectedLeague ? generateMatches(selectedLeague) : [], [selectedLeague]);
+    useEffect(() => {
+        if (seasons.length === 0) {
+            setSelectedSeasonId(null);
+            return;
+        }
+        setSelectedSeasonId((prev) => {
+            if (prev && seasons.some((s) => s._id === prev)) return prev;
+            const ongoing = seasons.find((s) => s.status === 'ONGOING');
+            return (ongoing ?? seasons[0])._id;
+        });
+    }, [seasons]);
+
+    useEffect(() => {
+        if (!selectedSeasonId) {
+            setMatches([]);
+            setSeasonStandings([]);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            setMatchesLoading(true);
+            try {
+                const [m, st] = await Promise.all([
+                    getMatchesBySeason(selectedSeasonId),
+                    getAdminStandings(selectedSeasonId),
+                ]);
+                if (cancelled) return;
+                setMatches(m.map(adminMatchToDisplay));
+                setSeasonStandings(Array.isArray(st) ? st : []);
+            } catch (e) {
+                console.error(e);
+                if (!cancelled) {
+                    setMatches([]);
+                    setSeasonStandings([]);
+                }
+            } finally {
+                if (!cancelled) setMatchesLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedSeasonId]);
 
     const lc = selectedLeague ? (levelColors[selectedLeague.level] ?? levelColors.REGIONAL) : levelColors.REGIONAL;
     const sc = selectedLeague ? (statusConfig[(selectedLeague as LeagueFull).status ?? ''] ?? statusConfig.FINISHED) : statusConfig.FINISHED;
@@ -207,8 +250,8 @@ export default function PlayerLeagues() {
                     {/* Hero header */}
                     <div className={cn("relative overflow-hidden rounded-3xl border border-white/10 p-6", lc.glow)} style={{ background: '#0f0f10' }}>
                         <div className="absolute inset-0 opacity-[0.04]" style={{ background: `radial-gradient(ellipse at top left, ${lc.accent} 0%, transparent 60%)` }} />
-                        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex items-start gap-4">
+                        <div className="relative flex flex-col lg:flex-row lg:items-start justify-between gap-4 w-full">
+                            <div className="flex items-start gap-4 min-w-0 flex-1">
                                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center border shrink-0 bg-white/5 border-white/10" style={{ boxShadow: `0 0 20px ${lc.accent}22` }}>
                                     <Trophy className="w-7 h-7" style={{ color: lc.accent }} />
                                 </div>
@@ -222,20 +265,49 @@ export default function PlayerLeagues() {
                                             <span className={cn("w-2 h-2 rounded-full", sc.dot)} />
                                             <span className={cn("text-[10px] font-black uppercase tracking-widest", sc.text)}>{sc.label}</span>
                                         </div>
+                                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white/45">
+                                            <Lock size={10} className="shrink-0 opacity-70" />
+                                            Browse only
+                                        </span>
+                                        {seasons.length > 0 && (
+                                            <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/35">
+                                                Season
+                                                <select
+                                                    value={selectedSeasonId ?? ''}
+                                                    onChange={(e) => setSelectedSeasonId(e.target.value || null)}
+                                                    className="rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-[11px] font-bold text-white focus:outline-none focus:ring-1 focus:ring-primary/40 max-w-[200px]"
+                                                >
+                                                    {seasons.map((s) => (
+                                                        <option key={s._id} value={s._id}>
+                                                            {s.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        )}
                                         <StatPill icon={<Users size={11} />} label="Format" value={(selectedLeague as LeagueFull).format ?? '—'} />
                                         <StatPill icon={<Shield size={11} />} label="Max Teams" value={`${(selectedLeague as LeagueFull).maxTeams ?? '—'}`} />
                                         <StatPill icon={<Calendar size={11} />} label="Dates" value={`${(selectedLeague as LeagueFull).startDate ? new Date((selectedLeague as LeagueFull).startDate!).toLocaleDateString() : '—'} – ${(selectedLeague as LeagueFull).endDate ? new Date((selectedLeague as LeagueFull).endDate!).toLocaleDateString() : '—'}`} />
                                     </div>
                                 </div>
                             </div>
-                            {/* Live match count */}
-                            {matches.filter(m => m.status === 'LIVE').length > 0 && (
-                                <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest"
-                                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}>
-                                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                    {matches.filter(m => m.status === 'LIVE').length} Match{matches.filter(m => m.status === 'LIVE').length > 1 ? 'es' : ''} Live
-                                </div>
-                            )}
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => selectedLeague && navigate(`/player/leagues/${selectedLeague._id}/hub`)}
+                                    className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-primary hover:border-primary/30 transition-colors"
+                                >
+                                    <BookOpen size={14} className="text-primary" />
+                                    Tournament wiki
+                                </button>
+                                {matches.filter(m => m.status === 'LIVE').length > 0 && (
+                                    <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest"
+                                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}>
+                                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                        {matches.filter(m => m.status === 'LIVE').length} Live
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -295,45 +367,61 @@ export default function PlayerLeagues() {
                     {/* ── LIVE STREAM tab ────────────────────────────── */}
                     {activeTab === 'live' && (
                         <div className="flex-1 flex flex-col min-h-0 animate-fade-in-up gap-4">
-                            <div className="flex-1 rounded-3xl overflow-hidden relative group" style={{ background: '#09090b', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                {/* Fake Video Player */}
-                                <div className="absolute inset-0 bg-black/60 z-10 hidden group-hover:flex items-center justify-center transition-all backdrop-blur-sm cursor-pointer">
-                                    <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 border border-red-500/30">
-                                        <Play className="w-8 h-8 ml-1" />
+                            {matchesLoading ? (
+                                <div className="flex flex-1 items-center justify-center rounded-3xl border border-white/10 bg-[#09090b]">
+                                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                </div>
+                            ) : (() => {
+                                const live = matches.find((m) => m.status === 'LIVE');
+                                const stream = live?.streamUrl?.trim();
+                                const canEmbed = stream && /^https:\/\//i.test(stream);
+                                if (canEmbed) {
+                                    return (
+                                        <div className="flex-1 flex flex-col min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-black">
+                                            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-red-500/10">
+                                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-red-400">Live</span>
+                                                <span className="text-xs font-bold text-white/80 truncate">
+                                                    {live!.teamA} vs {live!.teamB}
+                                                </span>
+                                            </div>
+                                            <iframe
+                                                title="Live stream"
+                                                src={stream}
+                                                className="w-full flex-1 min-h-[320px] border-0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                            />
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div className="flex-1 rounded-3xl overflow-hidden relative flex flex-col items-center justify-center gap-4 p-8 text-center border border-white/10" style={{ background: '#09090b' }}>
+                                        <Video className="w-14 h-14 text-white/15" />
+                                        <div>
+                                            <h3 className="text-lg font-black uppercase tracking-tight text-white mb-1">No official stream</h3>
+                                            <p className="text-sm text-white/35 max-w-md">
+                                                {live && stream
+                                                    ? 'Open the stream in a new tab — embedding is only available for HTTPS URLs.'
+                                                    : selectedSeasonId
+                                                      ? 'There is no match marked live with a stream link for this season. Check the calendar for upcoming games.'
+                                                      : 'Select a league with seasons to see scheduled broadcasts.'}
+                                            </p>
+                                        </div>
+                                        {live && stream && (
+                                            <a
+                                                href={stream}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-black"
+                                            >
+                                                <Play size={14} />
+                                                Open stream
+                                            </a>
+                                        )}
                                     </div>
-                                </div>
-                                <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop"
-                                    alt="Live Stream Thumbnail"
-                                    className="w-full h-full object-cover opacity-80" />
-
-                                {/* Live Badge Overlay */}
-                                <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest bg-red-500/90 text-white shadow-lg backdrop-blur-md">
-                                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                                    LIVE
-                                </div>
-
-                                {/* Viewer Count */}
-                                <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-black/50 text-white backdrop-blur-md border border-white/10">
-                                    <Eye size={12} className="text-red-400" />
-                                    24,591
-                                </div>
-
-                                {/* Bottom Info Bar */}
-                                <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-black/90 to-transparent z-20 p-4 flex items-end justify-between">
-                                    <div>
-                                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">VCT EMEA STAGE 1 - WEEK 2</h3>
-                                        <p className="text-sm font-medium text-white/60">Fnatic vs Karmine Corp • BO3</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors border border-white/10 backdrop-blur-md">
-                                            Chat
-                                        </button>
-                                        <button className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold transition-colors shadow-lg">
-                                            Follow Channel
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                );
+                            })()}
                         </div>
                     )}
 
@@ -341,10 +429,18 @@ export default function PlayerLeagues() {
                     {activeTab === 'standings' && (
                         <div className="flex-1 bg-[#0f0f10] border border-white/[0.07] rounded-3xl overflow-hidden flex flex-col min-h-0">
                             <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 flex-wrap">
                                     <TrendingUp size={15} style={{ color: lc.accent }} />
                                     <span className="font-black text-sm uppercase tracking-widest text-white">Standings</span>
-                                    {standings.length > 0 && <span className="text-[10px] font-black bg-white/5 border border-white/10 text-text-muted px-2 py-0.5 rounded-full uppercase tracking-widest">{standings.length} participants</span>}
+                                    {seasonStandings.length > 0 ? (
+                                        <span className="text-[10px] font-black bg-white/5 border border-white/10 text-text-muted px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                            {seasonStandings.length} teams · season table
+                                        </span>
+                                    ) : standings.length > 0 ? (
+                                        <span className="text-[10px] font-black bg-white/5 border border-white/10 text-text-muted px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                            {standings.length} registrations
+                                        </span>
+                                    ) : null}
                                 </div>
                             </div>
                             <div className="px-6 py-3 border-b border-white/[0.04] shrink-0">
@@ -359,9 +455,41 @@ export default function PlayerLeagues() {
                                 </div>
                             </div>
                             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
-                                {standingsLoading ? (
+                                {standingsLoading || (selectedSeasonId && matchesLoading && seasonStandings.length === 0) ? (
                                     <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-primary animate-spin" /></div>
-                                ) : standings.length > 0 ? standings.map((p, i) => {
+                                ) : seasonStandings.length > 0 ? [...seasonStandings].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)).map((row, i) => {
+                                    const tid = row.teamId;
+                                    const isObj = tid && typeof tid === 'object';
+                                    const name = isObj ? (tid as { name?: string }).name ?? 'Team' : 'Team';
+                                    const logo = isObj ? (tid as { logo?: string }).logo : undefined;
+                                    const ps = positionStyles[i] ?? defaultPS;
+                                    const pos = row.rank > 0 ? row.rank : i + 1;
+                                    return (
+                                        <div key={row._id} className={cn('grid grid-cols-[44px_1fr_52px_52px_52px_52px_68px] gap-2 items-center px-4 py-3.5 rounded-2xl border transition-all duration-200', ps.border, ps.bg)}>
+                                            <div className="flex justify-center">
+                                                <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0', ps.badge)}>
+                                                    {pos === 1 ? <Crown size={13} /> : pos}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={cn('w-10 h-10 rounded-xl border flex items-center justify-center overflow-hidden shrink-0', ps.avatar)}>
+                                                    {logo ? <img src={logo} className="w-full h-full object-cover" alt="" /> : <Globe size={15} className="text-white/40" />}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-black text-white text-sm truncate">{name}</p>
+                                                    <p className="text-[10px] text-white/30 uppercase font-bold tracking-tight">Season roster</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-center"><span className="text-sm font-bold text-white/40">{row.played ?? 0}</span></div>
+                                            <div className="text-center"><span className={cn('text-sm font-black', (row.wins ?? 0) > 0 ? 'text-green-400' : 'text-white/25')}>{row.wins ?? 0}</span></div>
+                                            <div className="text-center"><span className={cn('text-sm font-black', (row.draws ?? 0) > 0 ? 'text-yellow-400' : 'text-white/25')}>{row.draws ?? 0}</span></div>
+                                            <div className="text-center"><span className={cn('text-sm font-black', (row.losses ?? 0) > 0 ? 'text-red-400' : 'text-white/25')}>{row.losses ?? 0}</span></div>
+                                            <div className="flex justify-center">
+                                                <div className={cn('min-w-[44px] px-2.5 py-1.5 rounded-xl font-black text-sm text-center border', ps.pts)}>{row.points ?? 0}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                }) : standings.length > 0 ? standings.map((p, i) => {
                                     const isTeam = !!p.teamId && typeof p.teamId === 'object';
                                     const name = isTeam ? (p.teamId as any).name : (p.playerId?.nickname || 'Unknown');
                                     const avatar = isTeam ? (p.teamId as any).logo : (p.playerId?.avatar || null);
@@ -518,7 +646,7 @@ export default function PlayerLeagues() {
 // ─── Calendar Grid ────────────────────────────────────────────────────────────
 
 function CalendarGrid({ year, month, matches, selectedDay, onSelectDay, accent }: {
-    year: number; month: number; matches: MockMatch[];
+    year: number; month: number; matches: DisplayMatch[];
     selectedDay: Date | null; onSelectDay: (d: Date) => void; accent: string;
 }) {
     const firstDay = new Date(year, month, 1).getDay();
@@ -570,7 +698,7 @@ function CalendarGrid({ year, month, matches, selectedDay, onSelectDay, accent }
 
 // ─── Match Card ───────────────────────────────────────────────────────────────
 
-function MatchCard({ match, accent, selected, onClick }: { match: MockMatch; accent: string; selected: boolean; onClick: () => void }) {
+function MatchCard({ match, accent, selected, onClick }: { match: DisplayMatch; accent: string; selected: boolean; onClick: () => void }) {
     const isLive = match.status === 'LIVE';
     const isFinished = match.status === 'FINISHED';
 

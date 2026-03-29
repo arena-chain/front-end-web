@@ -6,6 +6,7 @@ import type { Tournament } from '../../models/tournament';
 import { TournamentStatus } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
 import TournamentBracket from '../components/tournaments/TournamentBracket';
+import { placeholderImage } from '../../lib/placeholderImage';
 
 export default function TournamentDetails() {
     const { id } = useParams<{ id: string }>();
@@ -386,7 +387,7 @@ export default function TournamentDetails() {
                 <div
                     className="absolute inset-0 bg-cover bg-center"
                     style={{
-                        backgroundImage: `url(${tournament.bannerImageUrl || 'https://via.placeholder.com/1200x400'})`,
+                        backgroundImage: `url(${tournament.bannerImageUrl || placeholderImage(1200, 400, 'Tournament')})`,
                     }}
                 >
                     <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/80 to-transparent" />

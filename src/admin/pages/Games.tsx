@@ -4,6 +4,7 @@ import { Button, Input, Modal } from '../../components/ui/core';
 import type { Game } from '../../models/game';
 import catalogService, { type CreateGameDto, type UpdateGameDto } from '../../services/catalogService';
 import GameForm from '../components/games/GameForm';
+import { placeholderImage } from '../../lib/placeholderImage';
 
 export default function Games() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -189,7 +190,7 @@ export default function Games() {
 function GameCard({ game, onEdit, onDelete }: { game: Game; onEdit: () => void; onDelete: () => void }) {
     const imageUrl = game.coverImageUrl?.startsWith('/uploads/')
         ? `http://localhost:3000${game.coverImageUrl}`
-        : game.coverImageUrl || 'https://via.placeholder.com/400x200?text=No+Image';
+        : game.coverImageUrl || placeholderImage(400, 200, 'No image');
 
     return (
         <div className="relative p-1" style={{
@@ -218,7 +219,7 @@ function GameCard({ game, onEdit, onDelete }: { game: Game; onEdit: () => void; 
                         alt={game.title}
                         className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:brightness-110"
                         onError={(e) => {
-                            e.currentTarget.src = 'https://via.placeholder.com/400x200?text=No+Image';
+                            e.currentTarget.src = placeholderImage(400, 200, 'No image');
                         }}
                     />
                     {/* Multi-layer gradient overlay */}

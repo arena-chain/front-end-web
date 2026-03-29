@@ -2,6 +2,8 @@ import React from 'react';
 import type { Tournament } from '../../../models/tournament';
 import { TournamentStatus } from '../../../models/tournament';
 import { Trophy, Calendar, Users, DollarSign, Trash2, Ban } from 'lucide-react';
+import { resolveBackendAssetUrl } from '../../../lib/apiBase';
+import { placeholderImage } from '../../../lib/placeholderImage';
 
 
 interface TournamentCardProps {
@@ -14,13 +16,10 @@ interface TournamentCardProps {
 }
 
 const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onClick, isOfficial = false, onDelete, onCancel, isSelected = false }: TournamentCardProps) => {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
   const getImageUrl = (url?: string) => {
-    if (!url) return 'https://via.placeholder.com/800x400/121212/222222?text=Tournament';
+    if (!url) return placeholderImage(800, 400, 'Tournament');
     if (url.startsWith('http')) return url;
-    // Assuming relative paths from backend like 'uploads/...'
-    return `${API_URL}/${url.startsWith('/') ? url.slice(1) : url}`;
+    return resolveBackendAssetUrl(url);
   };
 
   const getStatusColor = (status: TournamentStatus) => {

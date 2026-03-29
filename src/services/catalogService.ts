@@ -1,6 +1,8 @@
 import type { Game } from '../models/game';
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/catalog`;
+import { getApiBase } from '../lib/apiBase';
+
+const API_BASE_URL = `${getApiBase()}/catalog`;
 
 export interface CreateGameDto {
     title: string;

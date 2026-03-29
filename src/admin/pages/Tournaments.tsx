@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Globe, Search, Trophy } from 'lucide-react';
+import { Plus, Globe, Search } from 'lucide-react';
 import { Button, Input, Select } from '../../components/ui/core';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import SuccessModal from '../../components/ui/SuccessModal';
@@ -12,7 +12,6 @@ import CreateTournamentModal from '../components/tournaments/CreateTournamentMod
 
 export default function Tournaments() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'official' | 'ranked'>('official');
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -151,28 +150,12 @@ export default function Tournaments() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">Tournaments</h1>
-                    <p className="text-text-muted">Manage official and community ranked tournaments.</p>
+                    <p className="text-text-muted">Manage official tournaments.</p>
                 </div>
                 <Button className="gap-2" onClick={() => setIsCreateModalOpen(true)}>
                     <Plus className="w-4 h-4" />
                     Create Tournament
                 </Button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 border-b border-white/5 pb-1">
-                <TabButton
-                    active={activeTab === 'official'}
-                    onClick={() => setActiveTab('official')}
-                    icon={<Globe size={16} />}
-                    label="Official"
-                />
-                <TabButton
-                    active={activeTab === 'ranked'}
-                    onClick={() => setActiveTab('ranked')}
-                    icon={<Trophy size={16} />}
-                    label="Ranked"
-                />
             </div>
 
             {/* Filters */}
@@ -233,7 +216,7 @@ export default function Tournaments() {
                     <p className="text-text-muted mb-6">
                         {searchQuery || statusFilter !== 'all'
                             ? 'Try adjusting your filters'
-                            : 'Create your first official tournament to get started'
+                            : 'Create your first tournament to get started'
                         }
                     </p>
                     {!searchQuery && statusFilter === 'all' && (
@@ -269,23 +252,5 @@ export default function Tournaments() {
                 message={successModal.message}
             />
         </div>
-    );
-}
-
-function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`
-                flex items-center gap-2 px-6 py-3 rounded-t-lg text-sm font-bold transition-all duration-200 border-b-2
-                ${active
-                    ? 'text-white border-primary bg-white/5'
-                    : 'text-text-muted border-transparent hover:text-white hover:bg-white/5'
-                }
-            `}
-        >
-            {icon}
-            {label}
-        </button>
     );
 }

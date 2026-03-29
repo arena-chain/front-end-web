@@ -1,6 +1,9 @@
 import { io, type Socket } from 'socket.io-client';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { getApiBase, getBackendOrigin } from './apiBase';
+
+const API_URL = getApiBase();
+const SOCKET_ORIGIN = getBackendOrigin();
 
 export const fallbackIceServers: RTCIceServer[] = [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -33,7 +36,7 @@ export async function getIceServers(): Promise<RTCIceServer[]> {
 export function createLiveSocket(): Socket {
     const token = localStorage.getItem('token');
 
-    return io(API_URL, {
+    return io(SOCKET_ORIGIN, {
         auth: {
             token,
         },

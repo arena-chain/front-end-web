@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { getApiBase } from '../lib/apiBase';
+
+const API_URL = getApiBase();
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -113,8 +115,9 @@ export const leagueService = {
         await axios.delete(`${API_URL}/leagues/${id}`, { headers: authHeader() });
     },
 
+    /** League registration leaderboard (participants), not season table standings */
     getLeagueStandings: async (id: string) => {
-        const response = await axios.get(`${API_URL}/standings?leagueId=${id}`);
+        const response = await axios.get(`${API_URL}/leagues/${id}/standings`, { headers: authHeader() });
         return response.data;
     },
 

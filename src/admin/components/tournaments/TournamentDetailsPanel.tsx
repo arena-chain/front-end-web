@@ -5,6 +5,7 @@ import { Button, Badge } from '../../../components/ui/core';
 import { Calendar, Users, Globe, Edit, Trash2, X } from 'lucide-react';
 import TournamentBracket from './TournamentBracket';
 import tournamentService from '../../../services/tournamentService';
+import { placeholderImage } from '../../../lib/placeholderImage';
 
 interface TournamentDetailsPanelProps {
     tournament: Tournament | null;
@@ -394,7 +395,7 @@ const TournamentDetailsPanel: React.FC<TournamentDetailsPanelProps> = ({
                 <div
                     className="absolute inset-0 bg-cover bg-center"
                     style={{
-                        backgroundImage: `url(${tournament.bannerImageUrl || 'https://via.placeholder.com/800x400'})`,
+                        backgroundImage: `url(${tournament.bannerImageUrl || placeholderImage(800, 400, 'Tournament')})`,
                     }}
                 >
                     <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/60 to-transparent" />

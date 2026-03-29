@@ -5,6 +5,7 @@ import { Button, Badge } from '../../components/ui/core';
 import type { Tournament, TicketType } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
 import reservationService from '../../services/reservationService';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 interface TicketSelection {
     type: string;
@@ -146,10 +147,11 @@ export default function TournamentTickets() {
         );
     }
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    const bannerUrl = tournament.bannerImageUrl?.startsWith('http')
-        ? tournament.bannerImageUrl
-        : `${API_URL}/${tournament.bannerImageUrl}`;
+    const bannerUrl = tournament.bannerImageUrl
+        ? (tournament.bannerImageUrl.startsWith('http')
+            ? tournament.bannerImageUrl
+            : resolveBackendAssetUrl(tournament.bannerImageUrl))
+        : '';
 
     return (
         <div className="min-h-screen bg-background">

@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { getApiBase } from '../lib/apiBase';
+
+const API_URL = getApiBase();
 
 export interface ChatMessageRecord {
     _id: string;

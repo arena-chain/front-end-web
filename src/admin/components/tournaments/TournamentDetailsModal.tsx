@@ -4,6 +4,7 @@ import { TournamentStatus } from '../../../models/tournament';
 import { Modal, Button, Badge } from '../../../components/ui/core';
 import { Calendar, Users, Globe, Edit, Trash2 } from 'lucide-react';
 import TournamentBracket from './TournamentBracket';
+import { placeholderImage } from '../../../lib/placeholderImage';
 
 interface TournamentDetailsModalProps {
     tournament: Tournament | null;
@@ -364,7 +365,7 @@ const TournamentDetailsModal: React.FC<TournamentDetailsModalProps> = ({
             <div
                 className="h-64 relative"
                 style={{
-                    backgroundImage: `url(${tournament.bannerImageUrl || 'https://via.placeholder.com/1920x400/121212/00ff00?text=Tournament'})`,
+                    backgroundImage: `url(${tournament.bannerImageUrl || placeholderImage(1920, 400, 'Tournament')})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                 }}

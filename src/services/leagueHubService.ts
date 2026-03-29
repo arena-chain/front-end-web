@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { getApiBase } from '../lib/apiBase';
+
+const API = getApiBase();
 const auth = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 // ── Interfaces ────────────────────────────────────────────────────────────────

@@ -6,6 +6,8 @@ import { TopNavbar } from '../common/top_navbar';
 import { BottomNavbar } from '../common/bottom_navbar';
 import { MOCK_TOURNAMENTS } from '../data/tournamentData';
 import tournamentService from '../../services/tournamentService';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import { placeholderImage } from '../../lib/placeholderImage';
 import type { Tournament as ApiTournament } from '../../models/tournament';
 
 // Helper to bridge types if needed, though we'll try to use API type primarily
@@ -52,9 +54,9 @@ export default function TournamentDetailsPage() {
                 game: apiData.gameId?.title || 'Unknown Game',
                 status: apiData.status,
                 date: new Date(apiData.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                image: apiData.bannerImageUrl ?
-                    (apiData.bannerImageUrl.startsWith('http') ? apiData.bannerImageUrl : `${import.meta.env.VITE_API_URL}/${apiData.bannerImageUrl}`)
-                    : 'https://via.placeholder.com/1920x1080',
+                image: apiData.bannerImageUrl
+                    ? resolveBackendAssetUrl(apiData.bannerImageUrl)
+                    : placeholderImage(1920, 1080, 'Tournament'),
                 color: 'from-primary to-primary/50', // Default color for API data
                 description: apiData.description || 'No description available.',
                 prize: `$${apiData.prizePool?.toLocaleString() || '0'}`,

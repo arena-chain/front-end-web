@@ -5,6 +5,8 @@ import type { Tournament } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_TOURNAMENTS } from '../../_public/data/tournamentData';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import { placeholderImage } from '../../lib/placeholderImage';
 
 export default function PlayerTicketMarket() {
     const navigate = useNavigate();
@@ -129,12 +131,10 @@ export default function PlayerTicketMarket() {
 }
 
 function MarketCard({ tournament, minPrice, onClick }: { tournament: Tournament, minPrice: number, onClick: () => void }) {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
     const getImageUrl = (url?: string) => {
-        if (!url) return 'https://via.placeholder.com/800x400/121212/222222?text=Tournament';
+        if (!url) return placeholderImage(800, 400, 'Tournament');
         if (url.startsWith('http')) return url;
-        return `${API_URL}/${url.startsWith('/') ? url.slice(1) : url}`;
+        return resolveBackendAssetUrl(url);
     };
 
     return (

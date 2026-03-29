@@ -27,6 +27,7 @@ import PlayerLayout from './player/layout/PlayerLayout';
 import PlayerDashboard from './player/pages/PlayerDashboard';
 import PlayerMatches from './player/pages/PlayerMatches';
 import PlayerLeagues from './player/pages/PlayerLeagues';
+import PlayerLeagueWikiPage from './player/pages/PlayerLeagueWikiPage';
 import PlayerProfile from './player/pages/PlayerProfile';
 import PlayerTournaments from './player/pages/PlayerTournaments';
 import PlayerTicketMarket from './player/pages/PlayerTicketMarket';
@@ -189,6 +190,7 @@ function App() {
             <Route path="tickets/:id" element={<TicketDetails />} />
             <Route path="matches" element={<PlayerMatches />} />
             <Route path="leagues" element={<PlayerLeagues />} />
+            <Route path="leagues/:id/hub" element={<PlayerLeagueWikiPage />} />
             <Route path="leagues/:id" element={<PlayerLeagues />} />
             <Route path="rankings" element={<PlayerRankings />} />
             <Route path="marketplace" element={<PlayerMarketplace />} />

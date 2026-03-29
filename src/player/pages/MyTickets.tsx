@@ -3,6 +3,7 @@ import { Ticket as TicketIcon, Calendar, ArrowRight, Download, Share2 } from 'lu
 import { Button, Badge } from '../../components/ui/core';
 import ticketService from '../../services/ticketService';
 import type { Ticket } from '../../models/ticket';
+import { placeholderImage } from '../../lib/placeholderImage';
 
 export default function MyTickets() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -145,7 +146,7 @@ function TicketCard({ ticket }: { ticket: Ticket }) {
                     <div className="hidden md:block absolute left-0 top-6 bottom-6 border-l border-dashed border-white/20"></div>
 
                     <div className="w-32 h-32 bg-white p-2 rounded-xl shadow-lg mb-3">
-                        <img src={ticket.qrCode || 'https://via.placeholder.com/150'} alt="Ticket QR" className="w-full h-full object-contain" />
+                        <img src={ticket.qrCode || placeholderImage(150, 150, 'QR')} alt="Ticket QR" className="w-full h-full object-contain" />
                     </div>
                     <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Scan for Entry</span>
 

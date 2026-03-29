@@ -4,6 +4,8 @@ import { Calendar, MapPin, Trophy, Users, ArrowLeft, Shield, Ticket, Share2, Pla
 import { Button } from '../../components/ui/core';
 import { MOCK_TOURNAMENTS } from '../../_public/data/tournamentData';
 import tournamentService from '../../services/tournamentService';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import { placeholderImage } from '../../lib/placeholderImage';
 
 // Helper to bridge types if needed
 interface TournamentDisplay {
@@ -49,9 +51,9 @@ export default function PlayerTournamentDetails() {
                 game: apiData.gameId?.title || 'Unknown Game',
                 status: apiData.status,
                 date: new Date(apiData.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                image: apiData.bannerImageUrl ?
-                    (apiData.bannerImageUrl.startsWith('http') ? apiData.bannerImageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/${apiData.bannerImageUrl}`)
-                    : 'https://via.placeholder.com/1920x1080',
+                image: apiData.bannerImageUrl
+                    ? resolveBackendAssetUrl(apiData.bannerImageUrl)
+                    : placeholderImage(1920, 1080, 'Tournament'),
                 color: 'from-primary to-primary/50',
                 description: apiData.description || 'No description available.',
                 prize: `$${apiData.prizePool?.toLocaleString() || '0'}`,
