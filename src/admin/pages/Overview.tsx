@@ -1,5 +1,4 @@
-import { Users, Trophy, Swords, DollarSign, TrendingUp, Activity } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { TrendingUp, Activity } from 'lucide-react';
 
 export default function AdminDashboard() {
     return (
@@ -11,36 +10,9 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Total Users"
-                    value="12,345"
-                    change="+12% from last month"
-                    icon={<Users className="w-6 h-6 text-primary" />}
-                    trend="up"
-                />
-                <StatCard
-                    title="Active Tournaments"
-                    value="24"
-                    change="+4 new today"
-                    icon={<Trophy className="w-6 h-6 text-yellow-500" />}
-                    trend="up"
-                />
-                <StatCard
-                    title="Matches Played"
-                    value="1,203"
-                    change="+18% from last week"
-                    icon={<Swords className="w-6 h-6 text-red-500" />}
-                    changeColor="text-green-500"
-                    trend="up"
-                />
-                <StatCard
-                    title="Total Revenue"
-                    value="$45,230"
-                    change="+8% from last month"
-                    icon={<DollarSign className="w-6 h-6 text-green-400" />}
-                    trend="up"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <StatCard title="Total Users" value="12,345" />
+                <StatCard title="Active Tournaments" value="24" />
             </div>
 
             {/* Recent Activity & Charts Placeholder */}
@@ -82,22 +54,11 @@ export default function AdminDashboard() {
     );
 }
 
-function StatCard({ title, value, change, icon, trend, changeColor = "text-green-500" }: any) {
+function StatCard({ title, value }: { title: string; value: string }) {
     return (
         <div className="bg-surface border border-white/5 rounded-xl p-6 hover:border-primary/30 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,255,0,0.05)] group">
-            <div className="flex items-start justify-between mb-4">
-                <div>
-                    <h3 className="text-text-muted text-sm font-medium uppercase tracking-wider">{title}</h3>
-                    <div className="text-3xl font-black text-white mt-1 group-hover:scale-105 transition-transform origin-left">{value}</div>
-                </div>
-                <div className="p-3 bg-white/5 rounded-lg border border-white/5 group-hover:bg-white/10 transition-colors">
-                    {icon}
-                </div>
-            </div>
-            <div className={cn("text-xs font-medium flex items-center gap-1", changeColor)}>
-                {trend === 'up' && <TrendingUp className="w-3 h-3" />}
-                {change}
-            </div>
+            <h3 className="text-text-muted text-sm font-medium uppercase tracking-wider">{title}</h3>
+            <div className="text-3xl font-black text-white mt-1 group-hover:scale-105 transition-transform origin-left">{value}</div>
         </div>
     );
 }
