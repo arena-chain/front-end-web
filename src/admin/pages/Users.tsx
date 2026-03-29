@@ -63,6 +63,8 @@ function resolveUser(profile: Record<string, unknown>): {
 }
 
 export default function Users() {
+    const [activeTab, setActiveTab] = useState<'all' | 'player' | 'team_manager' | 'referee' | 'admin'>('all');
+    const [users, setUsers] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<AdminTab>('all');
     const [users, setUsers] = useState<(Profile | ReportedPlayerRow)[]>([]);
     const [loading, setLoading] = useState(true);
@@ -109,9 +111,11 @@ export default function Users() {
                         .filter(u => normalizeApiRole(u.role) === wanted)
                         .map(mapUserToProfileRow);
                     break;
-                }
+                case 'all':
                 default:
-                    data = [];
+                    // Fetch all users - you may need to implement this
+                    data = await UserService.getPlayers();
+                    break;
             }
             setUsers(data);
         } catch (error) {
@@ -210,8 +214,8 @@ export default function Users() {
                 adminLevel: 1,
             });
             fetchUsers();
-        } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : 'Failed to create user');
+        } catch (error: any) {
+            alert(error.message || 'Failed to create user');
         }
     };
 
@@ -511,7 +515,8 @@ export default function Users() {
                 </div>
             </div>
 
-            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={addModalTitle}>
+            {/* Add User Modal */}
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={`Add New ${activeTab.slice(0, -1)}`}>
                 <form onSubmit={handleAddUser} className="space-y-4 p-6">
                     <div>
                         <label className="block text-sm font-medium text-text-muted mb-1">Email</label>

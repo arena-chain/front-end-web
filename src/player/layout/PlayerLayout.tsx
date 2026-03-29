@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     History,
@@ -33,6 +34,7 @@ const TOP_NAV_LINKS = [
     { to: '/player/marketplace', label: 'Marketplace', icon: <Store size={16} /> },
     { to: '/player/market', label: 'Get Tickets', icon: <DollarSign size={16} /> },
     { to: '/player/rankings', label: 'Rankings', icon: <Crown size={16} /> },
+    { to: '/player/news', label: 'News', icon: <Newspaper size={16} /> },
 ];
 
 // ─── Side nav links (icon-only slim sidebar) ─────────────────────────────────
@@ -52,9 +54,23 @@ export default function PlayerLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [channels, setChannels] = useState<ChannelRecord[]>([]);
-    const [loadingChannels, setLoadingChannels] = useState(false);
+    const [profile, setProfile] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const res = await axios.get(`${API_URL}/auth/profile`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setProfile(res.data);
+            } catch (error) {
+                console.error('Failed to fetch profile in layout:', error);
+            }
+        };
+        fetchProfile();
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('token');

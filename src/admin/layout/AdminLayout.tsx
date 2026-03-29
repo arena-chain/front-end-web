@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Trophy, Settings, LogOut, Menu,
     MessageSquare, Gamepad2, Ticket, Handshake, Gem, Layers,
-    Box, Zap,
+    Box, Zap, Newspaper,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -14,6 +14,7 @@ const NAV_GROUPS = [
         label: 'General',
         items: [
             { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Overview' },
+            { to: '/admin/news',      icon: Newspaper,       label: 'News' },
             { to: '/admin/users',     icon: Users,           label: 'Users' },
         ],
     },

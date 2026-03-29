@@ -1,147 +1,164 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/core';
-import { Calendar, Clock, ArrowRight, X, User } from 'lucide-react';
+import { Calendar, Clock, ArrowRight, X, Globe, Search, Filter } from 'lucide-react';
 import { TopNavbar } from '../common/top_navbar';
 import { BottomNavbar } from '../common/bottom_navbar';
-import { MOCK_NEWS } from '../data/newsData';
+import { newsService } from '../../services/newsService';
+import type { NewsItem } from '../../models/news.model';
+import { Link } from 'react-router-dom';
+import { cn } from '../../lib/utils';
 
 export default function NewsPage() {
-    const [selectedArticle, setSelectedArticle] = useState<typeof MOCK_NEWS[0] | null>(null);
+    const [news, setNews] = useState<NewsItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
 
     useEffect(() => {
         window.scrollTo(0, 0);
+        fetchNews();
     }, []);
 
+    const fetchNews = async () => {
+        setLoading(true);
+        try {
+            const res = await newsService.getNews({ limit: 50 });
+            setNews(res.items);
+        } catch (error) {
+            console.error('Failed to fetch news:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredNews = news.filter(item => {
+        const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                             item.sourceName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+        return matchesSearch && matchesCategory;
+    });
+
     return (
-        <div className="min-h-screen bg-background text-white flex flex-col">
+        <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col">
             <TopNavbar />
 
-            <main className="flex-grow pt-32 pb-12">
-                <div className="container mx-auto px-6 max-w-5xl">
-                    <div className="space-y-6">
-                        {MOCK_NEWS.map((news) => (
-                            <div
-                                key={news.id}
-                                className="group flex flex-col md:flex-row gap-6 p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/50 hover:bg-white/10 transition-all duration-300"
-                            >
-                                <div className="w-full md:w-64 h-48 md:h-auto shrink-0 rounded-xl overflow-hidden relative">
-                                    <img
-                                        src={news.image}
-                                        alt={news.title}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                    <div className="absolute top-4 left-4">
-                                        <span className="px-2 py-1 bg-black/80 text-primary text-[10px] font-bold uppercase rounded backdrop-blur-md">
-                                            {news.category}
-                                        </span>
-                                    </div>
-                                </div>
+            {/* Hero Header */}
+            <div className="pt-40 pb-20 relative overflow-hidden bg-gradient-to-b from-primary/10 to-transparent">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none" />
+                <div className="container mx-auto px-6 text-center">
+                    <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-4 animate-fade-in">
+                        Intelligence Hub
+                    </h1>
+                    <p className="text-text-muted text-lg max-w-2xl mx-auto mb-10">
+                        Stay ahead of the game with real-time transmissions from the global gaming nexus.
+                    </p>
 
-                                <div className="flex flex-col justify-between py-2 flex-grow">
-                                    <div>
-                                        <div className="flex items-center gap-3 text-xs text-text-muted mb-3">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="w-3 h-3" />
-                                                <span>{news.date}</span>
+                    {/* Search & Filter */}
+                    <div className="flex flex-col md:flex-row gap-4 max-w-3xl mx-auto bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Search the nexus..."
+                                className="w-full bg-transparent border-none py-3 pl-12 pr-4 focus:ring-0 text-white placeholder:text-text-muted"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex gap-2 p-2">
+                             {['all', 'patch_notes', 'esports', 'community'].map(cat => (
+                                 <button
+                                    key={cat}
+                                    onClick={() => setCategoryFilter(cat)}
+                                    className={cn(
+                                        "px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-wider transition-all",
+                                        categoryFilter === cat
+                                            ? "bg-primary text-black shadow-[0_0_15px_rgba(59,245,39,0.3)]"
+                                            : "hover:bg-white/5 text-text-muted"
+                                    )}
+                                 >
+                                    {cat.replace('_', ' ')}
+                                 </button>
+                             ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <main className="flex-grow pb-24">
+                <div className="container mx-auto px-6 max-w-5xl">
+                    <div className="space-y-8">
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="h-64 rounded-3xl bg-white/5 animate-pulse border border-white/5" />
+                            ))
+                        ) : filteredNews.length === 0 ? (
+                            <div className="py-20 text-center text-text-muted space-y-4">
+                                <Search className="w-16 h-16 mx-auto opacity-10" />
+                                <p className="text-xl">No transmissions found on this frequency.</p>
+                                <Button onClick={() => {setSearchQuery(''); setCategoryFilter('all');}}>Clear Filters</Button>
+                            </div>
+                        ) : (
+                            filteredNews.map((article) => (
+                                <Link
+                                    to={`/news/${article._id}`}
+                                    key={article._id}
+                                    className="group flex flex-col md:flex-row gap-8 p-6 rounded-3xl bg-white/5 border border-white/5 hover:border-primary/30 hover:bg-white/[0.07] transition-all duration-500 shadow-lg hover:shadow-primary/5"
+                                >
+                                    <div className="w-full md:w-80 h-56 md:h-auto shrink-0 rounded-2xl overflow-hidden relative shadow-2xl">
+                                        <img
+                                            src={article.coverImageUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80'}
+                                            alt={article.title}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                        />
+                                        <div className="absolute top-4 left-4">
+                                            <span className="px-3 py-1 bg-black/80 text-primary text-[10px] font-black uppercase rounded-lg border border-primary/20 backdrop-blur-md shadow-lg">
+                                                {article.category.replace('_', ' ')}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col justify-between py-4 flex-grow space-y-6">
+                                        <div className="space-y-4">
+                                            <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                                <div className="flex items-center gap-2 px-2 py-1 bg-white/5 rounded-md border border-white/5">
+                                                    <Calendar className="w-3 h-3 text-primary" />
+                                                    <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 px-2 py-1 bg-white/5 rounded-md border border-white/5">
+                                                    <Clock className="w-3 h-3 text-primary" />
+                                                    <span>5 Min Read</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 px-2 py-1 bg-primary/10 text-primary rounded-md border border-primary/20">
+                                                    <Globe className="w-3 h-3" />
+                                                    <span>{article.sourceName}</span>
+                                                </div>
                                             </div>
-                                            <div className="w-1 h-1 rounded-full bg-white/20" />
-                                            <div className="flex items-center gap-1">
-                                                <Clock className="w-3 h-3" />
-                                                <span>{news.readTime}</span>
-                                            </div>
+
+                                            <h2 className="text-3xl font-black text-white leading-tight group-hover:text-primary transition-colors duration-300">
+                                                {article.title}
+                                            </h2>
+
+                                            <p className="text-text-muted text-sm leading-relaxed line-clamp-2 md:line-clamp-3">
+                                                {article.summary}
+                                            </p>
                                         </div>
 
-                                        <h2 className="text-2xl font-bold text-white mb-3 group-hover:text-primary transition-colors">
-                                            {news.title}
-                                        </h2>
-
-                                        <p className="text-text-muted line-clamp-2 md:line-clamp-3 mb-6">
-                                            {news.snippet}
-                                        </p>
+                                        <div className="pt-2">
+                                            <div className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs group-hover:gap-4 transition-all">
+                                                Read Full Article
+                                                <ArrowRight className="w-4 h-4" />
+                                            </div>
+                                        </div>
                                     </div>
-
-                                    <div>
-                                        <Button
-                                            className="group/btn"
-                                            onClick={() => setSelectedArticle(news)}
-                                        >
-                                            Read Full Article <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                </Link>
+                            ))
+                        )}
                     </div>
                 </div>
             </main>
 
             <BottomNavbar />
-
-            {/* Article Modal */}
-            {selectedArticle && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
-                    <div
-                        className="absolute inset-0 bg-black/90 backdrop-blur-sm"
-                        onClick={() => setSelectedArticle(null)}
-                    />
-                    <div className="relative w-full max-w-4xl max-h-[90vh] bg-surface border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-                        <div className="absolute top-4 right-4 z-20">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelectedArticle(null)}
-                                className="bg-black/50 hover:bg-black/80 text-white rounded-full p-2 h-auto backdrop-blur-md"
-                            >
-                                <X className="w-5 h-5" />
-                            </Button>
-                        </div>
-
-                        <div className="overflow-y-auto custom-scrollbar flex-grow">
-                            <div className="relative h-[300px] md:h-[400px] shrink-0">
-                                <img
-                                    src={selectedArticle.image}
-                                    alt={selectedArticle.title}
-                                    className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/50 to-transparent" />
-                                <div className="absolute bottom-0 left-0 p-8 w-full">
-                                    <span className="px-3 py-1 bg-primary text-black text-xs font-bold uppercase rounded-full mb-4 inline-block shadow-lg">
-                                        {selectedArticle.category}
-                                    </span>
-                                    <h1 className="text-2xl md:text-4xl font-black uppercase leading-tight drop-shadow-md">
-                                        {selectedArticle.title}
-                                    </h1>
-                                </div>
-                            </div>
-
-                            <div className="p-8">
-                                <div className="flex items-center gap-6 text-sm text-text-muted mb-8 border-b border-white/10 pb-8">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-primary" />
-                                        <span>{selectedArticle.date}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="w-4 h-4 text-primary" />
-                                        <span>{selectedArticle.readTime}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <User className="w-4 h-4 text-primary" />
-                                        <span>{selectedArticle.author}</span>
-                                    </div>
-                                </div>
-
-                                <article className="prose prose-invert prose-lg max-w-none prose-headings:font-bold prose-headings:uppercase prose-p:text-gray-300 prose-p:leading-relaxed prose-a:text-primary">
-                                    {selectedArticle.content.split('\n\n').map((paragraph, idx) => (
-                                        <p key={idx} className="mb-6">
-                                            {paragraph}
-                                        </p>
-                                    ))}
-                                </article>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

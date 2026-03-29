@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
     Swords, Clock, Trophy, Zap, Target,
     ChevronRight, Flame, Star, Activity,
@@ -477,6 +477,10 @@ function OnlinePanel() {
 
 function SocialSidebar() {
     const onlineCount = FRIENDS.filter(f => f.status !== 'offline').length;
+    const { profile } = useOutletContext<any>() || {};
+    const myNickname = profile?.nickname || 'Player One';
+    const myEmail = profile?.email || 'player.one@arena.com';
+    const myAvatar = profile?.avatar || 'Felix';
 
     return (
         <div className="w-60 shrink-0 flex flex-col gap-3 h-full overflow-hidden">
@@ -496,7 +500,7 @@ function SocialSidebar() {
                         <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 p-[2px]"
                             style={{ borderColor: 'rgba(0,255,0,0.5)', boxShadow: '0 0 16px rgba(0,255,0,0.25)' }}>
                             <img
-                                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${myAvatar}`}
                                 className="w-full h-full rounded-xl bg-black"
                                 alt="You"
                             />
@@ -505,8 +509,8 @@ function SocialSidebar() {
                             style={{ background: '#00ff00', boxShadow: '0 0 8px rgba(0,255,0,0.6)' }} />
                     </div>
 
-                    <p className="font-black text-white text-sm uppercase tracking-tight">Player One</p>
-                    <p className="text-[10px] font-bold text-white/40 mb-2">player.one@arena.com</p>
+                    <p className="font-black text-white text-sm uppercase tracking-tight">{myNickname}</p>
+                    <p className="text-[10px] font-bold text-white/40 mb-2">{myEmail}</p>
 
                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-full mb-3"
                         style={{ background: 'rgba(0,255,0,0.08)', border: '1px solid rgba(0,255,0,0.2)' }}>

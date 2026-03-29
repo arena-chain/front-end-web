@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
+import { useOutletContext } from 'react-router-dom';
 import {
     Crown, Search,
     Minus, Shield, Star, Swords, Activity,
@@ -86,12 +88,58 @@ type SortKey = 'elo' | 'winRate' | 'kd' | 'matches';
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function PlayerRankings() {
+    const { profile: myProfile } = useOutletContext<any>() || {};
+    const myNickname = myProfile?.nickname || 'Player One';
+
     const [region, setRegion]     = useState<Region>('ALL');
     const [game, setGame]         = useState('All Games');
     const [search, setSearch]     = useState('');
     const [sortBy, setSortBy]     = useState<SortKey>('elo');
     const [expanded, setExpanded] = useState<number | null>(null);
     const [tierFilter] = useState<RankTier | 'ALL'>('ALL');
+    const [players, setPlayers] = useState<Player[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const countryCodeMap: Record<string, string> = {
+        'TUNISIA': '🇹🇳', 'FRANCE': '🇫🇷', 'USA': '🇺🇸', 'GERMANY': '🇩🇪', 'JAPAN': '🇯🇵',
+        'UK': '🇬🇧', 'CHINA': '🇨🇳', 'SWEDEN': '🇸🇪', 'AUSTRALIA': '🇦🇺', 'CANADA': '🇨🇦'
+    };
+
+    useEffect(() => {
+        const fetchPlayers = async () => {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const res = await axios.get(`${API_URL}/player`);
+
+                const mappedPlayers: Player[] = res.data.map((p: any) => ({
+                    id: p._id,
+                    name: p.userId?.nickname || 'Unknown',
+                    avatar: p.userId?.avatar || 'Felix',
+                    country: p.userId?.country || 'Unknown',
+                    countryCode: countryCodeMap[p.userId?.country?.toUpperCase()] || '🌍',
+                    region: (p.userId?.region || 'EU') as Region,
+                    tier: (p.rank || 'Diamond') as RankTier,
+                    elo: p.elo || 1000,
+                    winRate: 50,
+                    wins: 0,
+                    losses: 0,
+                    kd: 1.0,
+                    matches: 0,
+                    trend: 'same',
+                    trendDelta: 0,
+                    isOnline: true,
+                    isPro: p.isPro || false,
+                    game: 'Valorant'
+                }));
+                setPlayers(mappedPlayers);
+            } catch (error) {
+                console.error('Failed to fetch players:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchPlayers();
+    }, []);
 
     const filtered = useMemo(() => {
         return MOCK_PLAYERS
@@ -153,9 +201,6 @@ export default function PlayerRankings() {
                         <input value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search player or country…"
                             className="w-full rounded-2xl pl-10 pr-4 py-3 text-sm font-medium text-white placeholder-white/20 outline-none transition-all"
-                            style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.07)' }}
-                            onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)')}
-                            onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')} />
                     </div>
                     <div className="flex gap-1.5 p-1.5 rounded-2xl" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.06)' }}>
                         {GAMES.map(g => (
@@ -172,9 +217,7 @@ export default function PlayerRankings() {
                     </div>
                 </div>
 
-                {/* Row 2: region + tier + sort */}
                 <div className="flex gap-3 flex-wrap">
-                    {/* Region */}
                     <div className="flex gap-1 p-1 rounded-2xl" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.06)' }}>
                         {REGIONS.map(r => (
                             <button key={r.value} onClick={() => setRegion(r.value)}
@@ -207,12 +250,9 @@ export default function PlayerRankings() {
             </div>
 
             {/* ── Podium (top 3) ───────────────────────────────────────── */}
-            {topThree.length >= 3 && search === '' && region === 'ALL' && tierFilter === 'ALL' && (
+            {topThree.length >= 3 && !loading && search === '' && region === 'ALL' && tierFilter === 'ALL' && (
                 <div className="grid grid-cols-3 gap-3 shrink-0">
                     {[topThree[1], topThree[0], topThree[2]].map((p, visualIdx) => {
-                        const pos  = visualIdx === 1 ? 1 : visualIdx === 0 ? 2 : 3;
-                        const tc   = TIER_CONFIG[p.tier];
-                        const podiumH = pos === 1 ? 'pt-0' : 'pt-8';
                         const podiumColors = [
                             { medal:'🥈', glowColor:'rgba(148,163,184,0.15)', ring:'rgba(148,163,184,0.4)' },
                             { medal:'👑', glowColor:'rgba(255,215,0,0.2)',    ring:'rgba(255,215,0,0.6)'    },
@@ -220,7 +260,7 @@ export default function PlayerRankings() {
                         ];
                         const pc = podiumColors[visualIdx];
                         return (
-                            <div key={p.id} className={cn("flex flex-col items-center rounded-3xl p-5 transition-all duration-200 relative overflow-hidden", podiumH)}
+                            <div key={p.id} className={cn("flex flex-col items-center rounded-3xl p-5 transition-all duration-200 relative overflow-hidden", visualIdx === 1 ? 'pt-0' : 'pt-8')}
                                 style={{ background: '#0d0d0d', border: `1px solid ${pc.ring.replace('0.4','0.2').replace('0.6','0.25')}`, boxShadow: `0 0 30px ${pc.glowColor}` }}>
                                 <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at top, ${pc.glowColor} 0%, transparent 60%)` }} />
                                 <span className="text-3xl mb-2 relative z-10">{pc.medal}</span>
@@ -228,21 +268,12 @@ export default function PlayerRankings() {
                                     <div className="w-16 h-16 rounded-2xl overflow-hidden border-2" style={{ borderColor: pc.ring }}>
                                         <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.avatar}`} className="w-full h-full bg-black" alt={p.name} />
                                     </div>
-                                    {p.isOnline && <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-black bg-green-400" style={{ boxShadow: '0 0 8px rgba(74,222,128,0.7)' }} />}
                                 </div>
                                 <p className="font-black text-white text-sm uppercase tracking-tight mb-0.5 z-10 relative">{p.name}</p>
                                 <p className="text-[10px] font-bold mb-2 z-10 relative" style={{ color: 'rgba(255,255,255,0.35)' }}>{p.countryCode} {p.country}</p>
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl mb-3 z-10 relative" style={{ background: tc.bg, border: `1px solid ${tc.border}` }}>
                                     <span className="text-sm">{tc.emoji}</span>
                                     <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: tc.color }}>{p.tier}</span>
-                                </div>
-                                <div className="w-full grid grid-cols-3 gap-1 z-10 relative">
-                                    {[['ELO', p.elo.toLocaleString()], ['WR', `${p.winRate}%`], ['K/D', p.kd.toFixed(1)]].map(([l,v]) => (
-                                        <div key={l} className="rounded-xl py-2 text-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                                            <div className="text-xs font-black text-white">{v}</div>
-                                            <div className="text-[8px] font-black uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>{l}</div>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
                         );
@@ -252,26 +283,31 @@ export default function PlayerRankings() {
 
             {/* ── Table header ─────────────────────────────────────────── */}
             <div className="rounded-3xl overflow-hidden shrink-0" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.06)' }}>
-                {/* Column headers */}
-                <div className="grid items-center px-5 py-3.5 border-b border-white/[0.05]"
-                    style={{ gridTemplateColumns: '52px 1fr 100px 90px 80px 80px 80px 80px' }}>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>#</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>Player</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>Nation</span>
-                    <SortHeader label="ELO" sortKey="elo" current={sortBy} onSort={setSortBy} />
-                    <SortHeader label="Win%" sortKey="winRate" current={sortBy} onSort={setSortBy} />
-                    <SortHeader label="W"    sortKey="winRate" current={sortBy} onSort={setSortBy} color="rgba(0,255,0,0.6)" />
-                    <SortHeader label="K/D"  sortKey="kd"      current={sortBy} onSort={setSortBy} />
-                    <SortHeader label="Games" sortKey="matches" current={sortBy} onSort={setSortBy} />
-                </div>
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-white/40">Syncing database data...</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid items-center px-5 py-3.5 border-b border-white/[0.05]"
+                            style={{ gridTemplateColumns: '52px 1fr 100px 90px 80px 80px 80px 80px' }}>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>#</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>Player</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>Nation</span>
+                            <SortHeader label="ELO" sortKey="elo" current={sortBy} onSort={setSortBy} />
+                            <SortHeader label="Win%" sortKey="winRate" current={sortBy} onSort={setSortBy} />
+                            <SortHeader label="W"    sortKey="winRate" current={sortBy} onSort={setSortBy} color="rgba(0,255,0,0.6)" />
+                            <SortHeader label="K/D"  sortKey="kd"      current={sortBy} onSort={setSortBy} />
+                            <SortHeader label="Games" sortKey="matches" current={sortBy} onSort={setSortBy} />
+                        </div>
 
-                {/* Rows */}
-                <div>
-                    {filtered.map((p, idx) => {
-                        const globalRank = idx + 1;
-                        const tc = TIER_CONFIG[p.tier];
-                        const isMe = p.name === 'Player One';
-                        const isExpanded = expanded === p.id;
+                        <div>
+                            {filtered.map((p, idx) => {
+                                const globalRank = idx + 1;
+                                const tc = TIER_CONFIG[p.tier] || TIER_CONFIG.Diamond;
+                                const isMe = p.name === myNickname;
+                                const isExpanded = expanded === p.id;
 
                         return (
                             <div key={p.id}>
