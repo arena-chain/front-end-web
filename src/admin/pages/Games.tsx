@@ -5,6 +5,7 @@ import type { Game } from '../../models/game';
 import catalogService, { type CreateGameDto, type UpdateGameDto } from '../../services/catalogService';
 import GameForm from '../components/games/GameForm';
 import { placeholderImage } from '../../lib/placeholderImage';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 export default function Games() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -188,9 +189,11 @@ export default function Games() {
 }
 
 function GameCard({ game, onEdit, onDelete }: { game: Game; onEdit: () => void; onDelete: () => void }) {
-    const imageUrl = game.coverImageUrl?.startsWith('/uploads/')
-        ? `http://localhost:3000${game.coverImageUrl}`
-        : game.coverImageUrl || placeholderImage(400, 200, 'No image');
+    const imageUrl = game.coverImageUrl
+        ? (game.coverImageUrl.startsWith('/uploads/') || game.coverImageUrl.startsWith('/uploads') || game.coverImageUrl.startsWith('uploads/')
+            ? resolveBackendAssetUrl(game.coverImageUrl)
+            : game.coverImageUrl)
+        : placeholderImage(400, 200, 'No image');
 
     return (
         <div className="relative p-1" style={{

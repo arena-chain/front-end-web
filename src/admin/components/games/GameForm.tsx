@@ -3,6 +3,7 @@ import { X, Save, Gamepad2, Upload, Image as ImageIcon } from 'lucide-react';
 import { Button, Input } from '../../../components/ui/core';
 import type { Game } from '../../../models/game';
 import type { CreateGameDto, UpdateGameDto } from '../../../services/catalogService';
+import { resolveBackendAssetUrl } from '../../../lib/apiBase';
 
 interface GameFormProps {
     game?: Game;
@@ -58,8 +59,12 @@ export default function GameForm({ game, onSubmit, onCancel, isLoading = false }
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [roleInput, setRoleInput] = useState('');
 
-    const resolveImageUrl = (url: string) =>
-        url.startsWith('/uploads/') ? `http://localhost:3000${url}` : url;
+    const resolveImageUrl = (url: string) => {
+        if (url.startsWith('/uploads/') || url.startsWith('/uploads') || url.startsWith('uploads/')) {
+            return resolveBackendAssetUrl(url);
+        }
+        return url;
+    };
 
     useEffect(() => {
         if (game) {
