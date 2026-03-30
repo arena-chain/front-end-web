@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { FileText, Plus, Star, Calendar, ArrowRight, Search, User } from 'lucide-react';
 import { scoutingService, type ScoutingReport } from '../../services/scoutingService';
 import { scouterService, type ScoutedPlayerProfile } from '../../services/scouterService';
@@ -39,6 +39,7 @@ function getScouterId(): string | null {
 }
 
 export default function ScouterReports() {
+    const location = useLocation();
     const scouterId = getScouterId();
     const [reports, setReports] = useState<ScoutingReport[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ export default function ScouterReports() {
     const [playerSearch, setPlayerSearch] = useState('');
     const [selectedPlayer, setSelectedPlayer] = useState<PlayerOption | null>(null);
     const [playerDropdownOpen, setPlayerDropdownOpen] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<ScoutingReport | null>(null);
     const [form, setForm] = useState({
         playerId: '',
         rating: 85,
@@ -138,6 +140,19 @@ export default function ScouterReports() {
         return typeof p === 'string' ? p : '';
     };
 
+    const query = new URLSearchParams(location.search);
+    const playerFilterId = query.get('playerId') ?? '';
+
+    const visibleReports = playerFilterId
+        ? reports.filter((r) => playerId(r) === playerFilterId)
+        : reports;
+
+    useEffect(() => {
+        if (!playerFilterId || reports.length === 0) return;
+        const first = reports.find((r) => playerId(r) === playerFilterId);
+        if (first) setSelectedReport(first);
+    }, [playerFilterId, reports]);
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -149,6 +164,15 @@ export default function ScouterReports() {
                     <p className="text-white/50 text-sm mt-1">
                         All evaluations you have written. Create new reports from a player profile.
                     </p>
+                    {playerFilterId && (
+                        <p className="text-xs text-primary/80 mt-2">
+                            Filtered by selected player.
+                            {' '}
+                            <Link to="/scouter/reports" className="underline hover:text-primary">
+                                Show all reports
+                            </Link>
+                        </p>
+                    )}
                 </div>
                 <Button
                     onClick={() => setModalOpen(true)}
@@ -161,10 +185,12 @@ export default function ScouterReports() {
             <div className="rounded-2xl border border-primary/10 bg-white/[0.02] overflow-hidden">
                 {loading ? (
                     <div className="py-24 text-center text-primary/70">Loading reports…</div>
-                ) : reports.length === 0 ? (
+                ) : visibleReports.length === 0 ? (
                     <div className="py-24 text-center">
                         <FileText className="w-14 h-14 text-primary/40 mx-auto mb-4" />
-                        <p className="text-white/80 font-semibold">No reports yet</p>
+                        <p className="text-white/80 font-semibold">
+                            {playerFilterId ? 'No report found for this player' : 'No reports yet'}
+                        </p>
                         <p className="text-white/40 text-sm mt-1 max-w-sm mx-auto">
                             Open a player profile and click &quot;New report&quot; to add an evaluation (rating, strengths, weaknesses, recommended role).
                         </p>
@@ -177,7 +203,7 @@ export default function ScouterReports() {
                     </div>
                 ) : (
                     <div className="divide-y divide-white/5">
-                        {reports.map((r) => (
+                        {visibleReports.map((r) => (
                             <div
                                 key={r._id}
                                 className="flex flex-wrap items-center gap-4 px-6 py-4 hover:bg-white/[0.02]"
@@ -198,17 +224,72 @@ export default function ScouterReports() {
                                 <div className="flex items-center gap-3 text-xs text-white/50">
                                     <Calendar size={14} /> {fmtDate(r.createdAt)}
                                 </div>
-                                <Link
-                                    to={`/scouter/players/${playerId(r)}`}
-                                    className="inline-flex items-center gap-1 text-primary font-bold text-sm hover:underline"
-                                >
-                                    View profile <ArrowRight size={14} />
-                                </Link>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedReport(r)}
+                                        className="inline-flex items-center gap-1 text-white/80 font-bold text-sm hover:text-white hover:underline"
+                                    >
+                                        View details
+                                    </button>
+                                    <Link
+                                        to={`/scouter/players/${playerId(r)}#reports`}
+                                        className="inline-flex items-center gap-1 text-primary font-bold text-sm hover:underline"
+                                    >
+                                        View profile <ArrowRight size={14} />
+                                    </Link>
+                                </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            <Modal
+                isOpen={Boolean(selectedReport)}
+                onClose={() => setSelectedReport(null)}
+                title="Report details"
+            >
+                {selectedReport && (
+                    <div className="px-6 pb-6 space-y-4">
+                        <div className="rounded-xl border border-primary/20 bg-primary/10 p-4">
+                            <p className="text-xs text-white/60 uppercase tracking-widest">Player</p>
+                            <p className="text-lg font-bold text-white">{playerName(selectedReport)}</p>
+                            <p className="text-sm text-white/60 mt-1">
+                                Rating: <span className="text-primary font-bold">{selectedReport.rating}</span>/100
+                                {selectedReport.recommendedRole ? ` · Role: ${selectedReport.recommendedRole}` : ''}
+                            </p>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                                <p className="text-xs text-white/50 uppercase tracking-widest mb-1">Strengths</p>
+                                <p className="text-sm text-white/80">{selectedReport.strengths || '—'}</p>
+                            </div>
+                            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                                <p className="text-xs text-white/50 uppercase tracking-widest mb-1">Weaknesses</p>
+                                <p className="text-sm text-white/80">{selectedReport.weaknesses || '—'}</p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                            <p className="text-xs text-white/50 uppercase tracking-widest mb-1">Notes</p>
+                            <p className="text-sm text-white/80 whitespace-pre-wrap">{selectedReport.notes || '—'}</p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1">
+                            <p className="text-xs text-white/50">Created: {fmtDate(selectedReport.createdAt)}</p>
+                            <Link
+                                to={`/scouter/players/${playerId(selectedReport)}#reports`}
+                                className="text-sm font-bold text-primary hover:underline"
+                                onClick={() => setSelectedReport(null)}
+                            >
+                                Open player profile
+                            </Link>
+                        </div>
+                    </div>
+                )}
+            </Modal>
 
             <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="New report">
                 <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6">

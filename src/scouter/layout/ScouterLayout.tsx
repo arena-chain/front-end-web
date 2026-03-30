@@ -15,19 +15,12 @@ import {
     Bookmark,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Button } from '../../components/ui/core';
 import { useAuth } from '../../contexts/AuthContext';
-
-const SCOUT_ACCENT = 'text-primary';
-const SCOUT_BG = 'bg-primary/10';
-const SCOUT_BORDER = 'border-primary/20';
 
 export default function ScouterLayout() {
     const { logout } = useAuth();
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
-
-    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
     const handleLogout = () => {
         logout();
@@ -44,79 +37,106 @@ export default function ScouterLayout() {
     })();
 
     return (
-        <div className="min-h-screen bg-[#0a0b0d] text-white font-sans">
-            {/* Subtle radar / scan gradient background */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[140%] h-[60%] opacity-30" style={{ background: 'radial-gradient(ellipse at center, rgba(0,255,0,0.08) 0%, transparent 70%)' }} />
-                <div className="absolute bottom-0 right-0 w-1/2 h-1/2 opacity-30" style={{ background: 'radial-gradient(ellipse at center, rgba(0,255,0,0.06) 0%, transparent 70%)' }} />
-            </div>
-
-            {/* Sidebar */}
-            <aside
-                className={cn(
-                    'fixed z-40 flex flex-col h-screen transition-all duration-300 border-r border-primary/10 bg-[#0d0e12]/95 backdrop-blur-md',
-                    isSidebarOpen ? 'w-64' : 'w-20'
-                )}
-            >
-                <div className={cn('h-16 flex items-center justify-center border-b border-primary/10 relative', SCOUT_BG)}>
-                    {isSidebarOpen ? (
-                        <div className="flex items-center gap-2">
-                            <Binoculars className={cn('w-6 h-6', SCOUT_ACCENT)} />
-                            <span className="text-sm font-black uppercase tracking-widest text-primary/90">Scout Hub</span>
+        <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-white">
+            <div className="flex flex-1 bg-[#0e0f11] rounded-[22px] overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.45)]">
+                <aside className={cn(
+                    'flex flex-col shrink-0 h-full z-40 transition-all duration-300 ease-in-out border-r border-white/[0.05] bg-[#0b0c0e]',
+                    isSidebarOpen ? 'w-60' : 'w-[68px]'
+                )}>
+                    <div className={cn(
+                        'h-16 flex items-center shrink-0 overflow-hidden',
+                        isSidebarOpen ? 'px-5 gap-3' : 'justify-center'
+                    )}>
+                        <div className="w-8 h-8 shrink-0 rounded-xl bg-primary/20 border border-primary/20 flex items-center justify-center">
+                            <Binoculars className="w-4 h-4 text-primary" />
                         </div>
-                    ) : (
-                        <Binoculars className={cn('w-6 h-6', SCOUT_ACCENT)} />
-                    )}
-                </div>
+                        {isSidebarOpen && (
+                            <div className="overflow-hidden">
+                                <p className="text-white font-black text-sm uppercase tracking-widest leading-none">Scout</p>
+                                <p className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] leading-none mt-0.5">Hub</p>
+                            </div>
+                        )}
+                    </div>
 
-                <nav className="flex-1 py-6 px-3 space-y-1">
-                    <NavItem to="/scouter/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" isOpen={isSidebarOpen} />
-                    <NavItem to="/scouter/players" icon={<Users size={20} />} label="Players" isOpen={isSidebarOpen} />
-                    <NavItem to="/scouter/watchlist" icon={<Bookmark size={20} />} label="Watchlist" isOpen={isSidebarOpen} />
-                    <NavItem to="/scouter/reports" icon={<FileText size={20} />} label="Reports" isOpen={isSidebarOpen} />
-                    <NavItem to="/scouter/recommendations" icon={<Send size={20} />} label="Recommendations" isOpen={isSidebarOpen} />
-                    <NavItem to="/scouter/evaluated" icon={<Star size={20} />} label="My Evaluated" isOpen={isSidebarOpen} />
-                    <NavItem to="/scouter/highlights" icon={<Video size={20} />} label="Videos & Highlights" isOpen={isSidebarOpen} />
-                </nav>
-
-                <div className="p-4 border-t border-primary/10">
-                    <Button
-                        variant="ghost"
-                        onClick={handleLogout}
-                        className={cn('w-full justify-start text-primary/80 hover:bg-primary/10 hover:text-primary', !isSidebarOpen && 'justify-center px-0')}
-                    >
-                        <LogOut size={20} className={cn(isSidebarOpen && 'mr-2')} />
-                        {isSidebarOpen && 'Logout'}
-                    </Button>
-                </div>
-            </aside>
-
-            <div className={cn('flex-1 flex flex-col min-h-screen transition-all duration-300 relative z-10', isSidebarOpen ? 'ml-64' : 'ml-20')}>
-                <header className="h-16 sticky top-0 z-30 bg-[#0d0e12]/80 backdrop-blur-md border-b border-primary/10 flex items-center justify-between px-6">
-                    <button
-                        onClick={toggleSidebar}
-                        className="p-2 rounded-lg text-primary/70 hover:bg-primary/10 hover:text-primary transition-colors"
-                    >
-                        {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-                    </button>
-
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                            <ScanLine size={14} className="text-primary" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-primary">Scouter</span>
+                    <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2 space-y-3 scrollbar-none">
+                        {isSidebarOpen ? (
+                            <p className="px-3 mb-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-white/20">
+                                Workspace
+                            </p>
+                        ) : (
+                            <div className="mx-auto w-5 h-px bg-white/10 mb-2" />
+                        )}
+                        <div className="space-y-0.5">
+                            <NavItem to="/scouter/dashboard" icon={LayoutDashboard} label="Dashboard" isOpen={isSidebarOpen} />
+                            <NavItem to="/scouter/players" icon={Users} label="Players" isOpen={isSidebarOpen} />
+                            <NavItem to="/scouter/watchlist" icon={Bookmark} label="Watchlist" isOpen={isSidebarOpen} />
+                            <NavItem to="/scouter/reports" icon={FileText} label="Reports" isOpen={isSidebarOpen} />
+                            <NavItem to="/scouter/recommendations" icon={Send} label="Recommendations" isOpen={isSidebarOpen} />
+                            <NavItem to="/scouter/evaluated" icon={Star} label="My Evaluated" isOpen={isSidebarOpen} />
+                            <NavItem to="/scouter/highlights" icon={Video} label="Videos & Highlights" isOpen={isSidebarOpen} />
                         </div>
+                    </nav>
+
+                    <div className="shrink-0 border-t border-white/[0.05] p-3 space-y-1">
+                        {isSidebarOpen ? (
+                            <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-white/[0.04] border border-white/[0.05]">
+                                <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/20 flex items-center justify-center shrink-0">
+                                    <Binoculars className="w-4 h-4 text-primary" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-white text-xs font-bold truncate">{user?.nickname ?? 'Scouter User'}</p>
+                                    <p className="text-primary text-[10px] font-bold truncate">Scouter</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex justify-center py-1">
+                                <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/20 flex items-center justify-center">
+                                    <Binoculars className="w-4 h-4 text-primary" />
+                                </div>
+                            </div>
+                        )}
+                        <button
+                            onClick={handleLogout}
+                            title="Logout"
+                            className={cn(
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200',
+                                !isSidebarOpen && 'justify-center px-0'
+                            )}
+                        >
+                            <LogOut size={16} className="shrink-0" />
+                            {isSidebarOpen && <span className="text-xs font-bold">Logout</span>}
+                        </button>
+                    </div>
+                </aside>
+
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <header className="h-16 shrink-0 flex items-center justify-between px-6 z-30 border-b border-white/[0.05] bg-[#0d0e10]">
+                        <button
+                            onClick={() => setIsSidebarOpen((v) => !v)}
+                            className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition-all"
+                        >
+                            {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+                        </button>
+
                         <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-white/90">{user?.nickname ?? 'Scouter'}</span>
-                            <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 shadow-[0_0_14px_rgba(57,255,20,0.14)]">
+                                <ScanLine size={14} className="text-primary" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-primary">Scouter</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-sm font-bold text-white">{user?.nickname ?? 'Scouter User'}</span>
+                                <span className="text-[11px] text-primary font-bold">Scout Team</span>
+                            </div>
+                            <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/20 flex items-center justify-center shadow-[0_0_12px_rgba(57,255,20,0.18)]">
                                 <Binoculars className="w-4 h-4 text-primary" />
                             </div>
                         </div>
-                    </div>
-                </header>
+                    </header>
 
-                <main className="flex-1 p-6 overflow-auto">
-                    <Outlet />
-                </main>
+                    <main className="flex-1 overflow-auto bg-[#07080a] rounded-tl-[18px] p-6">
+                        <Outlet />
+                    </main>
+                </div>
             </div>
         </div>
     );
@@ -124,26 +144,44 @@ export default function ScouterLayout() {
 
 interface NavItemProps {
     to: string;
-    icon: React.ReactNode;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
     label: string;
     isOpen: boolean;
 }
 
 function NavItem({ to, icon, label, isOpen }: NavItemProps) {
+    const Icon = icon;
     return (
         <NavLink
             to={to}
+            title={!isOpen ? label : undefined}
             className={({ isActive }) =>
                 cn(
-                    'flex items-center p-3 rounded-lg transition-all duration-200 group relative',
-                    isActive ? 'bg-primary/15 text-primary border border-primary/25' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
+                    'relative flex items-center gap-3 rounded-xl transition-all duration-200 group overflow-hidden',
+                    isOpen ? 'px-3 py-2.5' : 'justify-center p-2.5',
+                    isActive
+                        ? 'bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-primary border border-primary/20 shadow-[0_0_14px_rgba(57,255,20,0.1)]'
+                        : 'text-white/40 hover:text-white hover:bg-white/[0.05] border border-transparent hover:border-white/10'
                 )
             }
         >
-            <span className="shrink-0">{icon}</span>
-            <span className={cn('ml-3 font-medium text-sm whitespace-nowrap transition-all duration-300', !isOpen && 'opacity-0 w-0 overflow-hidden ml-0')}>
-                {label}
-            </span>
+            {({ isActive }) => (
+                <>
+                    <span className={cn(
+                        'absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-200',
+                        isActive ? 'h-5 bg-primary shadow-[0_0_8px_rgba(0,255,136,0.6)]' : 'h-0'
+                    )} />
+                    <Icon size={17} className="shrink-0" />
+                    {isOpen && (
+                        <span className="text-[13px] font-semibold whitespace-nowrap leading-none">
+                            {label}
+                        </span>
+                    )}
+                    {isActive && (
+                        <span className="absolute inset-0 bg-primary/5 rounded-xl pointer-events-none" />
+                    )}
+                </>
+            )}
         </NavLink>
     );
 }

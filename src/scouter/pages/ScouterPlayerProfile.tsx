@@ -32,6 +32,8 @@ import {
     RecommendationLevel,
 } from '../../services/scoutingService';
 import { Modal, Button, Input } from '../../components/ui/core';
+import { videoService, type VideoRecord } from '../../services/video.service';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 /** Minimal profile when API returns 404 so scouter can still use reports/prospect/recommendations */
 function minimalProfile(playerUserId: string): ScoutedPlayerProfile {
@@ -62,6 +64,8 @@ export default function ScouterPlayerProfile() {
     const [profile, setProfile] = useState<ScoutedPlayerProfile | null>(null);
     const [matches, setMatches] = useState<PlayerMatchSummary[]>([]);
     const [highlights, setHighlights] = useState<PlayerHighlight[]>([]);
+    const [playerVideos, setPlayerVideos] = useState<VideoRecord[]>([]);
+    const [previewVideo, setPreviewVideo] = useState<{ title: string; description?: string; url: string } | null>(null);
     const [streamer, setStreamer] = useState<StreamerInfo | null>(null);
     const [team, setTeam] = useState<LeaderboardEntry['team']>(undefined);
     const [stats, setStats] = useState<{ killsPerRound: number; deathPerRound: number; winRate: number; headshotPct: number } | null>(null);
@@ -137,6 +141,15 @@ export default function ScouterPlayerProfile() {
         scoutingService.listReportsByPlayer(playerUserId).then(setReports).catch(() => setReports([]));
         scoutingService.getProspectByPlayer(playerUserId).then(setProspect).catch(() => setProspect(null));
         scoutingService.listRecommendationsByPlayer(playerUserId).then(setRecommendations).catch(() => setRecommendations([]));
+    }, [playerUserId]);
+
+    // Player uploaded videos (from /video)
+    useEffect(() => {
+        if (!playerUserId) return;
+        videoService
+            .list({ uploader: playerUserId })
+            .then((list) => setPlayerVideos(Array.isArray(list) ? list : []))
+            .catch(() => setPlayerVideos([]));
     }, [playerUserId]);
 
     // Watchlist check (SCOUTING_FULL_GUIDE)
@@ -605,12 +618,44 @@ export default function ScouterPlayerProfile() {
                     <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Videos & highlights</h2>
                 </div>
                 <div className="p-6">
-                    {highlights.length === 0 ? (
+                    {playerVideos.length === 0 && highlights.length === 0 ? (
                         <p className="text-white/40 text-sm text-center py-8">
                             No VODs or highlight clips linked yet. Connect your CDN or YouTube to show reels here.
                         </p>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {playerVideos.map((v) => (
+                                <button
+                                    key={v._id}
+                                    type="button"
+                                    onClick={() =>
+                                        setPreviewVideo({
+                                            title: v.title,
+                                            description: v.description,
+                                            url: resolveBackendAssetUrl(v.url),
+                                        })
+                                    }
+                                    className="group block text-left rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-primary/30 hover:bg-primary/5 transition-all"
+                                >
+                                    <video
+                                        src={resolveBackendAssetUrl(v.url)}
+                                        className="w-full aspect-video object-cover bg-black"
+                                        preload="metadata"
+                                    />
+                                    <div className="p-3">
+                                        <p className="text-white font-semibold text-sm truncate">{v.title}</p>
+                                        {v.description && (
+                                            <p className="text-white/40 text-xs mt-0.5 line-clamp-2">{v.description}</p>
+                                        )}
+                                        <div className="mt-2 flex items-center justify-between">
+                                            <p className="text-white/40 text-xs">
+                                                {new Date(v.createdAt).toLocaleDateString()}
+                                            </p>
+                                            <span className="text-primary text-xs font-bold">Open</span>
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
                             {highlights.map((h) => (
                                 <a
                                     key={h.id}
@@ -744,6 +789,25 @@ export default function ScouterPlayerProfile() {
                         </Button>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal isOpen={Boolean(previewVideo)} onClose={() => setPreviewVideo(null)} size="xl">
+                {previewVideo && (
+                    <div className="p-5 space-y-3">
+                        <div>
+                            <h3 className="text-lg font-bold text-white">{previewVideo.title}</h3>
+                            {previewVideo.description && (
+                                <p className="text-sm text-white/60 mt-1">{previewVideo.description}</p>
+                            )}
+                        </div>
+                        <video
+                            src={previewVideo.url}
+                            className="w-full max-h-[70vh] rounded-xl bg-black"
+                            controls
+                            autoPlay
+                        />
+                    </div>
+                )}
             </Modal>
 
             {/* Recommend to team modal */}

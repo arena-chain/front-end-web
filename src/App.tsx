@@ -115,6 +115,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/news" element={<NewsPage />} />
+          <Route path="/news/:id" element={<NewsArticlePage />} />
           <Route path="/download" element={<DownloadPage />} />
           <Route path="/tournaments/:id" element={<TournamentDetailsPage />} />
           <Route path="/leagues" element={<LeaguesPage />} />
@@ -194,6 +195,8 @@ function App() {
             <Route path="leagues/:id" element={<PlayerLeagues />} />
             <Route path="rankings" element={<PlayerRankings />} />
             <Route path="marketplace" element={<PlayerMarketplace />} />
+            <Route path="news" element={<PlayerNews />} />
+            <Route path="news/:id" element={<NewsArticlePage />} />
             <Route path="channel" element={<ChannelStudioPage />} />
             <Route path="channel/:channelId/detail" element={<ChannelDetailPage />} />
             <Route path="go-live" element={<GoLivePage />} />

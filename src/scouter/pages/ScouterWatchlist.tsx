@@ -107,7 +107,7 @@ export default function ScouterWatchlist() {
                                         <ArrowRight size={14} /> Profile
                                     </Link>
                                     <Link
-                                        to={`/scouter/players/${playerId(e)}#reports`}
+                                        to={`/scouter/reports?playerId=${playerId(e)}`}
                                         className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/15"
                                     >
                                         <FileText size={14} /> Report

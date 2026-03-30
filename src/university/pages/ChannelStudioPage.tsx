@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Hash, Image as ImageIcon, Sparkles, User as UserIcon, Check, Plus } from 'lucide-react';
-import { Badge, Button, Input, Textarea } from '../../components/ui/core';
+import { ExternalLink, Hash, Image as ImageIcon, Sparkles, User as UserIcon, Check, Plus, Video, Trash2, Upload } from 'lucide-react';
+import { Badge, Button, Input, Textarea, Modal } from '../../components/ui/core';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
+import { videoService, type VideoRecord } from '../../services/video.service';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 function ownerLabel(record: ChannelRecord): string {
     const o = record.ownerId as unknown;
@@ -37,6 +39,16 @@ export default function ChannelStudioPage() {
     const [showCustomAvatar, setShowCustomAvatar] = useState(false);
     const [showCustomBanner, setShowCustomBanner] = useState(false);
     const [showCustomCategories, setShowCustomCategories] = useState(false);
+    const [videos, setVideos] = useState<VideoRecord[]>([]);
+    const [videosLoading, setVideosLoading] = useState(true);
+    const [videoUploading, setVideoUploading] = useState(false);
+    const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+    const [previewVideo, setPreviewVideo] = useState<VideoRecord | null>(null);
+    const [videoForm, setVideoForm] = useState({
+        title: '',
+        description: '',
+        file: null as File | null,
+    });
 
     const PREDEFINED_AVATARS = [
         'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
@@ -64,7 +76,18 @@ export default function ChannelStudioPage() {
     useEffect(() => {
         void loadChannel();
         void loadAllStudios();
+        void loadMyVideos();
     }, []);
+
+    function currentUserId(): string | null {
+        try {
+            const raw = localStorage.getItem('user');
+            const user = raw ? JSON.parse(raw) : null;
+            return user?.id ?? user?._id ?? null;
+        } catch {
+            return null;
+        }
+    }
 
     async function loadChannel() {
         setLoading(true);
@@ -97,6 +120,67 @@ export default function ChannelStudioPage() {
             setAllStudios([]);
         } finally {
             setListLoading(false);
+        }
+    }
+
+    async function loadMyVideos() {
+        const uploader = currentUserId();
+        if (!uploader) {
+            setVideos([]);
+            setVideosLoading(false);
+            return;
+        }
+        setVideosLoading(true);
+        try {
+            const list = await videoService.list({ uploader });
+            setVideos(Array.isArray(list) ? list : []);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to load videos');
+            setVideos([]);
+        } finally {
+            setVideosLoading(false);
+        }
+    }
+
+    async function handleUploadVideo(event: React.FormEvent) {
+        event.preventDefault();
+        const uploader = currentUserId();
+        if (!uploader) {
+            toast.error('User not found in session');
+            return;
+        }
+        if (!videoForm.file || !videoForm.title.trim()) {
+            toast.error('Please choose a video file and enter a title');
+            return;
+        }
+        setVideoUploading(true);
+        try {
+            await videoService.upload({
+                file: videoForm.file,
+                title: videoForm.title.trim(),
+                description: videoForm.description.trim() || undefined,
+                uploader,
+            });
+            setVideoForm({ title: '', description: '', file: null });
+            await loadMyVideos();
+            toast.success('Video uploaded');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to upload video');
+        } finally {
+            setVideoUploading(false);
+        }
+    }
+
+    async function handleDeleteVideo(id: string) {
+        setDeletingVideoId(id);
+        try {
+            await videoService.remove(id);
+            await loadMyVideos();
+            toast.success('Video deleted');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to delete video');
+        } finally {
+            setDeletingVideoId(null);
         }
     }
 
@@ -396,6 +480,126 @@ export default function ChannelStudioPage() {
                     )}
                 </div>
             </div>
+
+            <section className="space-y-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+                    <form
+                        onSubmit={handleUploadVideo}
+                        className="lg:w-[380px] rounded-2xl border border-white/10 bg-[#0c0e11]/70 p-6 space-y-4"
+                    >
+                        <div className="flex items-center gap-2 text-primary/80 text-xs font-black uppercase tracking-widest">
+                            <Upload size={14} /> Upload video
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-white/60 mb-1">Title</label>
+                            <Input
+                                value={videoForm.title}
+                                onChange={(event) => setVideoForm((f) => ({ ...f, title: event.target.value }))}
+                                placeholder="e.g. Best clutch rounds"
+                                required
+                                className="bg-white/5 border-white/10"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-white/60 mb-1">Description</label>
+                            <Textarea
+                                rows={3}
+                                value={videoForm.description}
+                                onChange={(event) => setVideoForm((f) => ({ ...f, description: event.target.value }))}
+                                placeholder="Optional details"
+                                className="bg-white/5 border-white/10"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-white/60 mb-1">Video file</label>
+                            <input
+                                type="file"
+                                accept="video/mp4,video/webm,video/quicktime,video/*"
+                                onChange={(event) => setVideoForm((f) => ({ ...f, file: event.target.files?.[0] ?? null }))}
+                                className="w-full text-sm text-white/70 file:mr-4 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/30"
+                            />
+                            {videoForm.file && (
+                                <p className="text-[11px] text-white/50 mt-1 truncate">{videoForm.file.name}</p>
+                            )}
+                        </div>
+                        <Button type="submit" isLoading={videoUploading} className="w-full">
+                            Upload video
+                        </Button>
+                    </form>
+
+                    <div className="flex-1 rounded-2xl border border-white/10 bg-[#0c0e11]/50 p-6">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-primary/90 flex items-center gap-2">
+                                <Video size={15} /> My uploaded videos
+                            </h3>
+                            <Button type="button" variant="outline" size="sm" onClick={() => void loadMyVideos()} disabled={videosLoading}>
+                                Refresh
+                            </Button>
+                        </div>
+                        {videosLoading ? (
+                            <div className="py-10 text-center text-white/40 text-sm">Loading videos...</div>
+                        ) : videos.length === 0 ? (
+                            <div className="py-10 text-center text-white/40 text-sm">
+                                No videos uploaded yet.
+                            </div>
+                        ) : (
+                            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                                {videos.map((v) => (
+                                    <div key={v._id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3">
+                                        <button
+                                            type="button"
+                                            className="shrink-0 rounded-lg overflow-hidden border border-white/10 hover:border-primary/30 transition-colors"
+                                            onClick={() => setPreviewVideo(v)}
+                                            title="Open larger preview"
+                                        >
+                                            <video
+                                                src={resolveBackendAssetUrl(v.url)}
+                                                className="w-40 h-24 object-cover bg-black"
+                                                preload="metadata"
+                                            />
+                                        </button>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-white font-semibold truncate">{v.title}</p>
+                                            {v.description && <p className="text-xs text-white/50 mt-1 line-clamp-2">{v.description}</p>}
+                                            <div className="text-[10px] text-white/40 mt-2">
+                                                {new Date(v.createdAt).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="p-2 rounded-lg text-red-400 hover:bg-red-500/15 disabled:opacity-50"
+                                            onClick={() => void handleDeleteVideo(v._id)}
+                                            disabled={deletingVideoId === v._id}
+                                            title="Delete video"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            <Modal isOpen={Boolean(previewVideo)} onClose={() => setPreviewVideo(null)} size="xl">
+                {previewVideo && (
+                    <div className="p-5 space-y-3">
+                        <div>
+                            <h3 className="text-lg font-bold text-white">{previewVideo.title}</h3>
+                            {previewVideo.description && (
+                                <p className="text-sm text-white/60 mt-1">{previewVideo.description}</p>
+                            )}
+                        </div>
+                        <video
+                            src={resolveBackendAssetUrl(previewVideo.url)}
+                            className="w-full max-h-[70vh] rounded-xl bg-black"
+                            controls
+                            autoPlay
+                        />
+                    </div>
+                )}
+            </Modal>
 
             <section className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">

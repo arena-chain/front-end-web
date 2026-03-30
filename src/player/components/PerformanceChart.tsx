@@ -7,20 +7,7 @@ interface DataPoint {
     lol: number;
 }
 
-const MOCK_HISTORY: DataPoint[] = [
-    { label: 'Jan', valorant: 1200, lol: 1100 },
-    { label: 'Feb', valorant: 1350, lol: 1150 },
-    { label: 'Mar', valorant: 1250, lol: 1300 },
-    { label: 'Apr', valorant: 1400, lol: 1250 },
-    { label: 'May', valorant: 1550, lol: 1400 },
-    { label: 'Jun', valorant: 1500, lol: 1550 },
-    { label: 'Jul', valorant: 1650, lol: 1500 },
-    { label: 'Aug', valorant: 1800, lol: 1650 },
-    { label: 'Sep', valorant: 1750, lol: 1800 },
-    { label: 'Oct', valorant: 1950, lol: 1900 },
-];
-
-export function PerformanceChart() {
+export function PerformanceChart({ data = [] }: { data?: DataPoint[] }) {
     // Interactive state tracking both index and specific series
     const [hovered, setHovered] = useState<{ index: number; series: 'valorant' | 'lol' } | null>(null);
 
@@ -29,7 +16,13 @@ export function PerformanceChart() {
     const height = 220;
     const padding = 20;
 
-    const data = MOCK_HISTORY;
+    if (!data || data.length < 2) {
+        return (
+            <div className="bg-surface border border-white/5 rounded-xl p-5 h-full flex items-center justify-center">
+                <p className="text-white/40 text-sm">Not enough performance data yet.</p>
+            </div>
+        );
+    }
 
     // Calculate min/max across all datasets
     const allValues = data.flatMap(d => [d.valorant, d.lol]);

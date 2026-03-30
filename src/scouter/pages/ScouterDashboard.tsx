@@ -111,7 +111,7 @@ export default function ScouterDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Link
                     to="/scouter/players"
-                    className="bg-white/5 border border-primary/10 rounded-xl p-5 hover:border-primary/20 transition-colors group"
+                    className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.04] transition-all group"
                 >
                     <Users className="w-8 h-8 text-primary/80 mb-3 group-hover:text-primary" />
                     <p className="text-2xl font-black text-white">{loading ? '—' : players.length}</p>
@@ -119,20 +119,20 @@ export default function ScouterDashboard() {
                 </Link>
                 <Link
                     to="/scouter/reports"
-                    className="bg-white/5 border border-primary/10 rounded-xl p-5 hover:border-primary/20 transition-colors group"
+                    className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.04] transition-all group"
                 >
                     <FileText className="w-8 h-8 text-primary/80 mb-3 group-hover:text-primary" />
                     <p className="text-2xl font-black text-white">{reportsCount}</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-white/50">My reports</p>
                 </Link>
-                <div className="bg-white/5 border border-primary/10 rounded-xl p-5">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.03] transition-all">
                     <Star className="w-8 h-8 text-primary/80 mb-3" />
                     <p className="text-2xl font-black text-white">{prospectsCount}</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-white/50">Prospects</p>
                 </div>
                 <Link
                     to="/scouter/recommendations"
-                    className="bg-white/5 border border-primary/10 rounded-xl p-5 hover:border-primary/20 transition-colors group"
+                    className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.04] transition-all group"
                 >
                     <Send className="w-8 h-8 text-primary/80 mb-3 group-hover:text-primary" />
                     <p className="text-2xl font-black text-white">{recommendationsCount}</p>
@@ -152,7 +152,7 @@ export default function ScouterDashboard() {
                         <select
                             value={filters.gameId ?? ''}
                             onChange={(e) => setFilters((f) => ({ ...f, gameId: e.target.value || undefined }))}
-                            className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-primary/20 text-white text-sm"
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#111317] border border-white/10 text-white text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all"
                         >
                             <option value="">Any</option>
                             {games.map((g) => (
@@ -165,7 +165,7 @@ export default function ScouterDashboard() {
                         <select
                             value={filters.tier ?? ''}
                             onChange={(e) => setFilters((f) => ({ ...f, tier: e.target.value || undefined }))}
-                            className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-primary/20 text-white text-sm"
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#111317] border border-white/10 text-white text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all"
                         >
                             <option value="">Any</option>
                             {['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER', 'IMMORTAL', 'RADIANT'].map((t) => (
@@ -180,7 +180,7 @@ export default function ScouterDashboard() {
                             value={filters.country ?? ''}
                             onChange={(e) => setFilters((f) => ({ ...f, country: e.target.value || undefined }))}
                             placeholder="e.g. Tunisia"
-                            className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-primary/20 text-white text-sm placeholder-white/30"
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#111317] border border-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all"
                         />
                     </div>
                     <div>
@@ -191,7 +191,7 @@ export default function ScouterDashboard() {
                                 const v = e.target.value;
                                 setFilters((f) => ({ ...f, hasTeam: v === '' ? undefined : v === 'true' }));
                             }}
-                            className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-primary/20 text-white text-sm"
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#111317] border border-white/10 text-white text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all"
                         >
                             <option value="">Any</option>
                             <option value="true">Yes</option>
@@ -203,7 +203,7 @@ export default function ScouterDashboard() {
                         <select
                             value={filters.prospectLevel ?? ''}
                             onChange={(e) => setFilters((f) => ({ ...f, prospectLevel: (e.target.value || undefined) as ProspectLevel | undefined }))}
-                            className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-primary/20 text-white text-sm"
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#111317] border border-white/10 text-white text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all"
                         >
                             <option value="">Any</option>
                             {Object.values(ProspectLevel).map((l) => (
@@ -216,7 +216,7 @@ export default function ScouterDashboard() {
                         <select
                             value={filters.priority ?? ''}
                             onChange={(e) => setFilters((f) => ({ ...f, priority: (e.target.value || undefined) as ProspectPriority | undefined }))}
-                            className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-primary/20 text-white text-sm"
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#111317] border border-white/10 text-white text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all"
                         >
                             <option value="">Any</option>
                             {Object.values(ProspectPriority).map((p) => (
@@ -230,13 +230,13 @@ export default function ScouterDashboard() {
                         type="button"
                         onClick={runFilter}
                         disabled={filterLoading}
-                        className="px-4 py-2.5 rounded-xl bg-primary/20 border border-primary/30 text-primary font-bold text-sm hover:bg-primary/30 disabled:opacity-50 flex items-center gap-2"
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary/25 to-primary/15 border border-primary/35 text-primary font-bold text-sm hover:from-primary/35 hover:to-primary/20 disabled:opacity-50 flex items-center gap-2 shadow-[0_0_16px_rgba(57,255,20,0.12)] transition-all"
                     >
                         <Filter size={16} /> {filterLoading ? 'Searching…' : 'Search'}
                     </button>
                     <Link
                         to="/scouter/players"
-                        className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 font-bold text-sm hover:bg-white/10 flex items-center gap-2"
+                        className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 font-bold text-sm hover:bg-white/10 hover:border-primary/20 hover:text-white flex items-center gap-2 transition-all"
                     >
                         <Gamepad2 size={16} /> Browse all players
                     </Link>
@@ -270,7 +270,7 @@ export default function ScouterDashboard() {
             <div className="grid md:grid-cols-2 gap-4">
                 <Link
                     to="/scouter/players"
-                    className="group flex items-center gap-4 p-6 rounded-2xl bg-primary/10 border border-primary/20 hover:border-primary/40 transition-all"
+                    className="group flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 hover:border-primary/40 transition-all shadow-[0_0_18px_rgba(57,255,20,0.08)]"
                 >
                     <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <Users className="w-7 h-7 text-primary" />
@@ -283,7 +283,7 @@ export default function ScouterDashboard() {
                 </Link>
                 <Link
                     to="/scouter/reports"
-                    className="group flex items-center gap-4 p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/20 transition-all"
+                    className="group flex items-center gap-4 p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/20 hover:bg-white/10 transition-all"
                 >
                     <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <FileText className="w-7 h-7 text-white/70" />
@@ -298,7 +298,7 @@ export default function ScouterDashboard() {
 
             <div className="grid md:grid-cols-2 gap-6">
                 {/* Recent players */}
-                <div className="rounded-2xl border border-primary/10 bg-white/5 overflow-hidden">
+                <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
                     <div className="px-6 py-4 border-b border-primary/10 flex items-center justify-between">
                         <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Recent players</h2>
                         <Link to="/scouter/players" className="text-xs font-bold text-primary hover:underline">
@@ -336,7 +336,7 @@ export default function ScouterDashboard() {
                 </div>
 
                 {/* Recent reports */}
-                <div className="rounded-2xl border border-primary/10 bg-white/5 overflow-hidden">
+                <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
                     <div className="px-6 py-4 border-b border-primary/10 flex items-center justify-between">
                         <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Recent reports</h2>
                         <Link to="/scouter/reports" className="text-xs font-bold text-primary hover:underline">

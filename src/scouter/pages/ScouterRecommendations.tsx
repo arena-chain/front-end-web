@@ -28,7 +28,13 @@ const statusColors: Record<RecommendationStatus, string> = {
 
 function playerName(r: PlayerRecommendation) {
     const p = r.playerId;
-    if (typeof p === 'object' && p && 'nickname' in p) return (p as { nickname?: string }).nickname ?? 'Player';
+    if (typeof p === 'object' && p) {
+        if ('nickname' in p) return (p as { nickname?: string }).nickname ?? 'Player';
+        if ('userId' in p && typeof (p as { userId?: unknown }).userId === 'object') {
+            const u = (p as { userId?: { nickname?: string } }).userId;
+            return u?.nickname ?? 'Player';
+        }
+    }
     return 'Player';
 }
 
@@ -40,7 +46,23 @@ function orgName(r: PlayerRecommendation) {
 
 function playerId(r: PlayerRecommendation) {
     const p = r.playerId;
-    if (typeof p === 'object' && p && '_id' in p) return (p as { _id: string })._id;
+    if (typeof p === 'object' && p) {
+        // Preferred: direct user id
+        if ('_id' in p && typeof (p as { _id?: unknown })._id === 'string') {
+            return (p as { _id: string })._id;
+        }
+        // Some APIs populate player profile shape: { userId: "..." } or { userId: { _id: "..." } }
+        if ('userId' in p) {
+            const u = (p as { userId?: unknown }).userId;
+            if (typeof u === 'string') return u;
+            if (u && typeof u === 'object' && '_id' in u && typeof (u as { _id?: unknown })._id === 'string') {
+                return (u as { _id: string })._id;
+            }
+        }
+        if ('id' in p && typeof (p as { id?: unknown }).id === 'string') {
+            return (p as { id: string }).id;
+        }
+    }
     return typeof p === 'string' ? p : '';
 }
 
@@ -115,12 +137,18 @@ export default function ScouterRecommendations() {
                                 <div className="text-xs text-white/50 flex items-center gap-1">
                                     <Calendar size={14} /> {fmtDate(r.createdAt)}
                                 </div>
-                                <Link
-                                    to={`/scouter/players/${playerId(r)}`}
-                                    className="inline-flex items-center gap-1 text-primary font-bold text-sm hover:underline"
-                                >
-                                    View profile <ArrowRight size={14} />
-                                </Link>
+                                {playerId(r) ? (
+                                    <Link
+                                        to={`/scouter/players/${playerId(r)}`}
+                                        className="inline-flex items-center gap-1 text-primary font-bold text-sm hover:underline"
+                                    >
+                                        View profile <ArrowRight size={14} />
+                                    </Link>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 text-white/40 font-bold text-sm" title="Player id missing in recommendation payload">
+                                        View profile unavailable
+                                    </span>
+                                )}
                             </div>
                         ))}
                     </div>
