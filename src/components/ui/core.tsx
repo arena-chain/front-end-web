@@ -161,11 +161,25 @@ interface ModalProps {
     onClose: () => void;
     title?: string;
     children: React.ReactNode;
-    size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+    /** `reel` = narrow phone-style column (shorts / clips); `fullscreen` = edge-to-edge on small phones */
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'reel' | 'fullscreen';
     hideDefaultHeader?: boolean;
+    /**
+     * When false, the modal body does not scroll (overflow hidden + flex column).
+     * Use when children define a single inner scroll area (e.g. reel layout).
+     */
+    bodyScroll?: boolean;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md', hideDefaultHeader = false }) => {
+export const Modal: React.FC<ModalProps> = ({
+    isOpen,
+    onClose,
+    title,
+    children,
+    size = 'md',
+    hideDefaultHeader = false,
+    bodyScroll = true,
+}) => {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -188,10 +202,19 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         lg: 'max-w-4xl',
         xl: 'max-w-6xl',
         full: 'max-w-[95vw]',
+        reel: 'max-w-[min(340px,calc(100vw-1.5rem))]',
+        fullscreen: 'max-w-none w-full h-full max-h-[100dvh] rounded-none border-0',
     };
 
+    const isFullscreen = size === 'fullscreen';
+
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div
+            className={cn(
+                'fixed inset-0 z-[100] flex items-center justify-center',
+                isFullscreen ? 'p-0' : 'p-4',
+            )}
+        >
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
@@ -199,25 +222,56 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             />
 
             {/* Modal Content */}
-            <div className={cn(
-                'relative bg-surface border-2 border-white/10 rounded-xl shadow-2xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200',
-                sizes[size]
-            )}>
+            <div
+                className={cn(
+                    'relative bg-surface border-2 border-white/10 shadow-2xl w-full overflow-hidden animate-in zoom-in-95 duration-200',
+                    isFullscreen ? 'max-h-[100dvh] h-full border-0' : 'max-h-[90vh]',
+                    size === 'reel' ? 'rounded-3xl' : isFullscreen ? 'rounded-none' : 'rounded-xl',
+                    sizes[size],
+                    !bodyScroll && 'flex flex-col min-h-0',
+                )}
+            >
                 {/* Header */}
                 {title && !hideDefaultHeader && (
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-surface/50">
-                        <h2 className="text-xl font-black uppercase tracking-tighter text-white">{title}</h2>
+                    <div
+                        className={cn(
+                            'flex items-center justify-between border-b border-white/5 bg-surface/50 shrink-0',
+                            size === 'reel' ? 'px-3 py-2.5' : 'px-6 py-4',
+                        )}
+                    >
+                        <h2
+                            className={cn(
+                                'font-black uppercase tracking-tighter text-white truncate pr-2',
+                                size === 'reel' ? 'text-sm' : 'text-xl',
+                            )}
+                        >
+                            {title}
+                        </h2>
                         <button
                             onClick={onClose}
-                            className="p-2 text-text-muted hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                            className={cn(
+                                'text-text-muted hover:text-white transition-colors rounded-lg hover:bg-white/5 shrink-0',
+                                size === 'reel' ? 'p-1.5' : 'p-2',
+                            )}
                         >
-                            <X className="w-5 h-5" />
+                            <X className={size === 'reel' ? 'w-4 h-4' : 'w-5 h-5'} />
                         </button>
                     </div>
                 )}
 
                 {/* Body */}
-                <div className="overflow-y-auto max-h-[calc(90vh-80px)] custom-scrollbar">
+                <div
+                    className={cn(
+                        bodyScroll
+                            ? cn(
+                                  'overflow-y-auto custom-scrollbar',
+                                  isFullscreen
+                                      ? 'max-h-[100dvh]'
+                                      : 'max-h-[calc(90vh-80px)]',
+                              )
+                            : 'overflow-hidden flex flex-col flex-1 min-h-0',
+                    )}
+                >
                     {children}
                 </div>
             </div>

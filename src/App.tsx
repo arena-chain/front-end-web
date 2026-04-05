@@ -41,7 +41,6 @@ import PlayerSubscription from './player/pages/PlayerSubscription';
 import PlayerPayment from './player/pages/PlayerPayment';
 import PlayerRankings from './player/pages/PlayerRankings';
 import PlayerNews from './player/pages/PlayerNews';
-import PlayerSettings from './player/pages/PlayerSettings';
 import NewsArticlePage from './_public/pages/NewsArticlePage';
 
 // Manager Imports
@@ -73,6 +72,9 @@ import NftCollections from './admin/pages/NftCollections';
 import NftManager from './admin/pages/NftManager';
 import PlayerMarketplace from './player/pages/PlayerMarketplace';
 import ChannelStudioPage from './university/pages/ChannelStudioPage';
+import PlayerVideoHighlightsPage from './player/pages/PlayerVideoHighlightsPage';
+import PlayerMyVideosPage from './player/pages/PlayerMyVideosPage';
+import PlayerHighlightsHubPage from './player/pages/PlayerHighlightsHubPage';
 import GoLivePage from './university/pages/GoLivePage';
 import AllLivesPage from './university/pages/AllLivesPage';
 import WatchChannelPage from './university/pages/WatchChannelPage';
@@ -198,6 +200,9 @@ function App() {
             <Route path="news" element={<PlayerNews />} />
             <Route path="news/:id" element={<NewsArticlePage />} />
             <Route path="channel" element={<ChannelStudioPage />} />
+            <Route path="my-videos" element={<PlayerMyVideosPage />} />
+            <Route path="highlights" element={<PlayerHighlightsHubPage />} />
+            <Route path="videos/:videoId/highlights" element={<PlayerVideoHighlightsPage />} />
             <Route path="channel/:channelId/detail" element={<ChannelDetailPage />} />
             <Route path="go-live" element={<GoLivePage />} />
             <Route path="all-lives" element={<AllLivesPage />} />
@@ -232,6 +237,8 @@ function App() {
           <Route path="reports" element={<ScouterReports />} />
           <Route path="recommendations" element={<ScouterRecommendations />} />
           <Route path="highlights" element={<ScouterHighlights />} />
+          <Route path="reels" element={<Navigate to="/scouter/highlights" replace />} />
+          <Route path="best-highlights" element={<Navigate to="/scouter/highlights" replace />} />
           <Route path="evaluated" element={<ScouterEvaluated />} />
         </Route>
       </Routes>

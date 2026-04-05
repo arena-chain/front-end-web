@@ -14,6 +14,8 @@ import { cn } from '../../lib/utils';
 import { createLiveSocket, getIceServers } from '../../lib/live';
 import { getStreamEmbed, pickPreferredStreamUrl } from '../../lib/stream';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
+import { videoService, type VideoRecord } from '../../services/video.service';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { chatService, type ChatMessageRecord } from '../../services/chat.service';
 import { streamService, type StreamRecord } from '../../services/stream.service';
 import type { Socket } from 'socket.io-client';
@@ -35,6 +37,7 @@ export default function WatchChannelPage() {
     const [reactionCounts, setReactionCounts] = useState<ReactionSummary>({});
     const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [publicUploads, setPublicUploads] = useState<VideoRecord[]>([]);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [remotePlaybackBlocked, setRemotePlaybackBlocked] = useState(false);
     const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -312,6 +315,25 @@ export default function WatchChannelPage() {
             setChannel(channelData);
             setStreams(streamData);
             setChatMessages(messageData);
+
+            const owner = channelData?.ownerId;
+            const ownerId =
+                owner && typeof owner === 'object' && '_id' in owner
+                    ? String((owner as { _id: string })._id)
+                    : null;
+            if (ownerId) {
+                try {
+                    const uploads = await videoService.list({
+                        uploader: ownerId,
+                        channelPublic: true,
+                    });
+                    setPublicUploads(Array.isArray(uploads) ? uploads : []);
+                } catch {
+                    setPublicUploads([]);
+                }
+            } else {
+                setPublicUploads([]);
+            }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to load channel');
         } finally {
@@ -383,7 +405,7 @@ export default function WatchChannelPage() {
                                 <div className="flex items-center gap-4 text-xs font-black uppercase tracking-widest text-white/40 italic">
                                     <span className="text-primary">{liveStream?.isLive ? 'En Direct' : 'Hors Ligne'}</span>
                                     <div className="w-1 h-1 rounded-full bg-white/10" />
-                                    <span>{channel?.categories[0] || 'Studio Talent'}</span>
+                                    <span>{channel?.categories?.[0] || 'Studio Talent'}</span>
                                     <div className="w-1 h-1 rounded-full bg-white/10" />
                                     <span className="flex items-center gap-2">
                                         <Users size={12} className="text-primary" />
@@ -497,6 +519,61 @@ export default function WatchChannelPage() {
                                 {liveStream?.description || 'Le créateur n\'a pas encore fourni de détails pour cette transmission.'}
                             </p>
                         </div>
+
+                        <div className="space-y-5 rounded-[2.5rem] border border-white/5 bg-[#0a0c0f]/80 p-6 md:p-8">
+                            <div className="flex flex-wrap items-end justify-between gap-3">
+                                <div>
+                                    <h3 className="text-xs font-black uppercase tracking-[0.25em] text-primary/90 mb-1">
+                                        Chaîne — vidéos publiées
+                                    </h3>
+                                    <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter italic">
+                                        Bibliothèque VOD
+                                    </h2>
+                                    <p className="text-sm text-white/40 mt-1 max-w-2xl">
+                                        Toutes les vidéos que ce créateur a rendues visibles sur sa chaîne.
+                                    </p>
+                                </div>
+                                {publicUploads.length > 0 && (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/35 border border-white/10 rounded-full px-3 py-1">
+                                        {publicUploads.length} vidéo{publicUploads.length > 1 ? 's' : ''}
+                                    </span>
+                                )}
+                            </div>
+                            {publicUploads.length === 0 ? (
+                                <div className="py-12 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+                                    <p className="text-white/35 text-sm">Aucune vidéo publiée sur cette chaîne.</p>
+                                </div>
+                            ) : (
+                                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {publicUploads.map((v) => (
+                                        <article
+                                            key={v._id}
+                                            className="rounded-2xl border border-white/10 overflow-hidden bg-[#0f1115] hover:border-primary/25 transition-colors"
+                                        >
+                                            <div className="aspect-video bg-black">
+                                                <video
+                                                    src={resolveBackendAssetUrl(v.url)}
+                                                    className="w-full h-full object-cover"
+                                                    controls
+                                                    playsInline
+                                                    preload="metadata"
+                                                />
+                                            </div>
+                                            <div className="p-4 space-y-2">
+                                                <p className="font-black text-white text-sm line-clamp-2 italic">
+                                                    {v.title}
+                                                </p>
+                                                {v.description && (
+                                                    <p className="text-xs text-white/40 line-clamp-2 leading-relaxed">
+                                                        {v.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Secondary Info Area */}
@@ -513,7 +590,7 @@ export default function WatchChannelPage() {
                                         {channel?.description || 'Membre certifié de l\'Arena Grid. Ce studio est dédié à l\'excellence streaming et à l\'innovation communautaire.'}
                                     </p>
                                     <div className="flex flex-wrap gap-2">
-                                        {channel?.categories.map(cat => (
+                                        {(channel?.categories ?? []).map((cat) => (
                                             <Link key={cat} to={`/player/all-lives?category=${encodeURIComponent(cat)}`}>
                                                 <Badge variant="secondary" className="bg-white/5 border-white/5 text-[9px] font-black px-3 py-1 uppercase tracking-widest hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer">{cat}</Badge>
                                             </Link>

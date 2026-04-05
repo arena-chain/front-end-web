@@ -10,6 +10,12 @@
   --color-text: #ffffff;
   --color-text-muted: #a1a1a1;
 
+  /* Scout hub: complements neon green without replacing it */
+  --color-scout-violet: #a78bfa;
+  --color-scout-violet-deep: #7c3aed;
+  --color-scout-cyan: #22d3ee;
+  --color-scout-amber: #fbbf24;
+
   --font-sans: Inter, system-ui, sans-serif;
 
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;

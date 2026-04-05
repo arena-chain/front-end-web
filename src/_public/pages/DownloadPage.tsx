@@ -20,10 +20,10 @@ export default function DownloadPage() {
 
                     {/* Main download card */}
                     <div
-                        className="rounded-3xl overflow-hidden border border-primary/20 mb-12"
-                        style={{ background: 'linear-gradient(180deg, rgba(0,255,0,0.06) 0%, rgba(0,0,0,0.4) 100%)', boxShadow: '0 0 60px rgba(0,255,0,0.08)' }}
+                        className="rounded-3xl border border-primary/20 mb-12"
+                        style={{ background: 'linear-gradient(180deg, rgba(0,255,0,0.05) 0%, rgba(0,0,0,0.5) 100%)' }}
                     >
-                        <div className="p-8 md:p-12 flex flex-col md:flex-row md:items-center gap-8">
+                        <div className="p-8 md:p-12 flex flex-col md:flex-row md:items-stretch gap-10">
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-primary/20 border border-primary/30">
@@ -48,18 +48,18 @@ export default function DownloadPage() {
                                     <span><strong className="text-white/60">Format</strong> .exe Installer</span>
                                 </div>
                             </div>
-                            <div className="shrink-0">
+                            <div className="shrink-0 flex flex-col justify-center md:items-end w-full md:w-auto">
                                 <a
                                     href="#"
-                                    className="group inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl text-base font-black uppercase tracking-widest text-black transition-all duration-200"
-                                    style={{ background: 'linear-gradient(135deg, #00ff00 0%, #00cc44 100%)', boxShadow: '0 0 24px rgba(0,255,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25)' }}
-                                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 36px rgba(0,255,0,0.6), inset 0 1px 0 rgba(255,255,255,0.25)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 24px rgba(0,255,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25)'; }}
+                                    className="inline-flex w-full md:w-auto items-center justify-center gap-3 px-8 py-4 rounded-2xl text-base font-black uppercase tracking-widest text-black transition-all duration-200 border border-black/15"
+                                    style={{ background: 'linear-gradient(135deg, #00ff00 0%, #00cc44 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)' }}
+                                    onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.06)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
                                 >
-                                    <Download size={20} />
-                                    Download for Windows · Free
+                                    <Download size={20} className="shrink-0" />
+                                    <span className="text-center leading-tight">Download for Windows</span>
                                 </a>
-                                <p className="text-center text-xs text-white/40 mt-3">No account required</p>
+                                <p className="text-center md:text-right text-xs text-white/45 mt-3">Free · No account required</p>
                             </div>
                         </div>
                     </div>

@@ -1,31 +1,18 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Gamepad2, Menu, X, LogIn, UserPlus, Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Gamepad2, Menu, X, LogIn, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-
-const NAV_LINKS = [
-    { label: 'Home',        href: '/',            type: 'route'  },
-    { label: 'About',       href: '#about',        type: 'anchor' },
-    { label: 'Tournaments', href: '#tournaments',  type: 'anchor' },
-    { label: 'Partners',    href: '#partners',     type: 'anchor' },
-    { label: 'News',        href: '#news',         type: 'anchor' },
-    { label: 'Support',     href: '#support',      type: 'anchor' },
-] as const;
 
 export function TopNavbar() {
     const [menuOpen,  setMenuOpen]  = useState(false);
     const [scrolled,  setScrolled]  = useState(false);
-    const [activeLink, setActive]   = useState('/');
     const [showDlBadge, setDlBadge] = useState(false);
-    const location = useLocation();
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
-
-    useEffect(() => { setActive(location.pathname); }, [location]);
 
     // Flash download badge once after 2s
     useEffect(() => {
@@ -38,10 +25,10 @@ export function TopNavbar() {
             <nav
                 className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
                 style={{
-                    background: scrolled ? 'rgba(4,4,4,0.95)' : 'rgba(4,4,4,0.55)',
-                    backdropFilter: 'blur(24px)',
-                    WebkitBackdropFilter: 'blur(24px)',
-                    borderBottom: `1px solid ${scrolled ? 'rgba(0,255,0,0.14)' : 'rgba(255,255,255,0.05)'}`,
+                    background: scrolled ? 'rgba(4,4,4,0.95)' : 'transparent',
+                    backdropFilter: scrolled ? 'blur(24px)' : 'none',
+                    WebkitBackdropFilter: scrolled ? 'blur(24px)' : 'none',
+                    borderBottom: `1px solid ${scrolled ? 'rgba(0,255,0,0.14)' : 'transparent'}`,
                     boxShadow: scrolled ? '0 2px 48px rgba(0,0,0,0.7), 0 1px 0 rgba(0,255,0,0.08)' : 'none',
                 }}
             >
@@ -60,8 +47,7 @@ export function TopNavbar() {
                             onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'none'}>
                             <Gamepad2 className="w-[18px] h-[18px]" style={{ color: '#00ff00' }} />
                             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
-                                style={{ background: '#00ff00', animation: 'ping 2s cubic-bezier(0,0,0.2,1) infinite', opacity: 0.7 }} />
-                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full" style={{ background: '#00ff00' }} />
+                                style={{ background: '#00ff00', boxShadow: '0 0 8px rgba(0,255,0,0.55)' }} />
                         </div>
                         <div className="flex flex-col leading-none">
                             <span className="text-[18px] font-black tracking-tighter uppercase italic text-white leading-none">
@@ -71,31 +57,7 @@ export function TopNavbar() {
                         </div>
                     </Link>
 
-                    {/* ── Nav links ──────────────────────────────────── */}
-                    <div className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
-                        {NAV_LINKS.map(({ label, href, type }) => {
-                            const isActive = type === 'route' && activeLink === href;
-                            const shared = "relative px-3.5 py-2 rounded-lg text-[10.5px] font-black uppercase tracking-[0.16em] transition-colors duration-150 select-none";
-                            return type === 'route' ? (
-                                <Link key={label} to={href} onClick={() => window.scrollTo(0, 0)}
-                                    className={shared}
-                                    style={{ color: isActive ? '#00ff00' : 'rgba(255,255,255,0.42)' }}
-                                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = '#fff'; }}
-                                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.42)'; }}>
-                                    {label}
-                                    <span className="absolute bottom-[5px] left-1/2 -translate-x-1/2 h-px rounded-full transition-all duration-300"
-                                        style={{ width: isActive ? '55%' : '0%', background: '#00ff00', boxShadow: isActive ? '0 0 6px rgba(0,255,0,0.9)' : 'none' }} />
-                                </Link>
-                            ) : (
-                                <a key={label} href={href} className={shared}
-                                    style={{ color: 'rgba(255,255,255,0.42)' }}
-                                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.color = '#fff'; el.style.background = 'rgba(255,255,255,0.05)'; }}
-                                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.color = 'rgba(255,255,255,0.42)'; el.style.background = 'transparent'; }}>
-                                    {label}
-                                </a>
-                            );
-                        })}
-                    </div>
+                    <div className="hidden lg:block flex-1 min-w-0" aria-hidden />
 
                     {/* ── Right cluster ──────────────────────────────── */}
                     <div className="hidden md:flex items-center gap-2.5 shrink-0 ml-auto">
@@ -104,8 +66,7 @@ export function TopNavbar() {
                         <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
                             style={{ background: 'rgba(0,255,0,0.06)', border: '1px solid rgba(0,255,0,0.14)' }}>
                             <span className="relative flex h-1.5 w-1.5 shrink-0">
-                                <span className="absolute inset-0 rounded-full" style={{ background: '#00ff00', animation: 'ping 1.6s ease-in-out infinite', opacity: 0.6 }} />
-                                <span className="relative w-full h-full rounded-full" style={{ background: '#00ff00' }} />
+                                <span className="relative w-full h-full rounded-full" style={{ background: '#00ff00', boxShadow: '0 0 6px rgba(0,255,0,0.55)' }} />
                             </span>
                             <span className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: '#00ff00' }}>12.8K Live</span>
                         </div>
@@ -114,24 +75,29 @@ export function TopNavbar() {
                         <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
                         {/* Download — navigates to /download */}
-                        <Link to="/download" className="relative group inline-flex">
+                        <Link to="/download" className="relative group inline-flex rounded-xl">
                             <button
-                                className="relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl text-[10.5px] font-black uppercase tracking-widest text-black transition-all duration-200"
-                                style={{ background: 'linear-gradient(135deg, #00ff00 0%, #00cc44 100%)', boxShadow: '0 0 18px rgba(0,255,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}
-                                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(0,255,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 18px rgba(0,255,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2)'; }}
+                                type="button"
+                                className="relative flex items-center gap-2 pl-3.5 pr-3.5 py-2 rounded-xl text-[10.5px] font-black uppercase tracking-widest text-black transition-all duration-200 border border-black/10"
+                                style={{ background: 'linear-gradient(135deg, #00ff00 0%, #00cc44 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.06)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
                             >
-                                <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none"
-                                    style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)' }} />
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-black">
+                                <span className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none" aria-hidden>
+                                    <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
+                                        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)' }} />
+                                </span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="relative shrink-0 text-black">
                                     <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
                                 </svg>
-                                <span>Download</span>
-                                {showDlBadge && (
-                                    <span className="absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full leading-none bg-black/20 text-black">
-                                        FREE
-                                    </span>
-                                )}
+                                <span className="relative flex items-center gap-1.5">
+                                    <span>Download</span>
+                                    {showDlBadge && (
+                                        <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md leading-none bg-black/18 text-black border border-black/10">
+                                            Free
+                                        </span>
+                                    )}
+                                </span>
                             </button>
                         </Link>
 
@@ -183,22 +149,11 @@ export function TopNavbar() {
                 menuOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'
             )} style={{ background: 'rgba(4,4,4,0.98)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(0,255,0,0.1)' }}>
                 <div className="px-5 py-5 flex flex-col gap-1">
-                    {NAV_LINKS.map(({ label, href, type }) =>
-                        type === 'route'
-                            ? <Link key={label} to={href}
-                                onClick={() => { setMenuOpen(false); window.scrollTo(0, 0); }}
-                                className="px-4 py-3 rounded-xl text-sm font-black uppercase tracking-widest text-white"
-                                style={{ background: 'rgba(255,255,255,0.04)' }}>{label}</Link>
-                            : <a key={label} href={href} onClick={() => setMenuOpen(false)}
-                                className="px-4 py-3 rounded-xl text-sm font-black uppercase tracking-widest"
-                                style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</a>
-                    )}
-
-                    <div className="mt-3 pt-4 flex flex-col gap-2.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                    <div className="flex flex-col gap-2.5">
                         {/* Download mobile — navigates to /download */}
                         <Link to="/download" onClick={() => setMenuOpen(false)}>
-                            <button className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black uppercase tracking-widest text-black transition-all"
-                                style={{ background: 'linear-gradient(135deg, #00ff00, #00cc44)', boxShadow: '0 0 20px rgba(0,255,0,0.3)' }}>
+                            <button className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-black uppercase tracking-widest text-black transition-all border border-black/10"
+                                style={{ background: 'linear-gradient(135deg, #00ff00, #00cc44)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)' }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
                                 Download for Windows
                             </button>
@@ -210,8 +165,8 @@ export function TopNavbar() {
                             </button>
                         </Link>
                         <Link to="/register" onClick={() => setMenuOpen(false)}>
-                            <button className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black uppercase tracking-widest text-black"
-                                style={{ background: 'linear-gradient(135deg,#00ff00,#00cc44)', boxShadow: '0 0 20px rgba(0,255,0,0.3)' }}>
+                            <button className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-black uppercase tracking-widest text-black border border-black/10"
+                                style={{ background: 'linear-gradient(135deg,#00ff00,#00cc44)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)' }}>
                                 <UserPlus size={14} /> Register Free
                             </button>
                         </Link>

@@ -18,6 +18,8 @@ import {
     Send,
     Bookmark,
     BookmarkCheck,
+    Sparkles,
+    Play,
 } from 'lucide-react';
 import { scouterService, type ScoutedPlayerProfile, type PlayerMatchSummary } from '../../services/scouterService';
 import { getDemoProfile, type PlayerHighlight, type StreamerInfo } from '../data/staticPlayerProfile';
@@ -33,7 +35,11 @@ import {
 } from '../../services/scoutingService';
 import { Modal, Button, Input } from '../../components/ui/core';
 import { videoService, type VideoRecord } from '../../services/video.service';
+import { highlightService, type HighlightRecord } from '../../services/highlight.service';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import { highlightCreatorLabel, highlightCreatorUserId, rankHighlightsByEngagement } from '../lib/scouterHighlightUtils';
+import { MediaEngagementStrip } from '../../components/highlights/MediaEngagementStrip';
+import { ScouterHighlightDetailModal } from '../components/ScouterHighlightDetailModal';
 
 /** Minimal profile when API returns 404 so scouter can still use reports/prospect/recommendations */
 function minimalProfile(playerUserId: string): ScoutedPlayerProfile {
@@ -64,6 +70,9 @@ export default function ScouterPlayerProfile() {
     const [profile, setProfile] = useState<ScoutedPlayerProfile | null>(null);
     const [matches, setMatches] = useState<PlayerMatchSummary[]>([]);
     const [highlights, setHighlights] = useState<PlayerHighlight[]>([]);
+    const [playerHighlightClips, setPlayerHighlightClips] = useState<HighlightRecord[]>([]);
+    const [clipsLoading, setClipsLoading] = useState(false);
+    const [activeClipId, setActiveClipId] = useState<string | null>(null);
     const [playerVideos, setPlayerVideos] = useState<VideoRecord[]>([]);
     const [previewVideo, setPreviewVideo] = useState<{ title: string; description?: string; url: string } | null>(null);
     const [streamer, setStreamer] = useState<StreamerInfo | null>(null);
@@ -152,6 +161,42 @@ export default function ScouterPlayerProfile() {
             .catch(() => setPlayerVideos([]));
     }, [playerUserId]);
 
+    // This player's highlight clips: public pool + per-uploaded-video (deduped), ranked by reactions
+    useEffect(() => {
+        if (!playerUserId || isDemo) {
+            setPlayerHighlightClips([]);
+            setClipsLoading(false);
+            return;
+        }
+        let cancelled = false;
+        setClipsLoading(true);
+        (async () => {
+            try {
+                const publicList = await highlightService.listPublic();
+                const fromPublic = publicList.filter((h) => highlightCreatorUserId(h.creator) === playerUserId);
+                const videoLists = await Promise.all(
+                    playerVideos.map((v) =>
+                        highlightService.listByVideo(v._id, false).catch(() => [] as HighlightRecord[]),
+                    ),
+                );
+                const fromVideos = videoLists
+                    .flat()
+                    .filter((h) => highlightCreatorUserId(h.creator) === playerUserId);
+                const byId = new Map<string, HighlightRecord>();
+                [...fromPublic, ...fromVideos].forEach((h) => byId.set(h._id, h));
+                const merged = await rankHighlightsByEngagement(Array.from(byId.values()));
+                if (!cancelled) setPlayerHighlightClips(merged);
+            } catch {
+                if (!cancelled) setPlayerHighlightClips([]);
+            } finally {
+                if (!cancelled) setClipsLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [playerUserId, isDemo, playerVideos]);
+
     // Watchlist check (SCOUTING_FULL_GUIDE)
     useEffect(() => {
         let scouterId: string | null = null;
@@ -178,6 +223,10 @@ export default function ScouterPlayerProfile() {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }, [location.hash, loading]);
+
+    useEffect(() => {
+        setActiveClipId(null);
+    }, [playerUserId]);
 
     useEffect(() => {
         if (prospect) {
@@ -331,17 +380,17 @@ export default function ScouterPlayerProfile() {
             </Link>
 
             {/* Hero – avatar, name, team, rank, region, pro badge, CTA */}
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent overflow-hidden">
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
                 <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="flex items-center gap-6 flex-wrap">
+                    <div className="flex items-center gap-6 flex-wrap min-w-0">
                         <div className="w-28 h-28 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-primary font-black text-5xl shrink-0">
                             {name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <h1 className="text-3xl font-black text-white tracking-tight">{name}</h1>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                <h1 className="text-3xl font-black text-white tracking-tight leading-none pb-0.5">{name}</h1>
                                 {profile.isPro && (
-                                    <span className="px-2.5 py-0.5 rounded-md bg-primary/20 border border-primary/40 text-primary text-xs font-black uppercase tracking-wider">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-violet-500/25 border border-violet-400/50 text-violet-200 text-[11px] font-black uppercase tracking-wider leading-none shrink-0">
                                         Pro
                                     </span>
                                 )}
@@ -617,75 +666,174 @@ export default function ScouterPlayerProfile() {
                     <Video className="w-5 h-5 text-primary" />
                     <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Videos & highlights</h2>
                 </div>
-                <div className="p-6">
-                    {playerVideos.length === 0 && highlights.length === 0 ? (
+                <div className="p-6 space-y-8">
+                    {playerVideos.length === 0 &&
+                    playerHighlightClips.length === 0 &&
+                    !clipsLoading &&
+                    (!isDemo || highlights.length === 0) ? (
                         <p className="text-white/40 text-sm text-center py-8">
-                            No VODs or highlight clips linked yet. Connect your CDN or YouTube to show reels here.
+                            No VODs or highlight clips linked yet. Connect your CDN or YouTube to show highlights here.
                         </p>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {playerVideos.map((v) => (
-                                <button
-                                    key={v._id}
-                                    type="button"
-                                    onClick={() =>
-                                        setPreviewVideo({
-                                            title: v.title,
-                                            description: v.description,
-                                            url: resolveBackendAssetUrl(v.url),
-                                        })
-                                    }
-                                    className="group block text-left rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-primary/30 hover:bg-primary/5 transition-all"
-                                >
-                                    <video
-                                        src={resolveBackendAssetUrl(v.url)}
-                                        className="w-full aspect-video object-cover bg-black"
-                                        preload="metadata"
-                                    />
-                                    <div className="p-3">
-                                        <p className="text-white font-semibold text-sm truncate">{v.title}</p>
-                                        {v.description && (
-                                            <p className="text-white/40 text-xs mt-0.5 line-clamp-2">{v.description}</p>
-                                        )}
-                                        <div className="mt-2 flex items-center justify-between">
-                                            <p className="text-white/40 text-xs">
-                                                {new Date(v.createdAt).toLocaleDateString()}
-                                            </p>
-                                            <span className="text-primary text-xs font-bold">Open</span>
+                        <>
+                            {playerVideos.length > 0 && (
+                                <div>
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white/45 mb-3">
+                                        Videos
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {playerVideos.map((v) => (
+                                            <button
+                                                key={v._id}
+                                                type="button"
+                                                onClick={() =>
+                                                    setPreviewVideo({
+                                                        title: v.title,
+                                                        description: v.description,
+                                                        url: resolveBackendAssetUrl(v.url),
+                                                    })
+                                                }
+                                                className="group block text-left rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-primary/30 hover:bg-primary/5 transition-all"
+                                            >
+                                                <video
+                                                    src={resolveBackendAssetUrl(v.url)}
+                                                    className="w-full aspect-video object-cover bg-black"
+                                                    preload="metadata"
+                                                />
+                                                <div className="p-3">
+                                                    <p className="text-white font-semibold text-sm truncate">{v.title}</p>
+                                                    {v.description && (
+                                                        <p className="text-white/40 text-xs mt-0.5 line-clamp-2">
+                                                            {v.description}
+                                                        </p>
+                                                    )}
+                                                    <div className="mt-2 flex items-center justify-between">
+                                                        <p className="text-white/40 text-xs">
+                                                            {new Date(v.createdAt).toLocaleDateString()}
+                                                        </p>
+                                                        <span className="text-primary text-xs font-bold">Open</span>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!isDemo && (clipsLoading || playerHighlightClips.length > 0) && (
+                                <div>
+                                    <div className="flex flex-wrap items-end justify-between gap-2 mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-scout-amber shrink-0" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-widest text-white/45">
+                                                Highlight clips
+                                            </h3>
                                         </div>
+                                        <p className="text-[10px] text-white/35 max-w-md text-right">
+                                            Likes, comments, saves on each card. Open for full viewer — use arrows to move
+                                            through all clips.
+                                        </p>
                                     </div>
-                                </button>
-                            ))}
-                            {highlights.map((h) => (
-                                <a
-                                    key={h.id}
-                                    href={h.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group block rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-primary/30 hover:bg-primary/5 transition-all"
-                                >
-                                    <div className="aspect-video bg-white/5 relative">
-                                        <img
-                                            src={h.thumbnailUrl}
-                                            alt=""
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                                        />
-                                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] font-bold text-white">
-                                            {h.duration ?? '—'}
-                                        </span>
-                                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-primary/90 text-[10px] font-bold text-black uppercase">
-                                            {h.type}
-                                        </span>
+                                    {clipsLoading ? (
+                                        <div className="flex gap-6 overflow-hidden pb-2 sm:gap-7">
+                                            {[1, 2, 3].map((i) => (
+                                                <div
+                                                    key={i}
+                                                    className="shrink-0 w-[200px] sm:w-[220px] aspect-[9/16] rounded-2xl bg-white/5 animate-pulse border border-white/5"
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="relative flex gap-6 overflow-x-auto pb-3 scroll-smooth snap-x snap-mandatory sm:gap-7 [-ms-overflow-style:none] [scrollbar-width:thin] [scrollbar-color:rgba(34,211,238,0.35)_transparent] [-webkit-overflow-scrolling:touch]">
+                                            {playerHighlightClips.map((h) => (
+                                                <button
+                                                    key={h._id}
+                                                    type="button"
+                                                    onClick={() => setActiveClipId(h._id)}
+                                                    className="group/card shrink-0 w-[200px] sm:w-[220px] snap-start text-left rounded-2xl border border-white/10 bg-black/50 overflow-hidden hover:border-primary/45 hover:shadow-[0_0_28px_rgba(0,255,135,0.14)] transition-all duration-300"
+                                                >
+                                                    <div className="relative aspect-[9/16] w-full bg-black">
+                                                        {h.clipUrl ? (
+                                                            <video
+                                                                src={resolveBackendAssetUrl(h.clipUrl)}
+                                                                className="h-full w-full object-cover opacity-92 transition-opacity group-hover/card:opacity-100"
+                                                                muted
+                                                                playsInline
+                                                                preload="metadata"
+                                                            />
+                                                        ) : (
+                                                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-scout-violet-deep/50 to-black">
+                                                                <Sparkles className="h-10 w-10 text-primary/40" />
+                                                            </div>
+                                                        )}
+                                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover/card:opacity-100">
+                                                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-black shadow-lg shadow-primary/40">
+                                                                <Play size={22} className="ml-0.5" fill="currentColor" />
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2 p-3">
+                                                        <p className="line-clamp-2 text-xs font-bold leading-tight text-white">
+                                                            {h.title}
+                                                        </p>
+                                                        <p className="line-clamp-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                                                            {highlightCreatorLabel(h.creator)}
+                                                        </p>
+                                                        <div className="flex flex-wrap items-center justify-end gap-1">
+                                                            <MediaEngagementStrip kind="highlight" id={h._id} />
+                                                        </div>
+                                                        {h.description?.trim() ? (
+                                                            <p className="line-clamp-3 border-t border-white/[0.06] pt-2 text-left text-[10px] leading-snug text-white/50">
+                                                                {h.description.trim()}
+                                                            </p>
+                                                        ) : null}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {isDemo && highlights.length > 0 && (
+                                <div>
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white/45 mb-3">
+                                        Demo highlights
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {highlights.map((h) => (
+                                            <a
+                                                key={h.id}
+                                                href={h.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="group block rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-primary/30 hover:bg-primary/5 transition-all"
+                                            >
+                                                <div className="aspect-video bg-white/5 relative">
+                                                    <img
+                                                        src={h.thumbnailUrl}
+                                                        alt=""
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                                    />
+                                                    <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] font-bold text-white">
+                                                        {h.duration ?? '—'}
+                                                    </span>
+                                                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-primary/90 text-[10px] font-bold text-black uppercase">
+                                                        {h.type}
+                                                    </span>
+                                                </div>
+                                                <div className="p-3">
+                                                    <p className="text-white font-semibold text-sm truncate">{h.title}</p>
+                                                    {h.date && (
+                                                        <p className="text-white/40 text-xs mt-0.5">{h.date}</p>
+                                                    )}
+                                                </div>
+                                            </a>
+                                        ))}
                                     </div>
-                                    <div className="p-3">
-                                        <p className="text-white font-semibold text-sm truncate">{h.title}</p>
-                                        {h.date && (
-                                            <p className="text-white/40 text-xs mt-0.5">{h.date}</p>
-                                        )}
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </section>
@@ -809,6 +957,13 @@ export default function ScouterPlayerProfile() {
                     </div>
                 )}
             </Modal>
+
+            <ScouterHighlightDetailModal
+                highlights={playerHighlightClips}
+                activeHighlightId={activeClipId}
+                onClose={() => setActiveClipId(null)}
+                onNavigate={setActiveClipId}
+            />
 
             {/* Recommend to team modal */}
             <Modal isOpen={recommendModalOpen} onClose={() => setRecommendModalOpen(false)} title="Recommend to team">

@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import {
     Plus, Search, X, Loader2, Trash2, Upload, Sparkles,
     Shield, Sword, Zap, Heart, Star, Crown, Diamond, Flame,
-    Send, BarChart3, Box,
+    Send, BarChart3, Box, Palette, User, SlidersHorizontal,
+    RotateCcw, Save, Wand2,
 } from 'lucide-react';
 import {
     nftCoreService, nftCollectionService, nftAttributeService, nftMintService,
@@ -43,6 +44,7 @@ export default function NftManager() {
     const [filterRarity, setFilterRarity] = useState<NftRarity | 'ALL'>('ALL');
     const [selectedNft, setSelectedNft] = useState<(Nft & { attributes: NftAttribute[] }) | null>(null);
     const [showCreate, setShowCreate] = useState(false);
+    const [activeView, setActiveView] = useState<'studio' | 'inventory'>('studio');
 
     const load = async () => {
         try {
@@ -98,122 +100,152 @@ export default function NftManager() {
                 <div>
                     <h1 className="text-2xl font-black text-white flex items-center gap-3">
                         <Box size={24} className="text-primary" />
-                        NFT Manager
+                        NFT Avatar Studio
                     </h1>
-                    <p className="text-text-muted text-sm mt-1">Create, manage and mint gaming NFTs</p>
+                    <p className="text-text-muted text-sm mt-1">Import a base avatar, customize traits, and save as draft NFT</p>
                 </div>
-                <button
-                    onClick={() => setShowCreate(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider transition-all"
-                >
-                    <Plus size={16} /> Create NFT
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="bg-surface border border-white/10 rounded-xl p-1 flex items-center gap-1">
+                        <button
+                            onClick={() => setActiveView('studio')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'studio' ? 'bg-primary text-black' : 'text-text-muted hover:text-white'}`}
+                        >
+                            Avatar Studio
+                        </button>
+                        <button
+                            onClick={() => setActiveView('inventory')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'inventory' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white'}`}
+                        >
+                            NFT Inventory
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider transition-all"
+                    >
+                        <Plus size={16} /> Create NFT
+                    </button>
+                </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative flex-1 max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                    <input
-                        type="text" placeholder="Search NFTs..." value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="w-full bg-surface border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-text-muted/50 focus:border-primary/50 outline-none"
-                    />
-                </div>
-                <select
-                    value={filterCat}
-                    onChange={e => setFilterCat(e.target.value as NftCategory | 'ALL')}
-                    className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
-                >
-                    <option value="ALL">All Categories</option>
-                    {NFT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-                <select
-                    value={filterRarity}
-                    onChange={e => setFilterRarity(e.target.value as NftRarity | 'ALL')}
-                    className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
-                >
-                    <option value="ALL">All Rarities</option>
-                    {NFT_RARITIES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-            </div>
+            {activeView === 'studio' && (
+                <AvatarStudio
+                    onDraftCreated={(nft) => {
+                        setActiveView('inventory');
+                        load();
+                        viewDetail(nft);
+                    }}
+                />
+            )}
 
-            {/* Main Content: Grid + Detail Panel */}
-            <div className="flex gap-6">
-                {/* Left: NFT Grid */}
-                <div className={`flex-1 ${selectedNft ? 'max-w-[60%]' : ''} transition-all`}>
-                    {loading ? (
-                        <div className="flex justify-center py-20"><Loader2 size={24} className="animate-spin text-primary" /></div>
-                    ) : filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center bg-surface border border-white/5 rounded-2xl">
-                            <Box className="w-12 h-12 text-primary opacity-20 mb-4" />
-                            <p className="text-white font-black text-lg">No NFTs found</p>
-                            <p className="text-text-muted text-sm mt-1">Create your first NFT to get started</p>
+            {activeView === 'inventory' && (
+                <>
+                    {/* Filters */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="relative flex-1 max-w-xs">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                            <input
+                                type="text" placeholder="Search NFTs..." value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-full bg-surface border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-text-muted/50 focus:border-primary/50 outline-none"
+                            />
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filtered.map(nft => {
-                                const rtw = RARITY_TW[nft.rarity];
-                                return (
-                                    <div
-                                        key={nft._id}
-                                        onClick={() => viewDetail(nft)}
-                                        className={`group cursor-pointer border rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${rtw.border} bg-[#111214] ${rtw.glow} ${selectedNft?._id === nft._id ? 'ring-2 ring-primary' : ''}`}
-                                    >
-                                        {/* Image */}
-                                        <div className="relative aspect-square bg-gradient-to-br from-black/40 to-black/60 flex items-center justify-center overflow-hidden">
-                                            {nft.imageUrl ? (
-                                                <img
-                                                    src={getImageUrl(nft.imageUrl)}
-                                                    alt={nft.name}
-                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                    onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${nft.name}`; }}
-                                                />
-                                            ) : (
-                                                <div className="text-4xl opacity-30">🎮</div>
-                                            )}
-                                            {/* Rarity badge */}
-                                            <span
-                                                className="absolute top-3 left-3 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white backdrop-blur-sm"
-                                                style={{ background: RARITY_COLORS[nft.rarity] + '40' }}
+                        <select
+                            value={filterCat}
+                            onChange={e => setFilterCat(e.target.value as NftCategory | 'ALL')}
+                            className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
+                        >
+                            <option value="ALL">All Categories</option>
+                            {NFT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                        <select
+                            value={filterRarity}
+                            onChange={e => setFilterRarity(e.target.value as NftRarity | 'ALL')}
+                            className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
+                        >
+                            <option value="ALL">All Rarities</option>
+                            {NFT_RARITIES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
+                    </div>
+
+                    {/* Main Content: Grid + Detail Panel */}
+                    <div className="flex gap-6">
+                        {/* Left: NFT Grid */}
+                        <div className={`flex-1 ${selectedNft ? 'max-w-[60%]' : ''} transition-all`}>
+                            {loading ? (
+                                <div className="flex justify-center py-20"><Loader2 size={24} className="animate-spin text-primary" /></div>
+                            ) : filtered.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-center bg-surface border border-white/5 rounded-2xl">
+                                    <Box className="w-12 h-12 text-primary opacity-20 mb-4" />
+                                    <p className="text-white font-black text-lg">No NFTs found</p>
+                                    <p className="text-text-muted text-sm mt-1">Create your first NFT to get started</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {filtered.map(nft => {
+                                        const rtw = RARITY_TW[nft.rarity];
+                                        return (
+                                            <div
+                                                key={nft._id}
+                                                onClick={() => viewDetail(nft)}
+                                                className={`group cursor-pointer border rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${rtw.border} bg-[#111214] ${rtw.glow} ${selectedNft?._id === nft._id ? 'ring-2 ring-primary' : ''}`}
                                             >
-                                                {nft.rarity}
-                                            </span>
-                                            {/* Status */}
-                                            <span className={`absolute top-3 right-3 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase ${nft.status === 'DRAFT' ? 'bg-yellow-500/20 text-yellow-400' : nft.status === 'MINTED' ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white'}`}>
-                                                {nft.status}
-                                            </span>
-                                            {/* Category */}
-                                            <span className="absolute bottom-2 left-3 px-2 py-0.5 rounded-lg bg-black/50 backdrop-blur-sm text-[8px] font-bold text-white uppercase tracking-widest">
-                                                {nft.category}
-                                            </span>
-                                        </div>
+                                                {/* Image */}
+                                                <div className="relative aspect-square bg-gradient-to-br from-black/40 to-black/60 flex items-center justify-center overflow-hidden">
+                                                    {nft.imageUrl ? (
+                                                        <img
+                                                            src={getImageUrl(nft.imageUrl)}
+                                                            alt={nft.name}
+                                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                            onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${nft.name}`; }}
+                                                        />
+                                                    ) : (
+                                                        <div className="text-4xl opacity-30">🎮</div>
+                                                    )}
+                                                    {/* Rarity badge */}
+                                                    <span
+                                                        className="absolute top-3 left-3 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white backdrop-blur-sm"
+                                                        style={{ background: RARITY_COLORS[nft.rarity] + '40' }}
+                                                    >
+                                                        {nft.rarity}
+                                                    </span>
+                                                    {/* Status */}
+                                                    <span className={`absolute top-3 right-3 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase ${nft.status === 'DRAFT' ? 'bg-yellow-500/20 text-yellow-400' : nft.status === 'MINTED' ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white'}`}>
+                                                        {nft.status}
+                                                    </span>
+                                                    {/* Category */}
+                                                    <span className="absolute bottom-2 left-3 px-2 py-0.5 rounded-lg bg-black/50 backdrop-blur-sm text-[8px] font-bold text-white uppercase tracking-widest">
+                                                        {nft.category}
+                                                    </span>
+                                                </div>
 
-                                        {/* Info */}
-                                        <div className="p-3 space-y-2">
-                                            <h3 className="text-white font-black text-sm truncate">{nft.name}</h3>
-                                            <div className="flex items-center justify-between text-[10px] text-text-muted font-bold">
-                                                <span>Supply: {nft.supply}/{nft.maxSupply === 0 ? '∞' : nft.maxSupply}</span>
-                                                {nft.isTradeable && <span className="text-primary">Tradeable</span>}
+                                                {/* Info */}
+                                                <div className="p-3 space-y-2">
+                                                    <h3 className="text-white font-black text-sm truncate">{nft.name}</h3>
+                                                    <div className="flex items-center justify-between text-[10px] text-text-muted font-bold">
+                                                        <span>Supply: {nft.supply}/{nft.maxSupply === 0 ? '∞' : nft.maxSupply}</span>
+                                                        {nft.isTradeable && <span className="text-primary">Tradeable</span>}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
 
-                {/* Right: Detail Panel */}
-                {selectedNft && (
-                    <NftDetailPanel
-                        nft={selectedNft}
-                        onClose={() => setSelectedNft(null)}
-                        onDelete={() => handleDelete(selectedNft._id)}
-                        onRefresh={() => viewDetail(selectedNft)}
-                    />
-                )}
-            </div>
+                        {/* Right: Detail Panel */}
+                        {selectedNft && (
+                            <NftDetailPanel
+                                nft={selectedNft}
+                                onClose={() => setSelectedNft(null)}
+                                onDelete={() => handleDelete(selectedNft._id)}
+                                onRefresh={() => viewDetail(selectedNft)}
+                            />
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* Create Modal */}
             {showCreate && (
@@ -223,6 +255,456 @@ export default function NftManager() {
                     onCreated={(nft) => { setShowCreate(false); load(); viewDetail(nft); }}
                 />
             )}
+        </div>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AVATAR STUDIO
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type AvatarLayerKey = 'base' | 'hair' | 'ears' | 'outfit' | 'accessory';
+type AvatarLayer = { file: File | null; preview: string | null };
+type AvatarLayers = Record<AvatarLayerKey, AvatarLayer>;
+type AvatarView = 'front' | 'side' | 'back';
+
+const LAYER_LABELS: Record<AvatarLayerKey, string> = {
+    base: 'Base Body',
+    hair: 'Hair Layer',
+    ears: 'Ears Layer',
+    outfit: 'Outfit Layer',
+    accessory: 'Accessory Layer',
+};
+
+function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }) {
+    const fileRefs = useRef<Record<AvatarLayerKey, HTMLInputElement | null>>({
+        base: null,
+        hair: null,
+        ears: null,
+        outfit: null,
+        accessory: null,
+    });
+    const [saving, setSaving] = useState(false);
+    const [layers, setLayers] = useState<AvatarLayers>({
+        base: { file: null, preview: null },
+        hair: { file: null, preview: null },
+        ears: { file: null, preview: null },
+        outfit: { file: null, preview: null },
+        accessory: { file: null, preview: null },
+    });
+    const [config, setConfig] = useState({
+        gender: 'FEMALE',
+        view: 'front' as AvatarView,
+        bodyType: 'Athletic',
+        skinTone: '#d1a07d',
+        faceStyle: 'Sharp',
+        hairstyle: 'Long',
+        hairLength: 74,
+        hairColor: '#111827',
+        earType: 'Human',
+        earSize: 58,
+        eyeColor: '#60a5fa',
+        eyebrow: 'Angled',
+        nose: 'Straight',
+        mouth: 'Neutral',
+        outfit: 'Tactical',
+        boots: 'Combat',
+        accessory: 'Holster',
+        aura: 'Neon',
+        power: 84,
+        agility: 76,
+        focus: 88,
+    });
+
+    const pickLayer = (key: AvatarLayerKey, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            setLayers(prev => ({
+                ...prev,
+                [key]: { file, preview: reader.result as string },
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const clearLayer = (key: AvatarLayerKey) => {
+        setLayers(prev => ({ ...prev, [key]: { file: null, preview: null } }));
+        if (fileRefs.current[key]) fileRefs.current[key]!.value = '';
+    };
+
+    const resetStudio = () => {
+        setLayers({
+            base: { file: null, preview: null },
+            hair: { file: null, preview: null },
+            ears: { file: null, preview: null },
+            outfit: { file: null, preview: null },
+            accessory: { file: null, preview: null },
+        });
+        setConfig({
+            gender: 'FEMALE',
+            view: 'front',
+            bodyType: 'Athletic',
+            skinTone: '#d1a07d',
+            faceStyle: 'Sharp',
+            hairstyle: 'Long',
+            hairLength: 74,
+            hairColor: '#111827',
+            earType: 'Human',
+            earSize: 58,
+            eyeColor: '#60a5fa',
+            eyebrow: 'Angled',
+            nose: 'Straight',
+            mouth: 'Neutral',
+            outfit: 'Tactical',
+            boots: 'Combat',
+            accessory: 'Holster',
+            aura: 'Neon',
+            power: 84,
+            agility: 76,
+            focus: 88,
+        });
+    };
+
+    const score = Math.round((config.power + config.agility + config.focus) / 3);
+    const rarity: NftRarity =
+        score >= 90 ? 'MYTHIC'
+            : score >= 80 ? 'LEGENDARY'
+                : score >= 68 ? 'EPIC'
+                    : score >= 56 ? 'RARE'
+                        : score >= 40 ? 'UNCOMMON'
+                            : 'COMMON';
+    const generatedName = `${config.gender === 'MALE' ? 'Male' : 'Female'} ${config.outfit} ${config.hairstyle}`;
+
+    const attributes = [
+        { traitType: 'Gender', value: config.gender },
+        { traitType: 'Body Type', value: config.bodyType },
+        { traitType: 'Skin Tone', value: config.skinTone },
+        { traitType: 'Face Style', value: config.faceStyle },
+        { traitType: 'Hair Style', value: config.hairstyle },
+        { traitType: 'Hair Length', value: String(config.hairLength), numericValue: config.hairLength, maxValue: 100 },
+        { traitType: 'Hair Color', value: config.hairColor },
+        { traitType: 'Ear Type', value: config.earType },
+        { traitType: 'Ear Size', value: String(config.earSize), numericValue: config.earSize, maxValue: 100 },
+        { traitType: 'Eye Color', value: config.eyeColor },
+        { traitType: 'Eyebrow', value: config.eyebrow },
+        { traitType: 'Nose', value: config.nose },
+        { traitType: 'Mouth', value: config.mouth },
+        { traitType: 'Outfit', value: config.outfit },
+        { traitType: 'Boots', value: config.boots },
+        { traitType: 'Accessory', value: config.accessory },
+        { traitType: 'Aura', value: config.aura },
+        { traitType: 'Power', value: String(config.power), numericValue: config.power, maxValue: 100 },
+        { traitType: 'Agility', value: String(config.agility), numericValue: config.agility, maxValue: 100 },
+        { traitType: 'Focus', value: String(config.focus), numericValue: config.focus, maxValue: 100 },
+    ];
+
+    const saveAsDraft = async () => {
+        try {
+            setSaving(true);
+            const fd = new FormData();
+            fd.append('name', generatedName);
+            fd.append('description', `${config.gender} avatar generated from layered base model with editable hair, ears, face, outfit, and accessories.`);
+            fd.append('category', 'AVATAR');
+            fd.append('rarity', rarity);
+            fd.append('tags', JSON.stringify([
+                'avatar-studio',
+                config.gender.toLowerCase(),
+                config.outfit.toLowerCase().replace(/\s+/g, '-'),
+                config.hairstyle.toLowerCase().replace(/\s+/g, '-'),
+                config.earType.toLowerCase(),
+            ]));
+            fd.append('isEquippable', 'true');
+            fd.append('isTradeable', 'true');
+            fd.append('isConsumable', 'false');
+            fd.append('maxSupply', '100');
+
+            const primaryFile = layers.base.file || layers.outfit.file || layers.hair.file || layers.ears.file || layers.accessory.file;
+            if (primaryFile) fd.append('file', primaryFile);
+
+            const created = await nftCoreService.create(fd);
+            for (const attr of attributes) {
+                await nftAttributeService.add({
+                    nftId: created._id,
+                    traitType: attr.traitType,
+                    value: attr.value,
+                    displayType: attr.numericValue != null ? 'number' : undefined,
+                    numericValue: attr.numericValue,
+                    maxValue: attr.maxValue,
+                });
+            }
+            onDraftCreated(created);
+            alert('Avatar draft created.');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to create avatar draft');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr] gap-5">
+            <div className="bg-[#111214] border border-white/10 rounded-2xl p-5 space-y-5">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                        <Wand2 size={15} className="text-primary" />
+                        Character Creator
+                    </h2>
+                    <button
+                        onClick={resetStudio}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-white border border-white/10 hover:border-white/20 transition-all"
+                    >
+                        <RotateCcw size={12} /> Reset
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <button
+                        onClick={() => setConfig(prev => ({ ...prev, gender: 'MALE' }))}
+                        className={`py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'MALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
+                    >
+                        Male
+                    </button>
+                    <button
+                        onClick={() => setConfig(prev => ({ ...prev, gender: 'FEMALE' }))}
+                        className={`py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'FEMALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
+                    >
+                        Female
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {(['front', 'side', 'back'] as AvatarView[]).map(view => (
+                        <button
+                            key={view}
+                            onClick={() => setConfig(prev => ({ ...prev, view }))}
+                            className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${config.view === view ? 'bg-white/15 text-white border-white/20' : 'text-text-muted border-white/10 hover:text-white'}`}
+                        >
+                            {view} View
+                        </button>
+                    ))}
+                </div>
+
+                <div className="space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Layer Uploads</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {(Object.keys(LAYER_LABELS) as AvatarLayerKey[]).map(key => (
+                            <div key={key} className="bg-black/25 border border-white/10 rounded-xl p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{LAYER_LABELS[key]}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <button
+                                        onClick={() => fileRefs.current[key]?.click()}
+                                        className="flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[10px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        Upload
+                                    </button>
+                                    <button
+                                        onClick={() => clearLayer(key)}
+                                        className="px-3 py-2 rounded-lg border border-white/15 text-text-muted hover:text-white text-[10px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                                <input
+                                    ref={el => { fileRefs.current[key] = el; }}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={e => pickLayer(key, e)}
+                                    className="hidden"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <StudioSelect label="Body Type" icon={<User size={12} />} value={config.bodyType} options={['Athletic', 'Lean', 'Heavy', 'Heroic']} onChange={value => setConfig(prev => ({ ...prev, bodyType: value }))} />
+                    <StudioSelect label="Face Style" icon={<User size={12} />} value={config.faceStyle} options={['Sharp', 'Soft', 'Strong', 'Angular']} onChange={value => setConfig(prev => ({ ...prev, faceStyle: value }))} />
+                    <StudioSelect label="Hair Style" icon={<Sparkles size={12} />} value={config.hairstyle} options={['Bald', 'Buzz', 'Short', 'Long', 'Braids', 'Mohawk']} onChange={value => setConfig(prev => ({ ...prev, hairstyle: value }))} />
+                    <StudioSelect label="Ear Type" icon={<Sparkles size={12} />} value={config.earType} options={['Human', 'Elf', 'Cyber', 'Pointed']} onChange={value => setConfig(prev => ({ ...prev, earType: value }))} />
+                    <StudioSelect label="Outfit" icon={<Palette size={12} />} value={config.outfit} options={['Tactical', 'Streetwear', 'Cyber Suit', 'Stealth', 'Battle Armor']} onChange={value => setConfig(prev => ({ ...prev, outfit: value }))} />
+                    <StudioSelect label="Accessory" icon={<Sparkles size={12} />} value={config.accessory} options={['Holster', 'Necklace', 'Headset', 'Blade', 'None']} onChange={value => setConfig(prev => ({ ...prev, accessory: value }))} />
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <ColorPicker label="Skin Tone" value={config.skinTone} onChange={value => setConfig(prev => ({ ...prev, skinTone: value }))} />
+                    <ColorPicker label="Hair Color" value={config.hairColor} onChange={value => setConfig(prev => ({ ...prev, hairColor: value }))} />
+                    <ColorPicker label="Eye Color" value={config.eyeColor} onChange={value => setConfig(prev => ({ ...prev, eyeColor: value }))} />
+                    <StudioSelect label="Aura" icon={<Sparkles size={12} />} value={config.aura} options={['Neon', 'Ice', 'Shadow', 'Fire', 'Gold']} onChange={value => setConfig(prev => ({ ...prev, aura: value }))} />
+                </div>
+
+                <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                        <SlidersHorizontal size={12} />
+                        Morph Controls
+                    </p>
+                    <StudioSlider label="Hair Length" value={config.hairLength} onChange={value => setConfig(prev => ({ ...prev, hairLength: value }))} />
+                    <StudioSlider label="Ear Size" value={config.earSize} onChange={value => setConfig(prev => ({ ...prev, earSize: value }))} />
+                    <StudioSlider label="Power" value={config.power} onChange={value => setConfig(prev => ({ ...prev, power: value }))} />
+                    <StudioSlider label="Agility" value={config.agility} onChange={value => setConfig(prev => ({ ...prev, agility: value }))} />
+                    <StudioSlider label="Focus" value={config.focus} onChange={value => setConfig(prev => ({ ...prev, focus: value }))} />
+                </div>
+            </div>
+
+            <div className="bg-[#111214] border border-white/10 rounded-2xl p-5 space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Base Model and Final Look</p>
+
+                <div className="grid grid-cols-3 gap-2">
+                    {(['front', 'side', 'back'] as AvatarView[]).map(view => (
+                        <AvatarPreviewCard key={view} view={view} config={config} layers={layers} compact />
+                    ))}
+                </div>
+
+                <AvatarPreviewCard view={config.view} config={config} layers={layers} />
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-widest text-text-muted font-bold">Generated Name</p>
+                        <p className="text-sm text-white font-bold truncate">{generatedName}</p>
+                    </div>
+                    <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-widest text-text-muted font-bold">Auto Rarity</p>
+                        <p className="text-sm font-black" style={{ color: RARITY_COLORS[rarity] }}>{rarity}</p>
+                    </div>
+                </div>
+
+                <button
+                    onClick={saveAsDraft}
+                    disabled={saving}
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider disabled:opacity-50 transition-all"
+                >
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    {saving ? 'Saving Draft...' : 'Save Character as NFT'}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function AvatarPreviewCard({ view, config, layers, compact = false }: {
+    view: AvatarView;
+    config: {
+        gender: string;
+        bodyType: string;
+        skinTone: string;
+        hairLength: number;
+        hairColor: string;
+        earSize: number;
+        aura: string;
+    };
+    layers: AvatarLayers;
+    compact?: boolean;
+}) {
+    const auraBg: Record<string, string> = {
+        Neon: 'linear-gradient(160deg, #0a1220, #172554 65%, #0e7490)',
+        Ice: 'linear-gradient(160deg, #0f172a, #1d4ed8 60%, #bae6fd)',
+        Shadow: 'linear-gradient(160deg, #020617, #312e81 55%, #581c87)',
+        Fire: 'linear-gradient(160deg, #111827, #9a3412 55%, #dc2626)',
+        Gold: 'linear-gradient(160deg, #111827, #78350f 55%, #f59e0b)',
+    };
+    const bodyScale = config.bodyType === 'Heroic' ? 1.06 : config.bodyType === 'Lean' ? 0.94 : 1;
+    const viewTransform = view === 'side' ? 'rotateY(24deg)' : view === 'back' ? 'rotateY(180deg)' : 'none';
+
+    return (
+        <div className="rounded-2xl border border-white/10 overflow-hidden" style={{ background: auraBg[config.aura] || auraBg.Neon }}>
+            <div className={`relative ${compact ? 'h-40' : 'h-[430px]'} flex items-center justify-center p-4`} style={{ perspective: '900px' }}>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,rgba(255,255,255,.25),transparent_65%)]" />
+
+                {!layers.base.preview && (
+                    <div
+                        className="relative z-10 w-24 h-56 rounded-full border border-white/20"
+                        style={{
+                            background: `linear-gradient(180deg, ${config.skinTone}ee, ${config.skinTone}aa)`,
+                            transform: `${viewTransform} scale(${compact ? 0.65 : bodyScale})`,
+                        }}
+                    >
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full border border-white/25" style={{ background: config.skinTone }} />
+                    </div>
+                )}
+
+                {[layers.base.preview, layers.outfit.preview, layers.hair.preview, layers.ears.preview, layers.accessory.preview].map((src, idx) => src && (
+                    <img
+                        key={`${idx}-${src}`}
+                        src={src}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none"
+                        style={{
+                            transform: `${viewTransform} scale(${(compact ? 0.7 : bodyScale) + (idx === 2 ? config.hairLength / 500 : idx === 3 ? config.earSize / 700 : 0)})`,
+                            filter: idx === 2 ? `drop-shadow(0 0 12px ${config.hairColor})` : undefined,
+                        }}
+                    />
+                ))}
+
+                <span className="absolute top-2 left-2 z-20 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-black/40 text-white">
+                    {view}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function StudioSelect({ label, icon, value, options, onChange }: {
+    label: string;
+    icon: React.ReactNode;
+    value: string;
+    options: string[];
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div>
+            <label className="block text-[10px] mb-1.5 font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                {icon}
+                {label}
+            </label>
+            <select
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/60 outline-none"
+            >
+                {options.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+        </div>
+    );
+}
+
+function StudioSlider({ label, value, onChange }: {
+    label: string;
+    value: number;
+    onChange: (value: number) => void;
+}) {
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-white font-bold">{label}</span>
+                <span className="text-xs text-primary font-black">{value}</span>
+            </div>
+            <input
+                type="range"
+                min={0}
+                max={100}
+                value={value}
+                onChange={e => onChange(+e.target.value)}
+                className="w-full accent-primary"
+            />
+        </div>
+    );
+}
+
+function ColorPicker({ label, value, onChange }: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div>
+            <label className="block text-[10px] mb-1.5 font-black uppercase tracking-widest text-text-muted">{label}</label>
+            <input
+                type="color"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                className="w-full h-10 bg-black/30 border border-white/10 rounded-xl px-1.5 py-1 cursor-pointer"
+            />
         </div>
     );
 }

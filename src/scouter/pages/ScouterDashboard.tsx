@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Users,
-    Binoculars,
-    TrendingUp,
     Star,
     ArrowRight,
     ScanLine,
@@ -11,6 +9,8 @@ import {
     Send,
     Filter,
     Gamepad2,
+    Play,
+    Sparkles,
 } from 'lucide-react';
 import { scouterService, type ScoutedPlayerProfile } from '../../services/scouterService';
 import {
@@ -22,6 +22,11 @@ import {
 } from '../../services/scoutingService';
 import catalogService from '../../services/catalogService';
 import type { Game } from '../../models/game';
+import { highlightService, type HighlightRecord } from '../../services/highlight.service';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import { sortPublicHighlights, highlightCreatorLabel, rankHighlightsByEngagement } from '../lib/scouterHighlightUtils';
+import { MediaEngagementStrip } from '../../components/highlights/MediaEngagementStrip';
+import { ScouterHighlightDetailModal } from '../components/ScouterHighlightDetailModal';
 
 function getScouterId(): string | null {
     try {
@@ -46,6 +51,9 @@ export default function ScouterDashboard() {
     const [filterResults, setFilterResults] = useState<unknown[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
     const [filters, setFilters] = useState<PlayerFilterParams>({});
+    const [epicClips, setEpicClips] = useState<HighlightRecord[]>([]);
+    const [epicMediaLoading, setEpicMediaLoading] = useState(true);
+    const [activeClipId, setActiveClipId] = useState<string | null>(null);
 
     useEffect(() => {
         scouterService
@@ -68,6 +76,26 @@ export default function ScouterDashboard() {
         scoutingService.listProspects().then((p) => setProspectsCount(p.length)).catch(() => {});
         scoutingService.listRecommendationsByScouter(scouterId).then((r) => setRecommendationsCount(r.length)).catch(() => {});
     }, [scouterId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setEpicMediaLoading(true);
+        highlightService
+            .listPublic()
+            .then((list) => sortPublicHighlights(Array.isArray(list) ? list : []))
+            .then((sorted) => rankHighlightsByEngagement(sorted))
+            .then((ranked) => ranked.slice(0, 12))
+            .catch(() => [] as HighlightRecord[])
+            .then((c) => {
+                if (!cancelled) setEpicClips(c);
+            })
+            .finally(() => {
+                if (!cancelled) setEpicMediaLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const runFilter = () => {
         setFilterLoading(true);
@@ -97,54 +125,158 @@ export default function ScouterDashboard() {
 
     return (
         <div className="space-y-8 animate-fade-in-up">
-            <div>
-                <div className="flex items-center gap-2 text-primary/80 text-xs font-bold uppercase tracking-widest mb-2">
-                    <ScanLine size={14} /> Scout Hub
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-scout-violet-deep/15 via-black/40 to-scout-cyan/10 p-6 sm:p-8">
+                <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-scout-cyan/10 blur-3xl" />
+                <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2">
+                        <span className="flex items-center gap-2 text-primary">
+                            <ScanLine size={14} /> Scout Hub
+                        </span>
+                        <span className="text-white/25">·</span>
+                        <span className="text-scout-cyan/90">Live pool</span>
+                    </div>
+                    <h1 className="text-3xl font-black text-white tracking-tight">Dashboard</h1>
+                    <p className="text-white/55 text-sm mt-2 max-w-xl">
+                        Overview, epic highlights, filter players, and quick access to reports and recommendations.
+                    </p>
                 </div>
-                <h1 className="text-3xl font-black text-white tracking-tight">Dashboard</h1>
-                <p className="text-white/50 text-sm mt-1">
-                    Overview, filter players, and quick access to reports and recommendations.
-                </p>
             </div>
+
+            {/* Public highlight clips */}
+            <section className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-scout-violet-deep/[0.12] to-black/20 overflow-hidden shadow-[0_0_40px_rgba(124,58,237,0.08)]">
+                <div className="px-5 sm:px-6 py-4 border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-scout-amber/25 to-primary/20 border border-scout-amber/30 flex items-center justify-center">
+                            <Sparkles className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-black uppercase tracking-widest text-white">Highlights</h2>
+                            <p className="text-xs text-white/45 mt-0.5">
+                                Top clips by reactions (likes, comments, saves) — scroll sideways.
+                            </p>
+                        </div>
+                    </div>
+                    <Link
+                        to="/scouter/highlights"
+                        className="text-xs font-bold text-primary hover:text-primary-light shrink-0 border border-primary/25 rounded-lg px-3 py-1.5 hover:bg-primary/10 transition-colors"
+                    >
+                        Full list →
+                    </Link>
+                </div>
+                <div className="p-5 sm:p-6">
+                    {epicMediaLoading ? (
+                        <div className="flex gap-6 overflow-hidden sm:gap-7">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div
+                                    key={i}
+                                    className="shrink-0 w-[200px] sm:w-[220px] aspect-[9/16] rounded-2xl bg-white/5 animate-pulse border border-white/5"
+                                />
+                            ))}
+                        </div>
+                    ) : epicClips.length === 0 ? (
+                        <p className="text-xs text-white/40 py-2">
+                            No public highlight clips yet.
+                        </p>
+                    ) : (
+                        <div className="flex gap-6 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory sm:gap-7 scrollbar-thin [scrollbar-color:rgba(167,139,250,0.35)_transparent] [-webkit-overflow-scrolling:touch]">
+                            {epicClips.map((h) => (
+                                <button
+                                    key={h._id}
+                                    type="button"
+                                    onClick={() => setActiveClipId(h._id)}
+                                    className="group/card shrink-0 w-[200px] sm:w-[220px] snap-start text-left rounded-2xl border border-white/10 bg-black/50 overflow-hidden hover:border-primary/45 hover:shadow-[0_0_28px_rgba(0,255,135,0.14)] transition-all duration-300"
+                                >
+                                    <div className="relative aspect-[9/16] w-full bg-black">
+                                        {h.clipUrl ? (
+                                            <video
+                                                src={resolveBackendAssetUrl(h.clipUrl)}
+                                                className="h-full w-full object-cover opacity-92 transition-opacity group-hover/card:opacity-100"
+                                                muted
+                                                playsInline
+                                                preload="metadata"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-scout-violet-deep/40 to-black">
+                                                <Sparkles className="h-10 w-10 text-primary/35" />
+                                            </div>
+                                        )}
+                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover/card:opacity-100">
+                                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-black shadow-lg shadow-primary/40">
+                                                <Play size={22} className="ml-0.5" fill="currentColor" />
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 p-3">
+                                        <p className="line-clamp-2 text-xs font-bold leading-tight text-white">{h.title}</p>
+                                        <p className="line-clamp-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                                            {highlightCreatorLabel(h.creator)}
+                                        </p>
+                                        <div className="flex flex-wrap items-center justify-end gap-1">
+                                            <MediaEngagementStrip kind="highlight" id={h._id} />
+                                        </div>
+                                        {h.description?.trim() ? (
+                                            <p className="line-clamp-3 border-t border-white/[0.06] pt-2 text-left text-[10px] leading-snug text-white/50">
+                                                {h.description.trim()}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            <ScouterHighlightDetailModal
+                highlights={epicClips}
+                activeHighlightId={activeClipId}
+                onClose={() => setActiveClipId(null)}
+                onNavigate={setActiveClipId}
+            />
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Link
                     to="/scouter/players"
-                    className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.04] transition-all group"
+                    className="bg-white/5 border border-primary/20 rounded-xl p-5 hover:border-primary/40 hover:bg-primary/[0.06] transition-all group"
                 >
-                    <Users className="w-8 h-8 text-primary/80 mb-3 group-hover:text-primary" />
+                    <Users className="w-8 h-8 text-primary mb-3 group-hover:scale-105 transition-transform" />
                     <p className="text-2xl font-black text-white">{loading ? '—' : players.length}</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-white/50">Players in pool</p>
                 </Link>
                 <Link
                     to="/scouter/reports"
-                    className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.04] transition-all group"
+                    className="bg-white/5 border border-scout-cyan/25 rounded-xl p-5 hover:border-scout-cyan/45 hover:bg-scout-cyan/[0.06] transition-all group"
                 >
-                    <FileText className="w-8 h-8 text-primary/80 mb-3 group-hover:text-primary" />
+                    <FileText className="w-8 h-8 text-scout-cyan mb-3 group-hover:scale-105 transition-transform" />
                     <p className="text-2xl font-black text-white">{reportsCount}</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-white/50">My reports</p>
                 </Link>
-                <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.03] transition-all">
-                    <Star className="w-8 h-8 text-primary/80 mb-3" />
+                <div className="bg-white/5 border border-scout-violet/25 rounded-xl p-5 hover:border-scout-violet/40 hover:bg-scout-violet/[0.05] transition-all">
+                    <Star className="w-8 h-8 text-scout-violet mb-3" />
                     <p className="text-2xl font-black text-white">{prospectsCount}</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-white/50">Prospects</p>
                 </div>
                 <Link
                     to="/scouter/recommendations"
-                    className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-primary/25 hover:bg-primary/[0.04] transition-all group"
+                    className="bg-white/5 border border-scout-amber/30 rounded-xl p-5 hover:border-scout-amber/50 hover:bg-scout-amber/[0.06] transition-all group"
                 >
-                    <Send className="w-8 h-8 text-primary/80 mb-3 group-hover:text-primary" />
+                    <Send className="w-8 h-8 text-scout-amber mb-3 group-hover:scale-105 transition-transform" />
                     <p className="text-2xl font-black text-white">{recommendationsCount}</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-white/50">Recommendations</p>
                 </Link>
             </div>
 
             {/* Filter players */}
-            <div className="rounded-2xl border border-primary/10 bg-white/[0.02] overflow-hidden">
-                <div className="px-6 py-4 border-b border-primary/10 flex items-center gap-2">
-                    <Filter className="w-5 h-5 text-primary" />
-                    <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Filter players</h2>
+            <div className="rounded-2xl border border-scout-cyan/15 bg-gradient-to-br from-white/[0.03] to-scout-cyan/[0.02] overflow-hidden">
+                <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-2">
+                    <Filter className="w-5 h-5 text-scout-cyan" />
+                    <h2 className="text-sm font-black uppercase tracking-widest text-white">
+                        Filter players
+                        <span className="text-primary/90 ml-2">·</span>
+                        <span className="text-primary/80"> scout tools</span>
+                    </h2>
                 </div>
                 <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
@@ -270,37 +402,37 @@ export default function ScouterDashboard() {
             <div className="grid md:grid-cols-2 gap-4">
                 <Link
                     to="/scouter/players"
-                    className="group flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 hover:border-primary/40 transition-all shadow-[0_0_18px_rgba(57,255,20,0.08)]"
+                    className="group flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-primary/22 via-scout-cyan/8 to-transparent border border-primary/25 hover:border-primary/45 transition-all shadow-[0_0_22px_rgba(0,255,0,0.07)]"
                 >
-                    <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/25 to-scout-cyan/15 border border-primary/25 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <Users className="w-7 h-7 text-primary" />
                     </div>
                     <div className="flex-1">
                         <h3 className="text-lg font-bold text-white">Browse players</h3>
                         <p className="text-sm text-white/50">View rankings, open profiles, and create reports.</p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowRight className="w-5 h-5 text-scout-cyan opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
                 <Link
                     to="/scouter/reports"
-                    className="group flex items-center gap-4 p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/20 hover:bg-white/10 transition-all"
+                    className="group flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-scout-violet-deep/15 to-transparent border border-scout-violet/25 hover:border-scout-violet/45 hover:bg-scout-violet/[0.04] transition-all shadow-[0_0_20px_rgba(124,58,237,0.06)]"
                 >
-                    <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <FileText className="w-7 h-7 text-white/70" />
+                    <div className="w-14 h-14 rounded-xl bg-scout-violet/15 border border-scout-violet/30 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <FileText className="w-7 h-7 text-scout-violet" />
                     </div>
                     <div className="flex-1">
                         <h3 className="text-lg font-bold text-white">Reports</h3>
                         <p className="text-sm text-white/50">View and create player evaluations.</p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowRight className="w-5 h-5 text-scout-violet opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
                 {/* Recent players */}
-                <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-primary/10 flex items-center justify-between">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Recent players</h2>
+                <div className="rounded-2xl border border-scout-cyan/15 bg-white/[0.03] overflow-hidden">
+                    <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-scout-cyan">Recent players</h2>
                         <Link to="/scouter/players" className="text-xs font-bold text-primary hover:underline">
                             View all →
                         </Link>
@@ -336,9 +468,9 @@ export default function ScouterDashboard() {
                 </div>
 
                 {/* Recent reports */}
-                <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-primary/10 flex items-center justify-between">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Recent reports</h2>
+                <div className="rounded-2xl border border-scout-violet/15 bg-white/[0.03] overflow-hidden">
+                    <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-scout-violet">Recent reports</h2>
                         <Link to="/scouter/reports" className="text-xs font-bold text-primary hover:underline">
                             View all →
                         </Link>

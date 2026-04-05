@@ -12,6 +12,8 @@ import {
 import { Badge, Button } from '../../components/ui/core';
 import { cn } from '../../lib/utils';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
+import { videoService, type VideoRecord } from '../../services/video.service';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { streamService, type StreamRecord } from '../../services/stream.service';
 import { chatService, type ChatMessageRecord } from '../../services/chat.service';
 
@@ -22,6 +24,7 @@ export default function ChannelDetailPage() {
     const [comments, setComments] = useState<ChatMessageRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'videos' | 'community' | 'about'>('videos');
+    const [channelUploads, setChannelUploads] = useState<VideoRecord[]>([]);
 
     useEffect(() => {
         void loadData();
@@ -38,6 +41,25 @@ export default function ChannelDetailPage() {
             setChannel(channelData);
             setStreams(streamsData);
             setComments(commentsData);
+
+            const owner = channelData?.ownerId;
+            const ownerId =
+                owner && typeof owner === 'object' && '_id' in owner
+                    ? String((owner as { _id: string })._id)
+                    : null;
+            if (ownerId) {
+                try {
+                    const uploads = await videoService.list({
+                        uploader: ownerId,
+                        channelPublic: true,
+                    });
+                    setChannelUploads(Array.isArray(uploads) ? uploads : []);
+                } catch {
+                    setChannelUploads([]);
+                }
+            } else {
+                setChannelUploads([]);
+            }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to load channel details');
         } finally {
@@ -138,8 +160,8 @@ export default function ChannelDetailPage() {
                                 </div>
 
                                 {/* Tags Row */}
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                                    {(channel.categories ?? []).map(cat => (
+                                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                                    {(channel.categories ?? []).map((cat) => (
                                         <Badge key={cat} variant="secondary" className="bg-white/5 border-white/5 text-[9px] font-black px-4 py-1 uppercase tracking-widest transition-colors hover:border-primary/40 hover:text-primary">
                                             {cat}
                                         </Badge>
@@ -210,9 +232,8 @@ export default function ChannelDetailPage() {
                 <div className="min-h-[400px]">
                     {activeTab === 'videos' && (
                         <div className="space-y-8">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">Vidéos en streaming récentes</h2>
-                                <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Tout voir</button>
+                            <div className="flex items-center justify-between gap-4">
+                                <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">Streams & archives</h2>
                             </div>
                             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                 {streams.length === 0 ? (
@@ -247,6 +268,64 @@ export default function ChannelDetailPage() {
                                             </div>
                                         </Link>
                                     ))
+                                )}
+                            </div>
+
+                            <div className="space-y-6 pt-10 border-t border-white/5">
+                                <div className="flex flex-wrap items-end justify-between gap-3">
+                                    <div>
+                                        <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">
+                                            Vidéos publiées
+                                        </h2>
+                                        <p className="text-sm text-white/35 max-w-2xl mt-1">
+                                            Chaîne VOD — tout le catalogue public du créateur (comme sur une chaîne Twitch /
+                                            YouTube).
+                                        </p>
+                                    </div>
+                                    {channelUploads.length > 0 && (
+                                        <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
+                                            {channelUploads.length} vidéo{channelUploads.length > 1 ? 's' : ''}
+                                        </Badge>
+                                    )}
+                                </div>
+                                {channelUploads.length === 0 ? (
+                                    <div className="py-16 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+                                        <p className="text-white/35 text-sm font-medium">
+                                            Aucune vidéo publiée sur cette chaîne pour l’instant.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                        {channelUploads.map((v) => (
+                                            <article
+                                                key={v._id}
+                                                className="rounded-2xl border border-white/10 overflow-hidden bg-[#0f1115] shadow-lg shadow-black/20 hover:border-primary/25 transition-colors"
+                                            >
+                                                <div className="aspect-video bg-black">
+                                                    <video
+                                                        src={resolveBackendAssetUrl(v.url)}
+                                                        className="w-full h-full object-cover"
+                                                        controls
+                                                        playsInline
+                                                        preload="metadata"
+                                                    />
+                                                </div>
+                                                <div className="p-4 space-y-2">
+                                                    <h3 className="font-black text-white text-sm line-clamp-2 italic">
+                                                        {v.title}
+                                                    </h3>
+                                                    {v.description && (
+                                                        <p className="text-xs text-white/45 line-clamp-3 leading-relaxed">
+                                                            {v.description}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-[10px] text-white/25 font-bold uppercase tracking-widest">
+                                                        {formatDate(v.createdAt)}
+                                                    </p>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </div>

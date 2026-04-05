@@ -4,14 +4,13 @@ import { Link } from 'react-router-dom';
 import { TopNavbar } from './common/top_navbar';
 import { BottomNavbar } from './common/bottom_navbar';
 import { Shield, Trophy, Users, Sword, MessageSquare, Zap, Globe, Star } from 'lucide-react';
+import homeCover from '../assets/home_cover.jpg';
 import valorantCover from '../assets/valorant_cover.jpg';
 import lolCover from '../assets/lol.jpg';
 import riotLogo from '../assets/riot-games-logo.svg';
 import steamLogo from '../assets/steam.png';
 import { NewsSection } from './components/NewsSection';
 import { HomeTournaments } from './components/HomeTournaments';
-import { TypewriterText } from './components/TypewriterText';
-import { HeroLeagueSpotlight } from './components/HeroLeagueSpotlight';
 
 // ─── Scroll-reveal hook ───────────────────────────────────────────────────────
 function useReveal(threshold = 0.15) {
@@ -27,41 +26,6 @@ function useReveal(threshold = 0.15) {
     return { ref, visible };
 }
 
-// ─── Animated counter ─────────────────────────────────────────────────────────
-function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
-    const [val, setVal] = useState(0);
-    const { ref, visible } = useReveal(0.1);
-    useEffect(() => {
-        if (!visible) return;
-        let start = 0;
-        const step = target / 60;
-        const id = setInterval(() => {
-            start += step;
-            if (start >= target) { setVal(target); clearInterval(id); }
-            else setVal(Math.floor(start));
-        }, 16);
-        return () => clearInterval(id);
-    }, [visible, target]);
-    return <span ref={ref}>{val.toLocaleString()}{suffix}</span>;
-}
-
-// ─── Particle dot ─────────────────────────────────────────────────────────────
-function Particle({ style }: { style: React.CSSProperties }) {
-    return <div className="absolute rounded-full pointer-events-none" style={{ width: 2, height: 2, background: 'rgba(0,255,0,0.6)', ...style }} />;
-}
-
-const PARTICLES = Array.from({ length: 40 }, () => ({
-    left: `${Math.random() * 100}%`,
-    top:  `${Math.random() * 100}%`,
-    opacity: 0.1 + Math.random() * 0.5,
-    animationName: 'float',
-    animationDuration: `${4 + Math.random() * 8}s`,
-    animationDelay: `${Math.random() * 6}s`,
-    animationTimingFunction: 'ease-in-out',
-    animationIterationCount: 'infinite',
-    width: `${1 + Math.random() * 3}px`,
-    height: `${1 + Math.random() * 3}px`,
-}));
 
 // ─── Ticker items ─────────────────────────────────────────────────────────────
 const TICKER = [
@@ -74,21 +38,8 @@ const TICKER = [
     '✅ BLOCKCHAIN REWARDS DISTRIBUTED',
 ];
 
+
 export default function Home() {
-    const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
-    const heroRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const hero = heroRef.current;
-        if (!hero) return;
-        const handle = (e: MouseEvent) => {
-            const r = hero.getBoundingClientRect();
-            setMousePos({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
-        };
-        hero.addEventListener('mousemove', handle);
-        return () => hero.removeEventListener('mousemove', handle);
-    }, []);
-
     return (
         <div className="min-h-screen bg-background text-white selection:bg-primary selection:text-black overflow-x-hidden">
             <TopNavbar />
@@ -98,224 +49,22 @@ export default function Home() {
                     1. HERO
                 ══════════════════════════════════════════════════════ */}
                 <section
-                    ref={heroRef}
                     className="relative min-h-screen flex flex-col items-center justify-center pt-20 overflow-hidden"
-                    style={{ background: '#030303' }}
                 >
-                    {/* ── Layer 1: Photo background, more visible ── */}
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                        backgroundImage: "url('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop')",
-                        backgroundSize: 'cover', backgroundPosition: 'center 30%',
-                        opacity: 0.22,
-                        filter: 'saturate(0.2) brightness(0.9)',
-                    }} />
-
-                    {/* ── Layer 2: Green color tint over photo ── */}
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                        background: 'linear-gradient(180deg, rgba(0,40,0,0.55) 0%, rgba(0,15,0,0.3) 40%, rgba(3,3,3,0.75) 85%, #030303 100%)',
-                    }} />
-
-                    {/* ── Layer 3: Strong center spotlight (makes text pop) ── */}
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                        background: 'radial-gradient(ellipse 80% 60% at 50% 45%, rgba(0,60,0,0.45) 0%, transparent 70%)',
-                    }} />
-
-                    {/* ── Layer 4: Dot grid ── */}
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                        backgroundImage: 'radial-gradient(circle, rgba(0,255,0,0.18) 1px, transparent 1px)',
-                        backgroundSize: '38px 38px',
-                        animation: 'grid-move 7s ease-in-out infinite alternate',
-                        mixBlendMode: 'screen',
-                    }} />
-
-                    {/* ── Layer 5: Diagonal hairlines ── */}
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.04 }}>
-                        {[-30,-10,10,30,50,70,90,110].map((d, i) => (
-                            <div key={i} className="absolute" style={{
-                                left: `${d}%`, top: '-100%',
-                                width: '1px', height: '300%',
-                                background: 'linear-gradient(180deg, transparent, rgba(0,255,0,1), transparent)',
-                                transform: 'rotate(-35deg)',
-                                transformOrigin: 'top left',
-                            }} />
-                        ))}
+                    {/* ── Static Image Background ── */}
+                    <div className="absolute inset-0 pointer-events-none z-0">
+                        <img src={homeCover} alt="Cover" className="w-full h-full object-cover object-center" />
+                        <div className="absolute inset-0 bg-black/40" />
                     </div>
-
-                    {/* ── Layer 6: Fine scanlines ── */}
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 3px)',
-                    }} />
-
-                    {/* ── Layer 7: Rotating conic spotlight ── */}
-                    <div className="absolute pointer-events-none" style={{
-                        left: '50%', top: '50%',
-                        width: 1100, height: 1100,
-                        transform: 'translate(-50%,-50%)',
-                        background: 'conic-gradient(from 0deg, transparent 0deg, rgba(0,255,0,0.04) 30deg, transparent 60deg)',
-                        borderRadius: '50%',
-                        animation: 'radar-scan 14s linear infinite',
-                    }} />
-
-                    {/* ── Layer 8: Pulsing rings ── */}
-                    {[480, 680, 900].map((size, i) => (
-                        <div key={i} className="absolute pointer-events-none rounded-full" style={{
-                            left: '50%', top: '50%',
-                            width: size, height: size,
-                            transform: 'translate(-50%,-50%)',
-                            border: `1px solid rgba(0,255,0,${0.07 - i * 0.02})`,
-                            animation: `glow-breathe ${4 + i}s ease-in-out infinite ${i * 0.8}s`,
-                        }} />
-                    ))}
-
-                    {/* ── Layer 9: Prominent floating orbs ── */}
-                    {/* Main green center orb */}
-                    <div className="absolute pointer-events-none rounded-full" style={{
-                        left: '50%', top: '40%',
-                        width: 800, height: 800,
-                        transform: 'translate(-50%,-50%)',
-                        background: 'radial-gradient(circle, rgba(0,255,0,0.12) 0%, rgba(0,200,0,0.04) 40%, transparent 70%)',
-                        filter: 'blur(40px)',
-                        animation: 'float 9s ease-in-out infinite',
-                    }} />
-                    {/* Top-right accent */}
-                    <div className="absolute pointer-events-none rounded-full" style={{
-                        left: '72%', top: '18%', width: 500, height: 500,
-                        background: 'radial-gradient(circle, rgba(0,255,80,0.1) 0%, transparent 65%)',
-                        filter: 'blur(60px)',
-                        animation: 'float 7s ease-in-out infinite 1s',
-                    }} />
-                    {/* Bottom-left blue */}
-                    <div className="absolute pointer-events-none rounded-full" style={{
-                        left: '8%', top: '55%', width: 420, height: 420,
-                        background: 'radial-gradient(circle, rgba(20,120,255,0.08) 0%, transparent 65%)',
-                        filter: 'blur(70px)',
-                        animation: 'float 11s ease-in-out infinite 2.5s',
-                    }} />
-                    {/* Bottom-right green */}
-                    <div className="absolute pointer-events-none rounded-full" style={{
-                        left: '80%', top: '68%', width: 300, height: 300,
-                        background: 'radial-gradient(circle, rgba(0,255,120,0.07) 0%, transparent 65%)',
-                        filter: 'blur(50px)',
-                        animation: 'float 8s ease-in-out infinite 4s',
-                    }} />
-
-                    {/* ── Layer 10: Mouse-parallax orbs ── */}
-                    <div className="absolute pointer-events-none" style={{
-                        left: `${18 + mousePos.x * 14}%`, top: `${12 + mousePos.y * 12}%`,
-                        width: 650, height: 650,
-                        background: 'radial-gradient(circle, rgba(0,255,0,0.11) 0%, transparent 60%)',
-                        transform: 'translate(-50%,-50%)',
-                        transition: 'left 1s cubic-bezier(0.23,1,0.32,1), top 1s cubic-bezier(0.23,1,0.32,1)',
-                        filter: 'blur(30px)',
-                    }} />
-                    <div className="absolute pointer-events-none" style={{
-                        right: `${8 + (1-mousePos.x) * 16}%`, bottom: `${8 + (1-mousePos.y) * 14}%`,
-                        width: 480, height: 480,
-                        background: 'radial-gradient(circle, rgba(0,160,255,0.07) 0%, transparent 60%)',
-                        transition: 'right 1s cubic-bezier(0.23,1,0.32,1), bottom 1s cubic-bezier(0.23,1,0.32,1)',
-                        filter: 'blur(30px)',
-                    }} />
-
-                    {/* ── Layer 11: Dual beam sweeps ── */}
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        <div style={{
-                            position: 'absolute', top: 0, bottom: 0, width: '7%',
-                            background: 'linear-gradient(90deg, transparent, rgba(0,255,0,0.07), transparent)',
-                            animation: 'beam-sweep 8s ease-in-out infinite 0.5s',
-                        }} />
-                        <div style={{
-                            position: 'absolute', top: 0, bottom: 0, width: '4%',
-                            background: 'linear-gradient(90deg, transparent, rgba(0,180,255,0.05), transparent)',
-                            animation: 'beam-sweep 11s ease-in-out infinite 4s',
-                        }} />
-                    </div>
-
-                    {/* ── Layer 12: Brighter particles ── */}
-                    {PARTICLES.map((p, i) => (
-                        <div key={i} className="absolute rounded-full pointer-events-none" style={{
-                            ...p,
-                            background: i % 3 === 0 ? 'rgba(0,255,0,0.8)' : 'rgba(0,255,0,0.5)',
-                            boxShadow: i % 5 === 0 ? '0 0 4px rgba(0,255,0,0.9)' : 'none',
-                        }} />
-                    ))}
-
-                    {/* ── HUD corner brackets ── */}
-                    {[
-                        { top: 100, left: 32, borderTop: '2px solid', borderLeft: '2px solid' },
-                        { top: 100, right: 32, borderTop: '2px solid', borderRight: '2px solid' },
-                        { bottom: 80, left: 32, borderBottom: '2px solid', borderLeft: '2px solid' },
-                        { bottom: 80, right: 32, borderBottom: '2px solid', borderRight: '2px solid' },
-                    ].map((s, i) => (
-                        <div key={i} className="absolute pointer-events-none" style={{
-                            ...s, width: 32, height: 32, borderColor: 'rgba(0,255,0,0.4)',
-                            opacity: 0, animation: 'fadeInUp 0.8s ease-out 0.5s forwards',
-                            boxShadow: '0 0 8px rgba(0,255,0,0.15)',
-                        }} />
-                    ))}
-
-                    {/* — Main content — */}
+                    
                     <div className="container relative z-10 px-6 mx-auto text-center">
-                        {/* Live badge */}
-                        <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full mb-10"
-                            style={{
-                                background: 'rgba(0,255,0,0.05)',
-                                border: '1px solid rgba(0,255,0,0.2)',
-                                opacity: 0,
-                                animation: 'fadeInUp 0.7s ease-out 0.1s forwards',
-                            }}>
-                            <span className="relative flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#00ff00', animation: 'ping 1s cubic-bezier(0,0,0.2,1) infinite' }} />
-                                <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: '#00ff00' }} />
-                            </span>
-                            <span className="text-xs font-black uppercase tracking-[0.3em]" style={{ color: '#00ff00' }}>Live · Season 4 Active</span>
-                        </div>
-
-                        {/* Main title */}
-                        <h1 className="font-black tracking-tighter uppercase leading-[0.9] mb-6 select-none"
-                            style={{ fontSize: 'clamp(4rem, 10vw, 9rem)' }}>
-                            <span className="block text-white"
-                                style={{ opacity: 0, animation: 'slide-left 0.7s ease-out 0.25s forwards' }}>
-                                Collaborate
-                            </span>
-
-                            <span className="block relative"
-                                style={{ opacity: 0, animation: 'scale-in 0.6s ease-out 0.45s forwards' }}>
-                                <span style={{
-                                    color: '#00ff00',
-                                    animation: 'text-flicker 5s linear 2s infinite',
-                                    textShadow: '0 0 30px rgba(0,255,0,0.6), 0 0 80px rgba(0,255,0,0.2)',
-                                    display: 'inline-block',
-                                }}>
-                                    <TypewriterText
-                                        lines={['Elevate', 'Compete', 'Dominate', 'Conquer']}
-                                        className=""
-                                        typingSpeed={90}
-                                        deletingSpeed={45}
-                                        pauseDuration={1800}
-                                    />
-                                </span>
-                            </span>
-
-                            <span className="block text-white"
-                                style={{ opacity: 0, animation: 'slide-left 0.7s ease-out 0.65s forwards' }}>
-                                Tournaments
-                            </span>
-                        </h1>
-
-                        {/* Subtitle */}
-                        <p className="text-base md:text-lg max-w-xl mx-auto mb-10 leading-relaxed"
-                            style={{ color: 'rgba(255,255,255,0.38)', opacity: 0, animation: 'fadeInUp 0.7s ease-out 0.8s forwards' }}>
-                            The next-generation esports platform powered by blockchain. Compete, earn, and rise to the top.
-                        </p>
-
                         {/* CTAs */}
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-                            style={{ opacity: 0, animation: 'fadeInUp 0.7s ease-out 0.95s forwards' }}>
+                            style={{ opacity: 0, animation: 'fadeInUp 0.7s ease-out 0.15s forwards' }}>
                             <Link to="/login">
-                                <button className="relative group min-w-[200px] px-8 py-4 font-black text-sm uppercase tracking-widest text-black overflow-hidden rounded-xl transition-all duration-300"
+                                <button className="relative group min-w-[200px] px-8 py-4 font-black text-sm uppercase tracking-widest text-black overflow-hidden rounded-xl transition-all duration-300 shadow-[0_0_24px_rgba(0,255,0,0.35)]"
                                     style={{
                                         background: '#00ff00',
-                                        animation: 'glow-breathe 2.5s ease-in-out infinite',
                                     }}>
                                     <span className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
                                         <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
@@ -335,36 +84,14 @@ export default function Home() {
                                 </button>
                             </Link>
                         </div>
-
-                        {/* Live stats bar */}
-                        <div className="flex flex-wrap items-center justify-center gap-3"
-                            style={{ opacity: 0, animation: 'fadeInUp 0.7s ease-out 1.1s forwards' }}>
-                            {[
-                                { label: 'Players Online', value: 12847, suffix: '', icon: '🟢' },
-                                { label: 'Active Tournaments', value: 34, suffix: '', icon: '🏆' },
-                                { label: 'Prize Pool (USD)', value: 50000, suffix: '+', icon: '💰' },
-                                { label: 'Matches Today', value: 1293, suffix: '', icon: '⚡' },
-                            ].map(s => (
-                                <div key={s.label} className="flex items-center gap-3 px-5 py-3 rounded-2xl"
-                                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                                    <span className="text-base">{s.icon}</span>
-                                    <div className="text-left">
-                                        <div className="text-xs font-black text-white tabular-nums">
-                                            <Counter target={s.value} suffix={s.suffix} />
-                                        </div>
-                                        <div className="text-[9px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{s.label}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
                     </div>
 
                     {/* — Scroll hint — */}
                     <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-                        style={{ opacity: 0, animation: 'fadeInUp 0.7s ease-out 1.5s forwards' }}>
+                        style={{ opacity: 0, animation: 'fadeInUp 0.7s ease-out 0.55s forwards' }}>
                         <span className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: 'rgba(255,255,255,0.2)' }}>Scroll</span>
-                        <div className="w-px h-8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                            <div className="w-full h-4 rounded-full" style={{ background: '#00ff00', animation: 'float 1.5s ease-in-out infinite' }} />
+                        <div className="w-px h-8 overflow-hidden flex flex-col justify-end" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                            <div className="w-full h-4 rounded-full" style={{ background: '#00ff00' }} />
                         </div>
                     </div>
                 </section>
@@ -1031,8 +758,7 @@ function MobileAppSection() {
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8"
                             style={{ background: 'rgba(0,255,0,0.06)', border: '1px solid rgba(0,255,0,0.15)' }}>
                             <span className="relative flex h-1.5 w-1.5">
-                                <span className="absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#00ff00', animation: 'ping 1s cubic-bezier(0,0,0.2,1) infinite' }} />
-                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#00ff00' }} />
+                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: '#00ff00', boxShadow: '0 0 6px rgba(0,255,0,0.6)' }} />
                             </span>
                             <span className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: '#00ff00' }}>Now on Android</span>
                         </div>
@@ -1158,7 +884,6 @@ function MobileAppSection() {
                             padding: '10px 14px',
                             backdropFilter: 'blur(12px)',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(0,255,0,0.08)',
-                            animation: 'float 4s ease-in-out infinite',
                             minWidth: 170,
                         }}>
                             <div className="flex items-center gap-2.5">
@@ -1179,7 +904,6 @@ function MobileAppSection() {
                             padding: '10px 14px',
                             backdropFilter: 'blur(12px)',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                            animation: 'float 5s ease-in-out infinite 1.5s',
                             minWidth: 155,
                         }}>
                             <div className="flex items-center gap-2.5">
@@ -1200,7 +924,6 @@ function MobileAppSection() {
                             padding: '6px 12px',
                             backdropFilter: 'blur(8px)',
                             display: 'flex', alignItems: 'center', gap: 6,
-                            animation: 'float 6s ease-in-out infinite 0.5s',
                         }}>
                             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff4444', boxShadow: '0 0 6px #ff4444', display: 'inline-block' }} />
                             <span style={{ fontSize: 8, color: '#ff4444', fontWeight: 900, letterSpacing: '0.1em' }}>LIVE MATCH</span>

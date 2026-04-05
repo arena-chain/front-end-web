@@ -1,11 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Hash, Image as ImageIcon, Sparkles, User as UserIcon, Check, Plus, Video, Trash2, Upload } from 'lucide-react';
+import {
+    ExternalLink,
+    Hash,
+    Image as ImageIcon,
+    Sparkles,
+    User as UserIcon,
+    Check,
+    Plus,
+    ChevronLeft,
+    ChevronRight,
+    Play,
+    Film,
+    X,
+} from 'lucide-react';
 import { Badge, Button, Input, Textarea, Modal } from '../../components/ui/core';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
 import { videoService, type VideoRecord } from '../../services/video.service';
+import { highlightService, type HighlightRecord } from '../../services/highlight.service';
+import { HighlightEngagement, VideoEngagement } from '../../components/highlights/HighlightEngagement';
+import { MediaEngagementStrip } from '../../components/highlights/MediaEngagementStrip';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
+
+type HighlightWithSource = HighlightRecord & {
+    sourceVideoId: string;
+    sourceVideoTitle?: string;
+};
 
 function ownerLabel(record: ChannelRecord): string {
     const o = record.ownerId as unknown;
@@ -39,17 +60,13 @@ export default function ChannelStudioPage() {
     const [showCustomAvatar, setShowCustomAvatar] = useState(false);
     const [showCustomBanner, setShowCustomBanner] = useState(false);
     const [showCustomCategories, setShowCustomCategories] = useState(false);
-    const [videos, setVideos] = useState<VideoRecord[]>([]);
-    const [videosLoading, setVideosLoading] = useState(true);
-    const [videoUploading, setVideoUploading] = useState(false);
-    const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
-    const [previewVideo, setPreviewVideo] = useState<VideoRecord | null>(null);
-    const [videoForm, setVideoForm] = useState({
-        title: '',
-        description: '',
-        file: null as File | null,
-    });
-
+    const [myHighlights, setMyHighlights] = useState<HighlightWithSource[]>([]);
+    const [highlightsLoading, setHighlightsLoading] = useState(true);
+    const [studioVideos, setStudioVideos] = useState<VideoRecord[]>([]);
+    const [studioVideosLoading, setStudioVideosLoading] = useState(true);
+    const [selectedHighlight, setSelectedHighlight] = useState<HighlightWithSource | null>(null);
+    const [selectedVideo, setSelectedVideo] = useState<VideoRecord | null>(null);
+    const highlightsScrollRef = useRef<HTMLDivElement>(null);
     const PREDEFINED_AVATARS = [
         'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
         'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
@@ -76,7 +93,17 @@ export default function ChannelStudioPage() {
     useEffect(() => {
         void loadChannel();
         void loadAllStudios();
-        void loadMyVideos();
+        void loadMyHighlights();
+        void loadStudioVideos();
+    }, []);
+
+    useEffect(() => {
+        const onVideosChanged = () => {
+            void loadMyHighlights();
+            void loadStudioVideos();
+        };
+        window.addEventListener('arena-videos-changed', onVideosChanged);
+        return () => window.removeEventListener('arena-videos-changed', onVideosChanged);
     }, []);
 
     function currentUserId(): string | null {
@@ -123,66 +150,100 @@ export default function ChannelStudioPage() {
         }
     }
 
-    async function loadMyVideos() {
+    async function loadStudioVideos() {
         const uploader = currentUserId();
         if (!uploader) {
-            setVideos([]);
-            setVideosLoading(false);
+            setStudioVideos([]);
+            setStudioVideosLoading(false);
             return;
         }
-        setVideosLoading(true);
+        setStudioVideosLoading(true);
+        try {
+            const list = await videoService.list({ uploader, channelPublic: true });
+            setStudioVideos(Array.isArray(list) ? list : []);
+        } catch {
+            setStudioVideos([]);
+        } finally {
+            setStudioVideosLoading(false);
+        }
+    }
+
+    async function loadMyHighlights() {
+        const uploader = currentUserId();
+        if (!uploader) {
+            setMyHighlights([]);
+            setHighlightsLoading(false);
+            return;
+        }
+        setHighlightsLoading(true);
         try {
             const list = await videoService.list({ uploader });
-            setVideos(Array.isArray(list) ? list : []);
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to load videos');
-            setVideos([]);
+            const vids = Array.isArray(list) ? list : [];
+            const nested = await Promise.all(
+                vids.map(async (v) => {
+                    const vid = v._id;
+                    if (!vid) return [] as HighlightWithSource[];
+                    try {
+                        const hl = await highlightService.listByVideo(String(vid), false);
+                        return (Array.isArray(hl) ? hl : []).map((h) => ({
+                            ...h,
+                            sourceVideoId: String(vid),
+                            sourceVideoTitle: v.title,
+                        }));
+                    } catch {
+                        return [] as HighlightWithSource[];
+                    }
+                }),
+            );
+            const flat = nested.flat();
+            flat.sort(
+                (a, b) =>
+                    new Date(b.updatedAt || b.createdAt || 0).getTime() -
+                    new Date(a.updatedAt || a.createdAt || 0).getTime(),
+            );
+            setMyHighlights(flat);
+        } catch {
+            setMyHighlights([]);
         } finally {
-            setVideosLoading(false);
+            setHighlightsLoading(false);
         }
     }
 
-    async function handleUploadVideo(event: React.FormEvent) {
-        event.preventDefault();
-        const uploader = currentUserId();
-        if (!uploader) {
-            toast.error('User not found in session');
-            return;
-        }
-        if (!videoForm.file || !videoForm.title.trim()) {
-            toast.error('Please choose a video file and enter a title');
-            return;
-        }
-        setVideoUploading(true);
-        try {
-            await videoService.upload({
-                file: videoForm.file,
-                title: videoForm.title.trim(),
-                description: videoForm.description.trim() || undefined,
-                uploader,
+    function scrollHighlightsHorizontal(dir: 'left' | 'right') {
+        const el = highlightsScrollRef.current;
+        if (!el) return;
+        const delta = Math.min(260, el.clientWidth * 0.75);
+        el.scrollBy({ left: dir === 'left' ? -delta : delta, behavior: 'smooth' });
+    }
+
+    /** Loop through clips: order matches the horizontal gallery */
+    const goAdjacentHighlight = useCallback(
+        (delta: number) => {
+            setSelectedHighlight((cur) => {
+                if (!cur || myHighlights.length === 0) return cur;
+                const i = myHighlights.findIndex((h) => h._id === cur._id);
+                if (i < 0) return cur;
+                const n = myHighlights.length;
+                return myHighlights[(i + delta + n * 100) % n];
             });
-            setVideoForm({ title: '', description: '', file: null });
-            await loadMyVideos();
-            toast.success('Video uploaded');
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to upload video');
-        } finally {
-            setVideoUploading(false);
-        }
-    }
+        },
+        [myHighlights],
+    );
 
-    async function handleDeleteVideo(id: string) {
-        setDeletingVideoId(id);
-        try {
-            await videoService.remove(id);
-            await loadMyVideos();
-            toast.success('Video deleted');
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to delete video');
-        } finally {
-            setDeletingVideoId(null);
-        }
-    }
+    useEffect(() => {
+        if (!selectedHighlight) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                goAdjacentHighlight(1);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                goAdjacentHighlight(-1);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [selectedHighlight, goAdjacentHighlight]);
 
     async function handleSubmit(event: React.FormEvent) {
         event.preventDefault();
@@ -481,122 +542,393 @@ export default function ChannelStudioPage() {
                 </div>
             </div>
 
-            <section className="space-y-6">
-                <div className="flex flex-col lg:flex-row gap-6">
-                    <form
-                        onSubmit={handleUploadVideo}
-                        className="lg:w-[380px] rounded-2xl border border-white/10 bg-[#0c0e11]/70 p-6 space-y-4"
-                    >
-                        <div className="flex items-center gap-2 text-primary/80 text-xs font-black uppercase tracking-widest">
-                            <Upload size={14} /> Upload video
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-white/60 mb-1">Title</label>
-                            <Input
-                                value={videoForm.title}
-                                onChange={(event) => setVideoForm((f) => ({ ...f, title: event.target.value }))}
-                                placeholder="e.g. Best clutch rounds"
-                                required
-                                className="bg-white/5 border-white/10"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-white/60 mb-1">Description</label>
-                            <Textarea
-                                rows={3}
-                                value={videoForm.description}
-                                onChange={(event) => setVideoForm((f) => ({ ...f, description: event.target.value }))}
-                                placeholder="Optional details"
-                                className="bg-white/5 border-white/10"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-white/60 mb-1">Video file</label>
-                            <input
-                                type="file"
-                                accept="video/mp4,video/webm,video/quicktime,video/*"
-                                onChange={(event) => setVideoForm((f) => ({ ...f, file: event.target.files?.[0] ?? null }))}
-                                className="w-full text-sm text-white/70 file:mr-4 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/30"
-                            />
-                            {videoForm.file && (
-                                <p className="text-[11px] text-white/50 mt-1 truncate">{videoForm.file.name}</p>
-                            )}
-                        </div>
-                        <Button type="submit" isLoading={videoUploading} className="w-full">
-                            Upload video
-                        </Button>
-                    </form>
+            <section className="rounded-2xl border border-primary/25 bg-primary/[0.06] p-6 md:p-8 space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary">Public</p>
+                <p className="text-sm text-white/80 leading-relaxed max-w-3xl">
+                    Gérez vos sources et clips depuis le menu joueur : <strong className="text-white">My videos</strong> et{' '}
+                    <strong className="text-white">Highlights</strong>. Votre page chaîne publique reste accessible ci-dessous.
+                </p>
+                <p className="text-xs text-white/40">
+                    Utilisez la flèche en bas du rail pour réduire ou agrandir les libellés du menu.
+                </p>
+            </section>
 
-                    <div className="flex-1 rounded-2xl border border-white/10 bg-[#0c0e11]/50 p-6">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-primary/90 flex items-center gap-2">
-                                <Video size={15} /> My uploaded videos
-                            </h3>
-                            <Button type="button" variant="outline" size="sm" onClick={() => void loadMyVideos()} disabled={videosLoading}>
-                                Refresh
-                            </Button>
+            {/* Même grille que pour un viewer (YouTube / Twitch) — uniquement les VOD publiées */}
+            <section className="rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 md:p-8 space-y-6 overflow-hidden">
+                <div>
+                    <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
+                        <Film size={14} /> Chaîne — vidéos publiées
+                    </div>
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
+                                Bibliothèque visible par les visiteurs
+                            </h2>
+                            <p className="text-sm text-white/45 mt-1 max-w-2xl leading-relaxed">
+                                Liste complète des enregistrements <strong className="text-white/70">publics sur la chaîne</strong>
+                                — la même qu’un autre joueur voit sur votre page studio ou sur le live. Style proche{' '}
+                                <strong className="text-white/50">YouTube / Twitch</strong>, sans quitter cette page.
+                            </p>
                         </div>
-                        {videosLoading ? (
-                            <div className="py-10 text-center text-white/40 text-sm">Loading videos...</div>
-                        ) : videos.length === 0 ? (
-                            <div className="py-10 text-center text-white/40 text-sm">
-                                No videos uploaded yet.
-                            </div>
-                        ) : (
-                            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-                                {videos.map((v) => (
-                                    <div key={v._id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3">
-                                        <button
-                                            type="button"
-                                            className="shrink-0 rounded-lg overflow-hidden border border-white/10 hover:border-primary/30 transition-colors"
-                                            onClick={() => setPreviewVideo(v)}
-                                            title="Open larger preview"
-                                        >
-                                            <video
-                                                src={resolveBackendAssetUrl(v.url)}
-                                                className="w-40 h-24 object-cover bg-black"
-                                                preload="metadata"
-                                            />
-                                        </button>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-white font-semibold truncate">{v.title}</p>
-                                            {v.description && <p className="text-xs text-white/50 mt-1 line-clamp-2">{v.description}</p>}
-                                            <div className="text-[10px] text-white/40 mt-2">
-                                                {new Date(v.createdAt).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="p-2 rounded-lg text-red-400 hover:bg-red-500/15 disabled:opacity-50"
-                                            onClick={() => void handleDeleteVideo(v._id)}
-                                            disabled={deletingVideoId === v._id}
-                                            title="Delete video"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                        {!studioVideosLoading && studioVideos.length > 0 && (
+                            <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest shrink-0">
+                                {studioVideos.length} vidéo{studioVideos.length > 1 ? 's' : ''}
+                            </Badge>
                         )}
                     </div>
                 </div>
+
+                {studioVideosLoading && studioVideos.length === 0 ? (
+                    <div className="py-16 flex justify-center">
+                        <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    </div>
+                ) : studioVideos.length === 0 ? (
+                    <div className="py-14 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+                        <p className="text-white/45 text-sm max-w-md mx-auto leading-relaxed">
+                            Aucune VOD publique pour l’instant. Les visiteurs ne voient que les vidéos dont la visibilité
+                            chaîne est réglée sur public dans votre bibliothèque (menu joueur).
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {studioVideos.map((v) => (
+                            <div
+                                key={v._id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelectedVideo(v)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setSelectedVideo(v);
+                                    }
+                                }}
+                                className="rounded-2xl border border-white/10 overflow-hidden bg-[#0f1115] hover:border-primary/40 hover:shadow-[0_0_32px_rgba(0,255,135,0.12)] transition-all flex flex-col shadow-lg shadow-black/20 cursor-pointer group/vod"
+                            >
+                                <div className="aspect-video bg-black shrink-0 relative">
+                                    <video
+                                        src={resolveBackendAssetUrl(v.url)}
+                                        className="w-full h-full object-cover opacity-95 group-hover/vod:opacity-100 transition-opacity"
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                        loop
+                                        onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.pause();
+                                            e.currentTarget.currentTime = 0;
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between gap-2">
+                                        <MediaEngagementStrip kind="video" id={String(v._id)} className="drop-shadow-md" />
+                                        <span className="w-10 h-10 rounded-full bg-primary text-black flex items-center justify-center shadow-lg shadow-primary/30 shrink-0">
+                                            <Play size={18} className="ml-0.5" fill="currentColor" />
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="p-4 space-y-2 flex-1 flex flex-col">
+                                    <p className="font-black text-white text-sm line-clamp-2 italic">{v.title}</p>
+                                    {v.description && (
+                                        <p className="text-xs text-white/40 line-clamp-2 leading-relaxed">{v.description}</p>
+                                    )}
+                                    <p className="text-[10px] text-white/25 font-bold uppercase tracking-widest">
+                                        {formatDate(v.createdAt)}
+                                    </p>
+                                    <span className="inline-flex mt-auto pt-2">
+                                        <Link
+                                            to={`/player/videos/${v._id}/highlights`}
+                                            className="text-[10px] font-black uppercase tracking-wider text-primary hover:underline"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            Clips & highlights →
+                                        </Link>
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </section>
 
-            <Modal isOpen={Boolean(previewVideo)} onClose={() => setPreviewVideo(null)} size="xl">
-                {previewVideo && (
-                    <div className="p-5 space-y-3">
-                        <div>
-                            <h3 className="text-lg font-bold text-white">{previewVideo.title}</h3>
-                            {previewVideo.description && (
-                                <p className="text-sm text-white/60 mt-1">{previewVideo.description}</p>
-                            )}
+            {/* Highlights — horizontal gallery + modal (clip + comments side panel) */}
+            <section className="rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 md:p-8 space-y-6 overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
+                            <Sparkles size={14} /> Highlights auto
                         </div>
-                        <video
-                            src={resolveBackendAssetUrl(previewVideo.url)}
-                            className="w-full max-h-[70vh] rounded-xl bg-black"
-                            controls
-                            autoPlay
-                        />
+                        <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
+                            Vos clips
+                        </h2>
+                        <p className="text-sm text-white/45 mt-1 max-w-xl">
+                            Faites défiler <strong className="text-white/70">horizontalement</strong> pour voir vos clips côte à côte. Ouvrez un clip :{' '}
+                            <strong className="text-white/70">vidéo à gauche</strong>, commentaires à droite. Dans la fenêtre : flèches ou{' '}
+                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">←</kbd>{' '}
+                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">→</kbd> /{' '}
+                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">↑</kbd>{' '}
+                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">↓</kbd> pour passer au clip suivant ou précédent.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="!px-3"
+                            onClick={() => scrollHighlightsHorizontal('left')}
+                            aria-label="Défiler la liste vers la gauche"
+                        >
+                            <ChevronLeft size={18} />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="!px-3"
+                            onClick={() => scrollHighlightsHorizontal('right')}
+                            aria-label="Défiler la liste vers la droite"
+                        >
+                            <ChevronRight size={18} />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => void loadMyHighlights()}
+                            disabled={highlightsLoading}
+                            isLoading={highlightsLoading}
+                        >
+                            Actualiser
+                        </Button>
+                    </div>
+                </div>
+
+                {highlightsLoading && myHighlights.length === 0 ? (
+                    <div className="py-16 flex justify-center">
+                        <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    </div>
+                ) : myHighlights.length === 0 ? (
+                    <div className="py-12 text-center text-white/40 text-sm rounded-2xl border border-dashed border-white/10">
+                        Aucun clip encore. Uploadez une vidéo et attendez la fin du traitement (Redis / worker),
+                        puis actualisez.
+                    </div>
+                ) : (
+                    <div className="w-full">
+                        <div
+                            ref={highlightsScrollRef}
+                            className="flex flex-row gap-4 overflow-x-auto overflow-y-visible scroll-smooth snap-x snap-mandatory py-1 pb-3 -mx-1 px-1 [scrollbar-width:thin] [scrollbar-color:rgba(0,255,135,0.35)_transparent] [-webkit-overflow-scrolling:touch]"
+                        >
+                            {myHighlights.map((h) => (
+                                <button
+                                    key={h._id}
+                                    type="button"
+                                    onClick={() => setSelectedHighlight(h)}
+                                    className="group/card shrink-0 snap-start text-left w-[200px] sm:w-[220px] rounded-2xl border border-white/10 bg-black/50 overflow-hidden hover:border-primary/45 hover:shadow-[0_0_28px_rgba(0,255,135,0.14)] transition-all duration-300"
+                                >
+                                    <div className="relative aspect-[9/16] w-full bg-black">
+                                            <video
+                                                src={resolveBackendAssetUrl(h.clipUrl)}
+                                                className="w-full h-full object-cover opacity-92 group-hover/card:opacity-100"
+                                                muted
+                                                playsInline
+                                                preload="metadata"
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none">
+                                                <span className="w-12 h-12 rounded-full bg-primary text-black flex items-center justify-center shadow-lg shadow-primary/40 pointer-events-none">
+                                                    <Play size={22} className="ml-0.5" fill="currentColor" />
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="p-2.5 space-y-1.5">
+                                            <p className="text-xs font-bold text-white line-clamp-2 leading-tight">{h.title}</p>
+                                            {h.sourceVideoTitle && (
+                                                <p className="text-[9px] text-white/35 line-clamp-1 uppercase tracking-wider">
+                                                    {h.sourceVideoTitle}
+                                                </p>
+                                            )}
+                                            <div className="flex flex-wrap items-center justify-end gap-1 pt-0.5">
+                                                <MediaEngagementStrip kind="highlight" id={h._id} />
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            <Modal
+                isOpen={Boolean(selectedHighlight)}
+                onClose={() => setSelectedHighlight(null)}
+                size="full"
+                bodyScroll={false}
+                hideDefaultHeader
+            >
+                {selectedHighlight && (
+                    <div className="relative flex h-[min(90vh,960px)] max-h-[90vh] w-full flex-1 min-h-0 flex-col lg:flex-row bg-black">
+                        <span className="sr-only">{selectedHighlight.title}</span>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedHighlight(null)}
+                            className="absolute left-2 top-2 z-[60] flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white/80 backdrop-blur-md transition-colors hover:border-primary/40 hover:bg-white/10 hover:text-white"
+                            aria-label="Fermer"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        {/* Vertical reel — 9:16 fills column height, minimal dead space */}
+                        <div className="relative flex flex-1 min-h-0 min-w-0 items-center justify-center overflow-hidden border-b lg:border-b-0 lg:border-r border-white/10 px-1 pt-11 pb-1 sm:px-2 sm:pt-10 sm:pb-2">
+                            <div className="flex h-full min-h-0 w-full max-w-[min(1100px,100%)] items-center justify-center gap-1 sm:gap-2 md:gap-3">
+                                {myHighlights.length > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="!h-10 !w-10 sm:!h-11 sm:!w-11 !p-0 shrink-0 rounded-full border-white/15 bg-white/5 text-white/80 hover:border-primary/45 hover:text-primary hidden sm:inline-flex"
+                                        onClick={() => goAdjacentHighlight(-1)}
+                                        aria-label="Clip précédent"
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </Button>
+                                )}
+
+                                <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2">
+                                    <div
+                                        className="relative mx-auto w-full max-w-[min(580px,94vw)] sm:max-w-[min(600px,92vw)] lg:max-w-[min(620px,calc(94vw-24rem))] aspect-[9/16] max-h-[min(82vh,880px)] overflow-hidden rounded-2xl bg-black shadow-[0_0_0_1px_rgba(0,255,135,0.15),0_16px_56px_rgba(0,0,0,0.85)] ring-1 ring-white/10"
+                                    >
+                                        <div className="pointer-events-none absolute inset-0 z-[2] rounded-2xl shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]" />
+                                        <video
+                                            key={selectedHighlight._id}
+                                            src={resolveBackendAssetUrl(selectedHighlight.clipUrl)}
+                                            className="h-full w-full object-cover bg-black"
+                                            controls
+                                            playsInline
+                                            autoPlay
+                                        />
+                                    </div>
+                                    {myHighlights.length > 1 && (
+                                        <>
+                                            <div className="flex w-full max-w-[min(600px,94vw)] items-center justify-center gap-2 sm:hidden">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="!h-9 flex-1 rounded-lg border-white/15 text-xs"
+                                                    onClick={() => goAdjacentHighlight(-1)}
+                                                >
+                                                    <ChevronLeft size={16} className="mr-0.5" /> Préc.
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="!h-9 flex-1 rounded-lg border-white/15 text-xs"
+                                                    onClick={() => goAdjacentHighlight(1)}
+                                                >
+                                                    Suiv. <ChevronRight size={16} className="ml-0.5" />
+                                                </Button>
+                                            </div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 tabular-nums">
+                                                {myHighlights.findIndex((x) => x._id === selectedHighlight._id) + 1} /{' '}
+                                                {myHighlights.length}
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+
+                                {myHighlights.length > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="!h-10 !w-10 sm:!h-11 sm:!w-11 !p-0 shrink-0 rounded-full border-white/15 bg-white/5 text-white/80 hover:border-primary/45 hover:text-primary hidden sm:inline-flex"
+                                        onClick={() => goAdjacentHighlight(1)}
+                                        aria-label="Clip suivant"
+                                    >
+                                        <ChevronRight size={20} />
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Reactions rail — fixed width, full height */}
+                        <aside className="flex w-full shrink-0 flex-col bg-[#070809] min-h-0 max-h-[40vh] lg:h-auto lg:max-h-none lg:w-[380px] xl:w-[400px] lg:border-l border-white/10">
+                            <div className="flex min-h-0 flex-1 flex-col px-4 py-3 sm:px-5 sm:py-4">
+                                <div className="flex-1 min-h-0 flex flex-col rounded-2xl border border-white/[0.08] bg-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] p-4 sm:p-5">
+                                    <HighlightEngagement
+                                        key={selectedHighlight._id}
+                                        highlightId={selectedHighlight._id}
+                                        layout="embedded"
+                                    />
+                                </div>
+                                <div className="shrink-0 mt-4 pt-4 border-t border-white/[0.06] space-y-2 text-[10px]">
+                                    {selectedHighlight.sourceVideoTitle ? (
+                                        <p className="text-white/40">
+                                            Source{' '}
+                                            <span className="text-white/65 font-medium">{selectedHighlight.sourceVideoTitle}</span>
+                                        </p>
+                                    ) : null}
+                                    <Link
+                                        to={`/player/videos/${selectedHighlight.sourceVideoId}/highlights`}
+                                        className="inline-flex items-center gap-1 text-primary font-black uppercase tracking-wider hover:text-primary-light transition-colors"
+                                        onClick={() => setSelectedHighlight(null)}
+                                    >
+                                        Visibilité & réglages <span aria-hidden>→</span>
+                                    </Link>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                isOpen={Boolean(selectedVideo)}
+                onClose={() => setSelectedVideo(null)}
+                size="lg"
+                bodyScroll={false}
+                title={selectedVideo?.title ?? 'Vidéo'}
+            >
+                {selectedVideo && (
+                    <div className="flex flex-1 min-h-0 flex-col min-h-[320px]">
+                        {/* YouTube-style: player on top */}
+                        <div className="shrink-0 w-full bg-black border-b border-white/10">
+                            <div className="aspect-video w-full max-h-[min(52vh,520px)] mx-auto">
+                                <video
+                                    key={selectedVideo._id}
+                                    src={resolveBackendAssetUrl(selectedVideo.url)}
+                                    className="w-full h-full object-contain"
+                                    controls
+                                    playsInline
+                                    autoPlay
+                                />
+                            </div>
+                        </div>
+                        {/* Meta + comments — single scroll below the fold */}
+                        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4 [scrollbar-gutter:stable]">
+                            {selectedVideo.description ? (
+                                <p className="text-sm text-white/65 leading-relaxed">{selectedVideo.description}</p>
+                            ) : null}
+                            <p className="text-[10px] text-white/35 font-bold uppercase tracking-widest">
+                                {formatDate(selectedVideo.createdAt)}
+                            </p>
+                            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 min-h-[200px] flex flex-col">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/90 mb-3">
+                                    Commentaires
+                                </p>
+                                <div className="flex-1 min-h-0 flex flex-col min-h-[180px]">
+                                    <VideoEngagement videoId={String(selectedVideo._id)} layout="embedded" />
+                                </div>
+                            </div>
+                            <Link
+                                to={`/player/videos/${selectedVideo._id}/highlights`}
+                                className="inline-flex text-primary text-xs font-black uppercase tracking-wider hover:underline"
+                                onClick={() => setSelectedVideo(null)}
+                            >
+                                Clips & highlights →
+                            </Link>
+                        </div>
                     </div>
                 )}
             </Modal>

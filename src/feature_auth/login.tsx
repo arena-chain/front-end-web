@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input } from '../components/ui/core';
 import { Gamepad2, ArrowLeft, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import loginCover from '../assets/0x0.webp';
 import { AuthService } from '../services/auth.service';
 import { useAuth } from '../contexts/AuthContext';
 import { normalizeAuthUser } from '../lib/parseAuthUser';
@@ -85,14 +86,20 @@ export default function Login() {
 
     return (
         <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
-            {/* Background Effects */}
+            {/* Background Image Wrapper */}
             <div className="absolute inset-0 z-0">
-                <div className="absolute top-[-50%] left-[-20%] w-[100%] h-[100%] bg-primary/10 rounded-full blur-[150px]" />
-                <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-purple-900/10 rounded-full blur-[150px]" />
+                <img src={loginCover} alt="Login Background" className="w-full h-full object-cover object-center" />
             </div>
 
-            <div className="w-full max-w-md bg-surface/50 backdrop-blur-xl border border-white/10 p-8 rounded-2xl relative z-10 animate-fade-in-up shadow-2xl shadow-primary/5">
-                <div className="mb-8 text-center">
+            <div className="w-full max-w-lg bg-black/40 backdrop-blur-xl border border-primary/20 p-10 rounded-3xl relative z-10 shadow-[0_0_50px_rgba(0,255,0,0.05)] transition-all duration-700 hover:shadow-[0_0_80px_rgba(0,255,0,0.1)] hover:border-primary/40 group overflow-hidden" 
+                 style={{ animation: 'fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+                
+                {/* Animated inner border glow */}
+                <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl overflow-hidden">
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" style={{ background: 'radial-gradient(circle at 50% -20%, rgba(0,255,0,0.15), transparent 70%)' }}></div>
+                </div>
+
+                <div className="relative z-10 mb-8 text-center">
                     <Link to="/" className="inline-flex items-center gap-2 mb-8 group">
                         <ArrowLeft className="w-4 h-4 text-text-muted group-hover:text-primary transition-colors" />
                         <span className="text-text-muted text-sm group-hover:text-white transition-colors">Back to Home</span>
@@ -106,8 +113,6 @@ export default function Login() {
 
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">Welcome Back</h1>
                     <p className="text-text-muted text-sm mb-2">Enter your credentials to access the arena.</p>
-
-                    <p className="text-text-muted text-sm">Enter your credentials to access the arena.</p>
                 </div>
 
                 {error && (
@@ -211,7 +216,9 @@ export default function Login() {
                         </Link>
                     </p>
                 </div>
-            </div>
-        </div>
-    );
-}
+             </div>
+         </div>
+     );
+ }
+
+
