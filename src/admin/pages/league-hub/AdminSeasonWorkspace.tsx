@@ -4,13 +4,13 @@ import { toast } from 'sonner';
 import {
     ArrowLeft, BookOpen, DollarSign, Users, Layers, Flag,
     PlayCircle, GitBranch, CheckCircle, Plus,
-    Trash2, RefreshCw, ChevronDown, ChevronUp, Crown, Shield,
+    Trash2, RefreshCw, ChevronDown, ChevronUp, Crown, Image as ImageIcon,
     AlertTriangle, TrendingUp, Edit2, Check, X, Info, Settings2,
 } from 'lucide-react';
 import { leagueService } from '../../../services/leagueService';
 import { seasonService, type Season } from '../../../services/seasonService';
 import {
-    getSeasonRule, createSeasonRule, updateSeasonRule,
+    getSeasonRules, createSeasonRule, updateSeasonRule, deleteSeasonRule,
     getPrizePool, createPrizePool, updatePrizePool,
     getSeasonTeams, registerTeam, removeRegistration,
     getAllTeams,
@@ -198,45 +198,62 @@ function RuleFormSection({ title, children, defaultOpen = true }: { title: strin
 }
 
 function RulesPanel({ seasonId }: { seasonId: string }) {
-    const [rule, setRule]       = useState<SeasonRule | null>(null);
-    const [editing, setEditing] = useState(false);
-    const [form, setForm]       = useState<FullRuleForm>(DEFAULT_RULE_FORM);
+    const [rules, setRules]       = useState<SeasonRule[]>([]);
+    const [editingId, setEditingId] = useState<string | 'new' | null>(null);
+    const [form, setForm]         = useState<FullRuleForm>(DEFAULT_RULE_FORM);
     const [mapInput, setMapInput] = useState('');
-    const [busy, setBusy]       = useState(false);
+    const [busy, setBusy]         = useState(false);
+    const [deleting, setDeleting] = useState<string | null>(null);
 
-    useEffect(() => {
-        getSeasonRule(seasonId).then(r => {
-            if (r) {
-                setRule(r);
-                setForm({
-                    name: r.name, gameId: r.gameId, formatType: r.formatType, matchType: r.matchType,
-                    pointsWin: r.pointsWin, pointsLoss: r.pointsLoss, maxTeams: r.maxTeams, tiebreaker: r.tiebreaker,
-                    forfeitCountsAsLoss: r.forfeitCountsAsLoss, maxForfeitsBeforeDisqualification: r.maxForfeitsBeforeDisqualification,
-                    mapPool: r.mapPool ?? [], mapVetoEnabled: r.mapVetoEnabled,
-                    mapVetoFormat: r.mapVetoFormat ?? 'BAN_BAN_PICK_PICK_BAN_BAN_DECIDER',
-                    vetoFirstPick: r.vetoFirstPick ?? 'HIGHER_SEED',
-                    ruleUsage: r.ruleUsage ?? ['REGULAR_SEASON'],
-                    sideSelection: r.sideSelection ?? 'HIGHER_SEED_CHOOSES',
-                    scoreSubmissionMethod: r.scoreSubmissionMethod ?? 'ADMIN_VERIFIED',
-                    substitutionsAllowed: r.substitutionsAllowed ?? false,
-                    maxSubstitutions: r.maxSubstitutions ?? 0,
-                    emergencySubsOnly: r.emergencySubsOnly ?? false,
-                    pauseAllowedForDisconnect: r.pauseAllowedForDisconnect ?? true,
-                    replayConditions: r.replayConditions ?? '', remakeConditions: r.remakeConditions ?? '',
-                    adminDecisionRequired: r.adminDecisionRequired ?? false,
-                    overtimeConfig: r.overtimeConfig ?? { ...EMPTY_OT },
-                });
-            }
+    const load = () => getSeasonRules(seasonId).then(setRules);
+    useEffect(() => { load(); }, [seasonId]);
+
+    const startEdit = (r: SeasonRule) => {
+        setForm({
+            name: r.name, gameId: r.gameId, formatType: r.formatType, matchType: r.matchType,
+            pointsWin: r.pointsWin, pointsLoss: r.pointsLoss, maxTeams: r.maxTeams, tiebreaker: r.tiebreaker,
+            forfeitCountsAsLoss: r.forfeitCountsAsLoss, maxForfeitsBeforeDisqualification: r.maxForfeitsBeforeDisqualification,
+            mapPool: r.mapPool ?? [], mapVetoEnabled: r.mapVetoEnabled,
+            mapVetoFormat: r.mapVetoFormat ?? 'BAN_BAN_PICK_PICK_BAN_BAN_DECIDER',
+            vetoFirstPick: r.vetoFirstPick ?? 'HIGHER_SEED',
+            ruleUsage: r.ruleUsage ?? ['REGULAR_SEASON'],
+            sideSelection: r.sideSelection ?? 'HIGHER_SEED_CHOOSES',
+            scoreSubmissionMethod: r.scoreSubmissionMethod ?? 'ADMIN_VERIFIED',
+            substitutionsAllowed: r.substitutionsAllowed ?? false,
+            maxSubstitutions: r.maxSubstitutions ?? 0,
+            emergencySubsOnly: r.emergencySubsOnly ?? false,
+            pauseAllowedForDisconnect: r.pauseAllowedForDisconnect ?? true,
+            replayConditions: r.replayConditions ?? '', remakeConditions: r.remakeConditions ?? '',
+            adminDecisionRequired: r.adminDecisionRequired ?? false,
+            overtimeConfig: r.overtimeConfig ?? { ...EMPTY_OT },
         });
-    }, [seasonId]);
+        setEditingId(r._id);
+    };
+
+    const startNew = () => { setForm(DEFAULT_RULE_FORM); setEditingId('new'); };
+    const cancelEdit = () => { setEditingId(null); setForm(DEFAULT_RULE_FORM); };
+
+    const del = async (id: string) => {
+        if (!confirm('Delete this rule?')) return;
+        setDeleting(id);
+        try { await deleteSeasonRule(id); await load(); toast.success('Rule deleted'); }
+        catch (e) { toast.error(apiErr(e)); }
+        finally { setDeleting(null); }
+    };
 
     const save = async () => {
         if (!form.name || !form.gameId) { toast.error('Name and Game ID are required'); return; }
         setBusy(true);
         try {
-            const r = rule ? await updateSeasonRule(rule._id, { ...form, seasonId }) : await createSeasonRule({ ...form, seasonId });
-            setRule(r); setEditing(false);
-            toast.success('Rules saved');
+            if (editingId === 'new') {
+                await createSeasonRule({ ...form, seasonId });
+                toast.success('Rule created!');
+            } else if (editingId) {
+                await updateSeasonRule(editingId, { ...form, seasonId });
+                toast.success('Rule updated!');
+            }
+            await load();
+            cancelEdit();
         } catch (e) { toast.error(apiErr(e)); }
         finally { setBusy(false); }
     };
@@ -273,17 +290,7 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
         ...p, ruleUsage: p.ruleUsage.includes(u) ? p.ruleUsage.filter(x => x !== u) : [...p.ruleUsage, u]
     }));
 
-    if (!rule && !editing) return (
-        <div className="text-center py-10">
-            <BookOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm mb-4">No ruleset configured yet</p>
-            <button onClick={() => setEditing(true)} className="px-5 py-2 rounded-xl bg-[#00ff00] text-black font-bold text-sm hover:bg-[#00ff00]/90 transition-all">
-                <Plus className="inline w-3.5 h-3.5 mr-1" /> Configure Rules
-            </button>
-        </div>
-    );
-
-    if (editing || !rule) return (
+    if (editingId !== null) return (
         <div className="space-y-3 max-w-2xl">
             {/* ── CORE ── */}
             <RuleFormSection title="Core">
@@ -436,52 +443,79 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
             </RuleFormSection>
 
             <div className="flex gap-3 pt-1">
-                {rule && <button onClick={() => setEditing(false)} className="px-4 py-2 rounded-xl border border-white/10 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>}
-                <button onClick={save} disabled={busy} className="px-6 py-2 rounded-xl bg-[#00ff00] text-black font-bold text-sm hover:bg-[#00ff00]/90 disabled:opacity-50 transition-all">{busy ? 'Saving…' : 'Save Rules'}</button>
+                <button onClick={cancelEdit} className="px-4 py-2 rounded-xl border border-white/10 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
+                <button onClick={save} disabled={busy} className="px-6 py-2 rounded-xl bg-[#00ff00] text-black font-bold text-sm hover:bg-[#00ff00]/90 disabled:opacity-50 transition-all">
+                    {busy ? 'Saving…' : editingId === 'new' ? 'Create Rule' : 'Save Changes'}
+                </button>
             </div>
         </div>
     );
 
-    // ── Read view ──────────────────────────────────────────────────────────────
+    // ── List view ──────────────────────────────────────────────────────────────
     return (
-        <div>
-            <div className="flex items-start justify-between mb-4">
-                <div>
-                    <h3 className="font-bold text-white">{rule.name}</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">{rule.formatType} · {rule.matchType} · Tiebreaker: {rule.tiebreaker}</p>
+        <div className="space-y-3">
+            {rules.length === 0 ? (
+                <div className="text-center py-10">
+                    <BookOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm mb-4">No ruleset configured yet</p>
+                    <button onClick={startNew} className="px-5 py-2 rounded-xl bg-[#00ff00] text-black font-bold text-sm hover:bg-[#00ff00]/90 transition-all">
+                        <Plus className="inline w-3.5 h-3.5 mr-1" /> Configure Rules
+                    </button>
                 </div>
-                <EditInlineBtn onClick={() => setEditing(true)} />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                {[
-                    ['Match Type', rule.matchType],
-                    ['Max Teams', rule.maxTeams],
-                    ['Win / Loss Pts', `${rule.pointsWin} / ${rule.pointsLoss}`],
-                    ['Forfeit = Loss', rule.forfeitCountsAsLoss ? 'Yes' : 'No'],
-                    ['Max Forfeits', rule.maxForfeitsBeforeDisqualification],
-                    ['Side Selection', rule.sideSelection?.replace(/_/g,' ') ?? '—'],
-                    ['Score Submission', rule.scoreSubmissionMethod?.replace(/_/g,' ') ?? '—'],
-                    ['Rule Usage', (rule.ruleUsage ?? []).map(u => u.replace('_',' ')).join(', ') || '—'],
-                ].map(([k, v]) => (
-                    <div key={String(k)} className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
-                        <p className="text-[10px] text-gray-500 mb-1">{k}</p>
-                        <p className="text-xs text-white font-medium">{String(v)}</p>
-                    </div>
-                ))}
-            </div>
-            {(rule.mapPool?.length ?? 0) > 0 && (
-                <div className="mt-4">
-                    <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-wider">Map Pool</p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {rule.mapPool.map(m => <span key={m} className="text-[10px] bg-white/5 border border-white/10 rounded px-2 py-0.5 text-white">{m}</span>)}
-                    </div>
-                </div>
-            )}
-            {rule.overtimeConfig && rule.overtimeConfig.format !== 'NONE' && (
-                <div className="mt-3">
-                    <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Overtime</p>
-                    <p className="text-xs text-white">{rule.overtimeConfig.format} · {rule.overtimeConfig.enabled ? 'Enabled' : 'Disabled'} · {rule.overtimeConfig.maxRoundsPerPeriod} rounds/period</p>
-                </div>
+            ) : (
+                <>
+                    {rules.map(r => (
+                        <div key={r._id} className="border border-white/8 rounded-xl overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02] border-b border-white/5">
+                                <div>
+                                    <h3 className="font-bold text-white text-sm">{r.name}</h3>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">{r.formatType} · {r.matchType} · Tiebreaker: {r.tiebreaker}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <EditInlineBtn onClick={() => startEdit(r)} />
+                                    <button onClick={() => del(r._id)} disabled={deleting === r._id}
+                                        className="text-[10px] font-mono text-red-400/60 hover:text-red-400 border border-red-500/15 hover:border-red-500/40 px-2 py-0.5 rounded transition-all disabled:opacity-40">
+                                        {deleting === r._id ? '[…]' : '[delete]'}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {([
+                                        ['Match Type', r.matchType],
+                                        ['Max Teams', String(r.maxTeams)],
+                                        ['Win / Loss Pts', `${r.pointsWin} / ${r.pointsLoss}`],
+                                        ['Forfeit = Loss', r.forfeitCountsAsLoss ? 'Yes' : 'No'],
+                                        ['Max Forfeits', String(r.maxForfeitsBeforeDisqualification)],
+                                        ['Side Selection', r.sideSelection?.replace(/_/g,' ') ?? '—'],
+                                        ['Score Submission', r.scoreSubmissionMethod?.replace(/_/g,' ') ?? '—'],
+                                        ['Rule Usage', (Array.isArray(r.ruleUsage) ? r.ruleUsage : []).map((u: string) => u.replace(/_/g,' ')).join(', ') || '—'],
+                                    ] as [string, string][]).map(([k, v]) => (
+                                        <div key={k} className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                                            <p className="text-[10px] text-gray-500 mb-1">{k}</p>
+                                            <p className="text-xs text-white font-medium">{v}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                {Array.isArray(r.mapPool) && r.mapPool.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Map Pool</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {r.mapPool.map((m: string) => <span key={m} className="text-[10px] bg-white/5 border border-white/10 rounded px-2 py-0.5 text-white">{m}</span>)}
+                                        </div>
+                                    </div>
+                                )}
+                                {r.overtimeConfig && r.overtimeConfig.format !== 'NONE' && (
+                                    <p className="text-xs text-gray-400">{r.overtimeConfig.format} · {r.overtimeConfig.enabled ? 'Enabled' : 'Disabled'} · {r.overtimeConfig.maxRoundsPerPeriod} rounds/period</p>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    <button onClick={startNew}
+                        className="w-full py-2.5 rounded-xl border border-dashed border-white/10 hover:border-[#00ff00]/30 text-xs text-gray-500 hover:text-[#00ff00]/70 transition-all flex items-center justify-center gap-2">
+                        <Plus className="w-3.5 h-3.5" /> Add Another Rule
+                    </button>
+                </>
             )}
         </div>
     );
@@ -527,7 +561,7 @@ function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string
     );
 
     if (editing || !pool) return (
-        <div className="space-y-4 max-w-lg">
+        <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
                     <label className="text-xs text-gray-400 mb-1 block">Total Amount</label>
@@ -578,7 +612,7 @@ function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string
     );
 
     return (
-        <div className="bg-[#1a1e28] border border-white/8 rounded-2xl p-5 max-w-md">
+        <div className="bg-[#1a1e28] border border-white/8 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <p className="text-xs text-gray-500 mb-0.5">Total Prize Pool</p>
@@ -644,6 +678,7 @@ function TeamsPanel({ seasonId }: { seasonId: string }) {
     const registered = new Set(entries.map(e => tId(e.teamId)));
     const available  = allTeams.filter(t => !registered.has(t._id));
     const hasDropdown = teamsLoaded && allTeams.length > 0;
+    const teamMap = new Map(allTeams.map(t => [t._id, t]));
 
     return (
         <div className="space-y-5">
@@ -703,10 +738,11 @@ function TeamsPanel({ seasonId }: { seasonId: string }) {
                                     <td className="px-4 py-3 text-sm text-gray-400 font-mono">{e.seed ?? '—'}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded bg-[#00ff00]/10 border border-[#00ff00]/20 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                <Shield className="w-3.5 h-3.5 text-[#00ff00]/60" />
-                                            </div>
-                                            <span className="text-sm text-white font-medium">{tName(e.teamId)}</span>
+                                            {teamMap.get(tId(e.teamId))?.logo
+                                                ? <img src={teamMap.get(tId(e.teamId))!.logo} className="w-6 h-6 rounded object-contain bg-black/30 flex-shrink-0" alt="" />
+                                                : <div className="w-6 h-6 rounded bg-[#00ff00]/10 border border-[#00ff00]/20 flex items-center justify-center overflow-hidden flex-shrink-0"><ImageIcon className="w-3.5 h-3.5 text-[#00ff00]/60" /></div>
+                                            }
+                                            <span className="text-sm text-white font-medium">{teamMap.get(tId(e.teamId))?.name ?? tName(e.teamId)}</span>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${S_CLS[e.status]}`}>{e.status}</span></td>
@@ -1195,6 +1231,7 @@ export default function AdminSeasonWorkspace() {
     const [season, setSeason]         = useState<Season | null>(null);
     const [leagueName, setLeagueName] = useState('');
     const [loading, setLoading]       = useState(true);
+    const [allSeasons, setAllSeasons] = useState<Season[]>([]);
 
     useEffect(() => {
         if (!id || !seasonId) return;
@@ -1206,6 +1243,11 @@ export default function AdminSeasonWorkspace() {
             setLeagueName((l as { name?: string })?.name || '');
         }).finally(() => setLoading(false));
     }, [id, seasonId]);
+
+    useEffect(() => {
+        if (!id) return;
+        seasonService.getByLeague(id).then(setAllSeasons).catch(console.error);
+    }, [id]);
 
     if (loading) return (
         <div className="flex items-center justify-center h-64 text-gray-500">
@@ -1242,10 +1284,26 @@ export default function AdminSeasonWorkspace() {
                         {season.status}
                     </span>
                 </div>
-                <button onClick={() => navigate(`/admin/leagues/${id}`)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-all flex-shrink-0">
-                    <ArrowLeft className="w-3.5 h-3.5" /> Back to League
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                    {allSeasons.length > 0 && (
+                        <div className="relative">
+                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                            <select
+                                value={seasonId}
+                                onChange={e => navigate(`/admin/leagues/${id}/seasons/${e.target.value}`)}
+                                className="bg-[#1a1e28] border border-white/10 rounded-xl pr-8 pl-3 py-2 text-xs text-white appearance-none cursor-pointer focus:outline-none focus:border-[#00ff00]/40 min-w-[190px]"
+                            >
+                                {allSeasons.map(s => (
+                                    <option key={s._id} value={s._id}>{s.name} [{s.status}]</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <button onClick={() => navigate('/admin/leagues')}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+                        <ArrowLeft className="w-3.5 h-3.5" /> All Leagues
+                    </button>
+                </div>
             </div>
 
             {/* Liquipedia 2-column layout */}

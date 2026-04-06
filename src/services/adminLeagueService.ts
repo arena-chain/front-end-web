@@ -67,10 +67,16 @@ export const getSeasonRule = (seasonId: string): Promise<SeasonRule | null> =>
     axios.get(`${API}/league-rules?seasonId=${seasonId}`, auth())
         .then(r => { const d = r.data; return Array.isArray(d) ? (d[0] ?? null) : (d ?? null); })
         .catch(() => null);
+export const getSeasonRules = (seasonId: string): Promise<SeasonRule[]> =>
+    axios.get(`${API}/league-rules?seasonId=${seasonId}`, auth())
+        .then(r => { const d = r.data; return Array.isArray(d) ? d : (d ? [d] : []); })
+        .catch(() => []);
 export const createSeasonRule = (dto: Partial<CreateSeasonRuleDto>) =>
     axios.post(`${API}/league-rules`, dto, auth()).then(r => r.data as SeasonRule);
 export const updateSeasonRule = (id: string, dto: Partial<CreateSeasonRuleDto>) =>
     axios.patch(`${API}/league-rules/${id}`, dto, auth()).then(r => r.data as SeasonRule);
+export const deleteSeasonRule = (id: string): Promise<void> =>
+    axios.delete(`${API}/league-rules/${id}`, auth()).then(() => undefined);
 
 // ── Prize Pool  (backend: /prize-pools) ──────────────────────────────────────
 export interface PrizeEntry { rank: number; amount: number; percentage: number; }
@@ -107,6 +113,40 @@ export const getSeasonTeams = (seasonId: string): Promise<SeasonTeamEntry[]> =>
     axios.get(`${API}/season-teams/season/${seasonId}`, auth())
         .then(r => (Array.isArray(r.data) ? r.data : []) as SeasonTeamEntry[])
         .catch(() => [] as SeasonTeamEntry[]);
+
+/** Roster + populated team.members (Liquipedia-style cards). Public GET — optional Bearer. */
+export interface WikiTeamMember {
+    _id?: string;
+    nickname?: string;
+    email?: string;
+    avatar?: string;
+    country?: string;
+}
+export interface SeasonTeamWithPlayersRow {
+    registration: {
+        _id: string;
+        seed?: number;
+        status: string;
+        qualifiedFromSeasonId?: string;
+        qualifiedViaRank?: number;
+    };
+    team: {
+        _id: string;
+        name: string;
+        logo?: string;
+        tag?: string;
+        members?: WikiTeamMember[];
+    } | null;
+}
+
+export const getSeasonTeamsWithPlayers = (seasonId: string): Promise<SeasonTeamWithPlayersRow[]> => {
+    const t = localStorage.getItem('token');
+    const cfg = t ? { headers: { Authorization: `Bearer ${t}` } } : {};
+    return axios
+        .get(`${API}/season-teams/season/${encodeURIComponent(seasonId)}/teams`, cfg)
+        .then((r) => (Array.isArray(r.data) ? r.data : []) as SeasonTeamWithPlayersRow[])
+        .catch(() => [] as SeasonTeamWithPlayersRow[]);
+};
 export const registerTeam = (dto: { seasonId: string; teamId: string; seed?: number }) =>
     axios.post(`${API}/season-teams`, dto, auth()).then(r => r.data);
 export const updateRegistration = (id: string, dto: { seed?: number }) =>

@@ -8,6 +8,7 @@ import DownloadPage from './_public/pages/DownloadPage';
 import LeaguesPage from './_public/pages/LeaguesPage';
 import Login from './feature_auth/login';
 import Register from './feature_auth/register';
+import AuthTransitionLayout from './feature_auth/AuthTransitionLayout';
 import ForgotPassword from './feature_auth/forgot-password';
 import ResetPassword from './feature_auth/reset-password';
 import VerifyEmail from './feature_auth/verify-email';
@@ -123,8 +124,10 @@ function App() {
           <Route path="/leagues" element={<LeaguesPage />} />
           <Route path="/leagues/:id" element={<LeaguesPage />} />
           <Route path="/leagues/:leagueId/seasons/:seasonId" element={<TournamentPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route element={<AuthTransitionLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Route>
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

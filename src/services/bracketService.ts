@@ -36,12 +36,24 @@ export interface GenerateBracketDto {
     seededTeamIds?: string[];
 }
 
+function normalizeBracketPayload(d: unknown): Bracket | null {
+    if (d == null) return null;
+    if (Array.isArray(d)) return (d[0] as Bracket) ?? null;
+    if (typeof d === 'object' && d !== null && 'slots' in d) return d as Bracket;
+    return null;
+}
+
 export const bracketService = {
     getBySeason: (seasonId: string): Promise<Bracket | null> =>
-        axios.get(`${API}/brackets?seasonId=${seasonId}`, auth()).then(r => r.data[0] ?? null),
+        axios
+            .get(`${API}/brackets?seasonId=${encodeURIComponent(seasonId)}`, auth())
+            .then((r) => normalizeBracketPayload(r.data)),
 
     generate: (dto: GenerateBracketDto): Promise<Bracket> =>
         axios.post(`${API}/brackets/generate`, dto, auth()).then(r => r.data),
+
+    createManual: (dto: { seasonId: string; format: BracketFormat; totalRounds: number }): Promise<Bracket> =>
+        axios.post(`${API}/brackets`, dto, auth()).then(r => r.data),
 
     reset: (id: string): Promise<Bracket> =>
         axios.post(`${API}/brackets/${id}/reset`, {}, auth()).then(r => r.data),

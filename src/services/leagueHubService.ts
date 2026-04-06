@@ -119,10 +119,17 @@ export const leagueHubService = {
             .then(r => normaliseArray(r.data) as HubMatch[])
             .catch(() => []),
 
-    /** GET /brackets/season/:seasonId — playoff bracket */
+    /** GET /brackets?seasonId= — playoff bracket (matches Nest BracketController) */
     getBracket: (seasonId: string): Promise<HubBracket | null> =>
-        axios.get(`${API}/brackets/season/${seasonId}`)
-            .then(r => r.data as HubBracket)
+        axios
+            .get(`${API}/brackets?seasonId=${encodeURIComponent(seasonId)}`)
+            .then((r) => {
+                const d = r.data;
+                if (d == null) return null;
+                if (Array.isArray(d)) return (d[0] as HubBracket) ?? null;
+                if (typeof d === 'object' && 'slots' in d) return d as HubBracket;
+                return null;
+            })
             .catch(() => null),
 
     /** GET /league-registration/season/:seasonId */

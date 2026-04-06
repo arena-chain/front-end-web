@@ -469,8 +469,9 @@ function PubBracketTab({ bracket }: { bracket: HubBracket | null }) {
                                     const done = slot.status === 'COMPLETED';
                                     const t1id = tId(slot.team1Id);
                                     const t2id = tId(slot.team2Id);
-                                    const t1w = done && slot.winnerId === t1id;
-                                    const t2w = done && slot.winnerId === t2id;
+                                    const wid = slot.winnerId != null ? String(slot.winnerId) : '';
+                                    const t1w = done && wid !== '' && t1id !== '' && wid === String(t1id);
+                                    const t2w = done && wid !== '' && t2id !== '' && wid === String(t2id);
                                     return (
                                         <div key={slot.slotId} className="w-48 bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
                                             {slot.status === 'PENDING' ? (
