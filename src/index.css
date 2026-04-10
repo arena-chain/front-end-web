@@ -253,3 +253,122 @@ input[type="date"] {
     display: none;
   }
 }
+
+@keyframes esports-grid-breathe {
+  0%, 100% {
+    opacity: 0.6;
+    filter: brightness(0.9);
+  }
+  50% {
+    opacity: 0.86;
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes esports-energy-flow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 155% 155%;
+  }
+}
+
+@keyframes esports-node-activate {
+  0%, 80%, 100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.78);
+  }
+  16% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  32% {
+    opacity: 0.12;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+@keyframes esports-light-sweep {
+  0%, 70% {
+    transform: translateX(-140%);
+    opacity: 0;
+  }
+  76% {
+    opacity: 0.3;
+  }
+  90% {
+    opacity: 0.22;
+  }
+  100% {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+}
+
+@keyframes player-hex-breathe {
+  0%, 100% {
+    opacity: 0.12;
+    filter: brightness(0.9);
+  }
+  50% {
+    opacity: 0.26;
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes player-ambient-glow {
+  0%, 100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes player-hex-line-breathe {
+  0%, 100% {
+    stroke-opacity: 0.45;
+    filter: brightness(0.86);
+  }
+  50% {
+    stroke-opacity: 0.95;
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes player-hex-line-breathe-strong {
+  0%, 100% {
+    stroke-opacity: 0.3;
+    filter: brightness(0.88);
+  }
+  50% {
+    stroke-opacity: 1;
+    filter: brightness(1.28);
+  }
+}
+
+@keyframes player-hex-rgb-surface {
+  0% {
+    filter: hue-rotate(0deg) saturate(1.05) brightness(0.95);
+  }
+  25% {
+    filter: hue-rotate(75deg) saturate(1.15) brightness(1.02);
+  }
+  50% {
+    filter: hue-rotate(150deg) saturate(1.18) brightness(1.08);
+  }
+  75% {
+    filter: hue-rotate(235deg) saturate(1.14) brightness(1.02);
+  }
+  100% {
+    filter: hue-rotate(360deg) saturate(1.05) brightness(0.95);
+  }
+}
+
+/* NFT Avatar Studio: room for native <select> chevron so labels don’t collide */
+.studio-select {
+  padding-inline-end: 2rem;
+}

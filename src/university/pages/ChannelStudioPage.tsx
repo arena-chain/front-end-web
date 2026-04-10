@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { cn } from '../../lib/utils';
 import {
     ExternalLink,
     Hash,
@@ -14,6 +15,9 @@ import {
     Play,
     Film,
     X,
+    Clapperboard,
+    Pencil,
+    Settings2,
 } from 'lucide-react';
 import { Badge, Button, Input, Textarea, Modal } from '../../components/ui/core';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
@@ -55,7 +59,6 @@ export default function ChannelStudioPage() {
     const [channel, setChannel] = useState<ChannelRecord | null>(null);
     const [allStudios, setAllStudios] = useState<ChannelRecord[]>([]);
     const [listLoading, setListLoading] = useState(true);
-    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showCustomAvatar, setShowCustomAvatar] = useState(false);
     const [showCustomBanner, setShowCustomBanner] = useState(false);
@@ -89,6 +92,8 @@ export default function ChannelStudioPage() {
         bannerUrl: '',
         categories: '',
     });
+    const [draftForm, setDraftForm] = useState(form);
+    const [customizeOpen, setCustomizeOpen] = useState(false);
 
     useEffect(() => {
         void loadChannel();
@@ -117,7 +122,6 @@ export default function ChannelStudioPage() {
     }
 
     async function loadChannel() {
-        setLoading(true);
         try {
             const data = await channelService.getMyChannel();
             setChannel(data);
@@ -132,8 +136,6 @@ export default function ChannelStudioPage() {
             }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to load channel');
-        } finally {
-            setLoading(false);
         }
     }
 
@@ -245,17 +247,46 @@ export default function ChannelStudioPage() {
         return () => window.removeEventListener('keydown', onKey);
     }, [selectedHighlight, goAdjacentHighlight]);
 
-    async function handleSubmit(event: React.FormEvent) {
+    useEffect(() => {
+        if (!customizeOpen) {
+            setDraftForm({ ...form });
+        }
+    }, [form, customizeOpen]);
+
+    useEffect(() => {
+        if (!customizeOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setCustomizeOpen(false);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [customizeOpen]);
+
+    useEffect(() => {
+        if (!customizeOpen) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = prev;
+        };
+    }, [customizeOpen]);
+
+    function openCustomize() {
+        setDraftForm({ ...form });
+        setCustomizeOpen(true);
+    }
+
+    async function handleCustomizeSubmit(event: React.FormEvent) {
         event.preventDefault();
         setSaving(true);
 
         try {
             const payload = {
-                name: form.name.trim(),
-                description: form.description.trim() || undefined,
-                avatarUrl: form.avatarUrl.trim() || undefined,
-                bannerUrl: form.bannerUrl.trim() || undefined,
-                categories: form.categories.split(',').map((item) => item.trim()).filter(Boolean),
+                name: draftForm.name.trim(),
+                description: draftForm.description.trim() || undefined,
+                avatarUrl: draftForm.avatarUrl.trim() || undefined,
+                bannerUrl: draftForm.bannerUrl.trim() || undefined,
+                categories: draftForm.categories.split(',').map((item) => item.trim()).filter(Boolean),
             };
 
             const result = channel
@@ -263,8 +294,10 @@ export default function ChannelStudioPage() {
                 : await channelService.createChannel(payload);
 
             setChannel(result);
+            setForm({ ...draftForm });
             void loadAllStudios();
             toast.success(channel ? 'Channel updated' : 'Channel created');
+            setCustomizeOpen(false);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to save channel');
         } finally {
@@ -273,288 +306,169 @@ export default function ChannelStudioPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 space-y-12 animate-fade-in relative z-10 selection:bg-primary/30 selection:text-white">
-            <header className="relative py-16 px-10 rounded-[3rem] bg-[#0c0e11]/40 backdrop-blur-3xl border border-white/5 overflow-hidden group shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)]">
-                <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-[120px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-                <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-primary/10 rounded-full blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50" />
-
-                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-primary/20 p-2.5 rounded-2xl ring-1 ring-primary/30 shadow-lg shadow-primary/10">
-                                <Sparkles className="w-6 h-6 text-primary" />
-                            </div>
-                            <span className="text-xs font-black text-primary uppercase tracking-[0.3em]">University Creator Elite</span>
-                        </div>
-                        <div className="space-y-2">
-                            <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter leading-[0.85] italic">
-                                Channel <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary-hover to-primary shadow-sm">Studio</span>
-                            </h1>
-                        </div>
-                        <p className="text-lg md:text-xl text-text-muted font-medium max-w-xl leading-relaxed border-l-2 border-primary/20 pl-6 py-2">
-                            <span className="text-white font-black uppercase tracking-tight">Unifiez votre présence.</span> <br />
-                            Créez votre chaîne une fois, puis réutilisez-la à chaque fois que vous lancez un live.
-                        </p>
-                    </div>
-
-                    {channel && (
-                        <div className="flex flex-col items-end gap-4 shrink-0">
-                            <div className="flex items-center gap-3 px-6 py-3 bg-primary/10 rounded-2xl border border-primary/20 shadow-xl shadow-primary/5">
-                                <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Studio Opérationnel</span>
-                            </div>
-                            <Link to={`/watch/${channel._id}`}>
-                                <Button size="lg" className="h-16 px-10 rounded-3xl group/btn overflow-hidden relative shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all duration-500">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-primary-hover to-primary opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                                    <span className="relative z-10 flex items-center gap-3 text-sm font-black uppercase tracking-widest text-black">
-                                        Voir ma page publique
-                                        <ExternalLink className="w-5 h-5 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform duration-300" />
-                                    </span>
-                                </Button>
-                            </Link>
-                        </div>
-                    )}
-                </div>
-            </header>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-10 bg-[#0c0e11]/60 backdrop-blur-2xl border border-white/10 rounded-[3rem] p-10 md:p-14 shadow-2xl relative overflow-hidden"
-                >
-                    <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-                    <div className="space-y-8">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Configuration Identité</label>
-                            </div>
-                            <div className="grid grid-cols-1 gap-6">
-                                <div className="relative group/input">
-                                    <Input
-                                        className="w-full h-16 bg-[#16191d]/50 border-white/5 rounded-2xl px-8 text-lg font-bold placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10"
-                                        placeholder="Nom de votre chaîne"
-                                        value={form.name}
-                                        onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                                        required
-                                    />
-                                    <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
-                                </div>
-                                <div className="relative group/input">
-                                    <Textarea
-                                        rows={4}
-                                        className="w-full bg-[#16191d]/50 border-white/5 rounded-2xl px-8 py-6 text-base font-medium placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10 resize-none"
-                                        placeholder="Décrivez l'univers de votre studio..."
-                                        value={form.description}
-                                        onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                                    />
-                                    <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Galerie d'Avatars</label>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="hidden sm:block text-[10px] text-primary font-black uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full border border-primary/10">8 Modèles Pro</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCustomAvatar(!showCustomAvatar)}
-                                        className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomAvatar ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                    >
-                                        {showCustomAvatar ? 'Utiliser la galerie' : 'URL Personnalisée'}
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-4 sm:grid-cols-4 xl:grid-cols-8 gap-4">
-                                {PREDEFINED_AVATARS.map((url, i) => (
-                                    <button
-                                        key={i}
-                                        type="button"
-                                        onClick={() => {
-                                            setForm(f => ({ ...f, avatarUrl: url }));
-                                            setShowCustomAvatar(false);
-                                        }}
-                                        className={`relative aspect-square rounded-2xl border-2 transition-all duration-500 group overflow-hidden hover:scale-105 active:scale-95 ${!showCustomAvatar && form.avatarUrl === url ? 'border-primary shadow-[0_0_30px_rgba(0,255,135,0.2)] ring-4 ring-primary/10' : 'border-white/5 hover:border-white/20'}`}
-                                    >
-                                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${url})` }} />
-                                        {!showCustomAvatar && form.avatarUrl === url && (
-                                            <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in zoom-in duration-300">
-                                                <div className="bg-primary text-black p-1 rounded-full shadow-2xl">
-                                                    <Check className="w-4 h-4 font-black" />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                            {showCustomAvatar && (
-                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
-                                        <UserIcon className="w-5 h-5" />
-                                    </div>
-                                    <Input
-                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
-                                        placeholder="Lien de votre avatar personnalisé (URL)"
-                                        value={form.avatarUrl}
-                                        onChange={(event) => setForm((current) => ({ ...current, avatarUrl: event.target.value }))}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Tags & Catégories Gaming</label>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCustomCategories(!showCustomCategories)}
-                                    className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomCategories ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                >
-                                    {showCustomCategories ? 'Masquer' : 'Perso'}
-                                </button>
-                            </div>
-                            <div className="flex flex-wrap gap-2.5">
-                                {PREDEFINED_CATEGORIES.map(cat => {
-                                    const isSelected = form.categories.split(',').map(s => s.trim()).includes(cat);
-                                    return (
-                                        <button
-                                            key={cat}
-                                            type="button"
-                                            onClick={() => {
-                                                const currentCats = form.categories.split(',').map(s => s.trim()).filter(Boolean);
-                                                if (isSelected) {
-                                                    setForm(f => ({ ...f, categories: currentCats.filter(c => c !== cat).join(', ') }));
-                                                } else {
-                                                    setForm(f => ({ ...f, categories: [...currentCats, cat].join(', ') }));
-                                                }
-                                            }}
-                                            className={`px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all duration-300 transform active:scale-95 ${isSelected
-                                                ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(0,255,135,0.3)]'
-                                                : 'bg-white/5 border-white/5 text-white/30 hover:bg-white/10 hover:border-white/20 hover:text-white/60'
-                                                }`}
-                                        >
-                                            <span className="flex items-center gap-2">
-                                                {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 text-primary" />}
-                                                {cat}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            {showCustomCategories && (
-                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
-                                        <Hash className="w-5 h-5" />
-                                    </div>
-                                    <Input
-                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
-                                        placeholder="Catégories libres (séparées par une virgule)"
-                                        value={form.categories}
-                                        onChange={(event) => setForm((current) => ({ ...current, categories: event.target.value }))}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Design de Bannière</label>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCustomBanner(!showCustomBanner)}
-                                    className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomBanner ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                >
-                                    {showCustomBanner ? 'Masquer URL' : 'Ajouter une URL'}
-                                </button>
-                            </div>
-                            {showCustomBanner && (
-                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
-                                        <ImageIcon className="w-5 h-5" />
-                                    </div>
-                                    <Input
-                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
-                                        placeholder="Lien de l'image de votre bannière (URL)"
-                                        value={form.bannerUrl}
-                                        onChange={(event) => setForm((current) => ({ ...current, bannerUrl: event.target.value }))}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="pt-6">
-                        <Button type="submit" size="lg" isLoading={saving} className="w-full h-16 rounded-[2rem] text-sm font-black uppercase tracking-widest shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all duration-500">
-                            {channel ? 'Sauvegarder les modifications' : 'Lancer mon Studio'}
-                        </Button>
-                    </div>
-                </form>
-
-                <div className="bg-[#0f1114] border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <ExternalLink className="w-12 h-12 text-primary" />
-                    </div>
-                    <p className="text-xs font-black uppercase tracking-[0.25em] text-white/30 mb-4">Aperçu en temps réel</p>
-                    {loading ? (
-                        <div className="flex items-center justify-center h-48">
-                            <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
+        <div className="relative z-10 min-h-[calc(100dvh-4rem)] w-full scroll-smooth animate-fade-in selection:bg-primary/30 selection:text-white">
+            <section className="relative w-full overflow-hidden bg-[#050608] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]">
+                {/* Bandeau — image nette, sans grille ; même URL que bannière publique */}
+                <div className="relative z-[1] w-full">
+                    <div
+                        className={cn(
+                            'relative w-full overflow-hidden bg-neutral-950',
+                            'aspect-[21/9] min-h-[160px] max-h-[min(44vh,460px)] sm:min-h-[200px]',
+                            Boolean(form.bannerUrl?.trim()) && 'bg-cover bg-center',
+                        )}
+                        style={
+                            form.bannerUrl?.trim()
+                                ? { backgroundImage: `url(${form.bannerUrl.trim()})` }
+                                : undefined
+                        }
+                    >
+                        {!form.bannerUrl?.trim() ? (
                             <div
-                                className="h-44 rounded-2xl border border-white/10 bg-cover bg-center shadow-inner relative overflow-hidden"
-                                style={{ backgroundImage: form.bannerUrl ? `url(${form.bannerUrl})` : 'linear-gradient(135deg, rgba(0,255,135,0.1), rgba(0,0,0,0.9))' }}
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                className="absolute inset-0 bg-gradient-to-br from-[#0f1612] via-[#080c0a] to-[#030404]"
+                                aria-hidden
+                            />
+                        ) : null}
+                        {/* Léger voile bas — garde la photo lisible */}
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#050608]/90 via-transparent to-transparent" />
+                        {!form.bannerUrl?.trim() ? (
+                            <div className="absolute inset-0 z-[1] flex items-center justify-center p-4">
+                                <button
+                                    type="button"
+                                    onClick={openCustomize}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-black/55 px-4 py-2.5 text-xs font-semibold text-white/90 backdrop-blur-md transition-colors hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                                >
+                                    <ImageIcon className="h-4 w-4 text-primary" aria-hidden />
+                                    Ajouter une couverture
+                                </button>
                             </div>
-                            <div className="flex flex-col md:flex-row items-center md:items-end gap-6 -mt-12 px-2 relative z-10">
-                                <div
-                                    className="w-24 h-24 rounded-3xl border-4 border-[#0f1114] bg-cover bg-center bg-[#16191d] shadow-2xl shrink-0"
-                                    style={{ backgroundImage: form.avatarUrl ? `url(${form.avatarUrl})` : undefined }}
-                                />
-                                <div className="pb-2 text-center md:text-left">
-                                    <h2 className="text-2xl font-black text-white leading-none uppercase tracking-tighter">{form.name || 'Nom de votre chaîne'}</h2>
-                                    <p className="text-sm text-text-muted mt-2 line-clamp-2 max-w-md">{form.description || 'La description de votre studio s\'affichera ici.'}</p>
+                        ) : (
+                            <div className="absolute bottom-3 right-3 z-[1] sm:bottom-4 sm:right-6">
+                                <button
+                                    type="button"
+                                    onClick={openCustomize}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-black/60 px-3 py-2 text-xs font-medium text-white/90 backdrop-blur-md transition-colors hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                                >
+                                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                                    Modifier la couverture
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Actions rapides sous le bandeau */}
+                <div className="relative z-[1] w-full border-b border-white/[0.06] bg-[#050608] py-4 sm:py-5">
+                    <div
+                        role="toolbar"
+                        aria-label="Actions chaîne"
+                        className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-end gap-2 px-4 sm:px-8"
+                    >
+                        {channel ? (
+                            <Link
+                                to={`/watch/${channel._id}`}
+                                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-4 text-xs font-medium text-white/90 transition-colors hover:border-white/25 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                            >
+                                <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                                Page publique
+                            </Link>
+                        ) : null}
+                        <button
+                            type="button"
+                            onClick={openCustomize}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-black transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#050608]"
+                        >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden />
+                            Modifier la chaîne
+                        </button>
+                    </div>
+                </div>
+
+                <div className="relative z-[2] border-t border-white/[0.06] bg-[#050608]">
+                    <div className="mx-auto max-w-[1600px] px-4 pb-8 pt-0 sm:px-8">
+                        <div className="relative -mt-10 flex flex-col gap-6 sm:-mt-12 md:flex-row md:items-start md:gap-10">
+                            <div
+                                className="h-24 w-24 shrink-0 rounded-2xl border border-white/10 bg-[#12151a] bg-cover bg-center sm:h-28 sm:w-28 md:h-32 md:w-32 md:rounded-2xl"
+                                style={{ backgroundImage: form.avatarUrl ? `url(${form.avatarUrl})` : undefined }}
+                            />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <h2 className="text-2xl font-bold uppercase tracking-tight text-white md:text-3xl">
+                                        {form.name || 'Nom de la chaîne'}
+                                    </h2>
+                                    <p className="shrink-0 text-xs tabular-nums text-white/40">
+                                        {studioVideosLoading ? '…' : `${studioVideos.length} VOD`}
+                                        <span className="mx-2 text-white/20">·</span>
+                                        {highlightsLoading ? '…' : `${myHighlights.length} clips`}
+                                    </p>
+                                </div>
+                                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/50">
+                                    {form.description || 'Ajoutez une bio — elle apparaît sur votre page publique et dans cet en-tête.'}
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                    {form.categories
+                                        .split(',')
+                                        .map((c) => c.trim())
+                                        .filter(Boolean)
+                                        .map((item) => (
+                                            <span
+                                                key={item}
+                                                className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/55"
+                                            >
+                                                {item}
+                                            </span>
+                                        ))}
+                                    {form.categories.trim() === '' && (
+                                        <span className="text-[10px] text-white/30">Aucune catégorie</span>
+                                    )}
                                 </div>
                             </div>
-                            <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
-                                {form.categories.split(',').map((item) => item.trim()).filter(Boolean).map((item) => (
-                                    <Badge key={item} variant="secondary" className="bg-white/5 border-white/10 text-[10px] uppercase font-black tracking-widest px-3">{item}</Badge>
-                                ))}
-                                {form.categories.trim() === '' && <span className="text-[10px] text-white/20 uppercase font-black tracking-widest italic">Aucune catégorie</span>}
-                            </div>
                         </div>
-                    )}
+                        <nav
+                            className="mt-8 flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between"
+                            aria-label="Sections chaîne"
+                        >
+                            <div className="flex w-full max-w-md rounded-lg border border-white/10 bg-white/[0.03] p-0.5 sm:w-auto">
+                                <a
+                                    href="#channel-videos"
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/[0.06] hover:text-white sm:flex-initial"
+                                >
+                                    <Film className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                                    Vidéos
+                                </a>
+                                <a
+                                    href="#channel-clips"
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/[0.06] hover:text-white sm:flex-initial"
+                                >
+                                    <Clapperboard className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                                    Clips
+                                </a>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium">
+                                <Link to="/player/my-videos" className="text-white/45 transition-colors hover:text-primary">
+                                    Mes vidéos
+                                </Link>
+                                <Link to="/player/highlights" className="text-white/45 transition-colors hover:text-primary">
+                                    Highlights
+                                </Link>
+                            </div>
+                        </nav>
+                    </div>
                 </div>
-            </div>
-
-            <section className="rounded-2xl border border-primary/25 bg-primary/[0.06] p-6 md:p-8 space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary">Public</p>
-                <p className="text-sm text-white/80 leading-relaxed max-w-3xl">
-                    Gérez vos sources et clips depuis le menu joueur : <strong className="text-white">My videos</strong> et{' '}
-                    <strong className="text-white">Highlights</strong>. Votre page chaîne publique reste accessible ci-dessous.
-                </p>
-                <p className="text-xs text-white/40">
-                    Utilisez la flèche en bas du rail pour réduire ou agrandir les libellés du menu.
-                </p>
             </section>
 
+            <div className="mx-auto max-w-[1600px] space-y-8 px-4 py-8 sm:space-y-10 sm:px-8">
+                    <p className="rounded-xl border border-primary/20 bg-primary/[0.06] px-4 py-3 text-xs leading-relaxed text-white/75">
+                        <strong className="text-primary">Visibilité publique</strong> des VOD : réglages dans{' '}
+                        <strong className="text-white">Mes vidéos</strong>. Clips : menu <strong className="text-white">Highlights</strong>.
+                    </p>
+
+
+
             {/* Même grille que pour un viewer (YouTube / Twitch) — uniquement les VOD publiées */}
-            <section className="rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 md:p-8 space-y-6 overflow-hidden">
+            <section
+                id="channel-videos"
+                className="scroll-mt-28 space-y-6 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.75)] md:p-8"
+            >
                 <div>
                     <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
                         <Film size={14} /> Chaîne — vidéos publiées
@@ -590,8 +504,8 @@ export default function ChannelStudioPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {studioVideos.map((v) => (
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4 lg:gap-6">
+                        {studioVideos.map((v, idx) => (
                             <div
                                 key={v._id}
                                 role="button"
@@ -603,9 +517,16 @@ export default function ChannelStudioPage() {
                                         setSelectedVideo(v);
                                     }
                                 }}
-                                className="rounded-2xl border border-white/10 overflow-hidden bg-[#0f1115] hover:border-primary/40 hover:shadow-[0_0_32px_rgba(0,255,135,0.12)] transition-all flex flex-col shadow-lg shadow-black/20 cursor-pointer group/vod"
+                                className={`group/vod flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f1115] shadow-lg shadow-black/20 transition-all hover:border-primary/40 hover:shadow-[0_0_32px_rgba(0,255,135,0.12)] ${
+                                    idx === 0 && studioVideos.length > 1 ? 'lg:col-span-2' : ''
+                                }`}
                             >
-                                <div className="aspect-video bg-black shrink-0 relative">
+                                <div className="relative aspect-video shrink-0 bg-black">
+                                    {idx === 0 && studioVideos.length > 1 ? (
+                                        <span className="absolute left-3 top-3 z-10 rounded-md border border-primary/50 bg-black/65 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-primary backdrop-blur-sm">
+                                            À la une
+                                        </span>
+                                    ) : null}
                                     <video
                                         src={resolveBackendAssetUrl(v.url)}
                                         className="w-full h-full object-cover opacity-95 group-hover/vod:opacity-100 transition-opacity"
@@ -652,7 +573,10 @@ export default function ChannelStudioPage() {
             </section>
 
             {/* Highlights — horizontal gallery + modal (clip + comments side panel) */}
-            <section className="rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 md:p-8 space-y-6 overflow-hidden">
+            <section
+                id="channel-clips"
+                className="scroll-mt-28 space-y-6 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.75)] md:p-8"
+            >
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
@@ -757,6 +681,247 @@ export default function ChannelStudioPage() {
                     </div>
                 )}
             </section>
+            </div>
+
+            {customizeOpen ? (
+                <div className="fixed inset-0 z-[100] flex justify-end" role="presentation">
+                    <button
+                        type="button"
+                        className="absolute inset-0 bg-black/75 backdrop-blur-[2px]"
+                        aria-label="Fermer la configuration"
+                        onClick={() => setCustomizeOpen(false)}
+                    />
+                    <div
+                        id="channel-customize"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="channel-customize-title"
+                        className={cn(
+                            'relative flex h-full w-full max-w-lg flex-col border-l border-primary/20 bg-[#07090c]/[0.97] shadow-[-28px_0_90px_rgba(0,0,0,0.9)] backdrop-blur-2xl animate-in slide-in-from-right duration-300 sm:max-w-xl',
+                        )}
+                    >
+                        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black/25 px-5 py-4">
+                            <div className="flex min-w-0 items-center gap-3">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-primary/10 text-primary">
+                                    <Settings2 className="h-5 w-5" aria-hidden />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary/90">Configuration</p>
+                                    <h2 id="channel-customize-title" className="truncate text-base font-black uppercase tracking-tight text-white sm:text-lg">
+                                        Identité & assets
+                                    </h2>
+                                </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-[10px] font-black uppercase tracking-widest text-white/55"
+                                    onClick={() => setCustomizeOpen(false)}
+                                >
+                                    Annuler
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 w-9 rounded-full border-white/15 p-0"
+                                    onClick={() => setCustomizeOpen(false)}
+                                    aria-label="Fermer"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-width:thin]">
+                            <form
+                                onSubmit={handleCustomizeSubmit}
+                                className="relative space-y-8 overflow-hidden rounded-2xl border border-white/10 bg-[#0c0e11]/90 p-5 shadow-xl backdrop-blur-xl sm:p-6"
+                            >
+                    <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                    <div className="space-y-8">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Configuration Identité</label>
+                            </div>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="relative group/input">
+                                    <Input
+                                        className="w-full h-16 bg-[#16191d]/50 border-white/5 rounded-2xl px-8 text-lg font-bold placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10"
+                                        placeholder="Nom de votre chaîne"
+                                        value={draftForm.name}
+                                        onChange={(event) => setDraftForm((current) => ({ ...current, name: event.target.value }))}
+                                        required
+                                    />
+                                    <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
+                                </div>
+                                <div className="relative group/input">
+                                    <Textarea
+                                        rows={4}
+                                        className="w-full bg-[#16191d]/50 border-white/5 rounded-2xl px-8 py-6 text-base font-medium placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10 resize-none"
+                                        placeholder="Décrivez l'univers de votre studio..."
+                                        value={draftForm.description}
+                                        onChange={(event) => setDraftForm((current) => ({ ...current, description: event.target.value }))}
+                                    />
+                                    <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Galerie d'Avatars</label>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="hidden sm:block text-[10px] text-primary font-black uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full border border-primary/10">8 Modèles Pro</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCustomAvatar(!showCustomAvatar)}
+                                        className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomAvatar ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
+                                    >
+                                        {showCustomAvatar ? 'Utiliser la galerie' : 'URL Personnalisée'}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-4 sm:grid-cols-4 xl:grid-cols-8 gap-4">
+                                {PREDEFINED_AVATARS.map((url, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => {
+                                            setDraftForm(f => ({ ...f, avatarUrl: url }));
+                                            setShowCustomAvatar(false);
+                                        }}
+                                        className={`relative aspect-square rounded-2xl border-2 transition-all duration-500 group overflow-hidden hover:scale-105 active:scale-95 ${!showCustomAvatar && draftForm.avatarUrl === url ? 'border-primary shadow-[0_0_30px_rgba(0,255,135,0.2)] ring-4 ring-primary/10' : 'border-white/5 hover:border-white/20'}`}
+                                    >
+                                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${url})` }} />
+                                        {!showCustomAvatar && draftForm.avatarUrl === url && (
+                                            <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                                                <div className="bg-primary text-black p-1 rounded-full shadow-2xl">
+                                                    <Check className="w-4 h-4 font-black" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                            {showCustomAvatar && (
+                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
+                                        <UserIcon className="w-5 h-5" />
+                                    </div>
+                                    <Input
+                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
+                                        placeholder="Lien de votre avatar personnalisé (URL)"
+                                        value={draftForm.avatarUrl}
+                                        onChange={(event) => setDraftForm((current) => ({ ...current, avatarUrl: event.target.value }))}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Tags & Catégories Gaming</label>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCustomCategories(!showCustomCategories)}
+                                    className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomCategories ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
+                                >
+                                    {showCustomCategories ? 'Masquer' : 'Perso'}
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2.5">
+                                {PREDEFINED_CATEGORIES.map(cat => {
+                                    const isSelected = draftForm.categories.split(',').map(s => s.trim()).includes(cat);
+                                    return (
+                                        <button
+                                            key={cat}
+                                            type="button"
+                                            onClick={() => {
+                                                const currentCats = draftForm.categories.split(',').map(s => s.trim()).filter(Boolean);
+                                                if (isSelected) {
+                                                    setDraftForm(f => ({ ...f, categories: currentCats.filter(c => c !== cat).join(', ') }));
+                                                } else {
+                                                    setDraftForm(f => ({ ...f, categories: [...currentCats, cat].join(', ') }));
+                                                }
+                                            }}
+                                            className={`px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all duration-300 transform active:scale-95 ${isSelected
+                                                ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(0,255,135,0.3)]'
+                                                : 'bg-white/5 border-white/5 text-white/30 hover:bg-white/10 hover:border-white/20 hover:text-white/60'
+                                                }`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 text-primary" />}
+                                                {cat}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {showCustomCategories && (
+                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
+                                        <Hash className="w-5 h-5" />
+                                    </div>
+                                    <Input
+                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
+                                        placeholder="Catégories libres (séparées par une virgule)"
+                                        value={draftForm.categories}
+                                        onChange={(event) => setDraftForm((current) => ({ ...current, categories: event.target.value }))}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Design de Bannière</label>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCustomBanner(!showCustomBanner)}
+                                    className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomBanner ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
+                                >
+                                    {showCustomBanner ? 'Masquer URL' : 'Ajouter une URL'}
+                                </button>
+                            </div>
+                            {showCustomBanner && (
+                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
+                                        <ImageIcon className="w-5 h-5" />
+                                    </div>
+                                    <Input
+                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
+                                        placeholder="Lien de l'image de votre bannière (URL)"
+                                        value={draftForm.bannerUrl}
+                                        onChange={(event) => setDraftForm((current) => ({ ...current, bannerUrl: event.target.value }))}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="pt-6">
+                        <Button type="submit" size="lg" isLoading={saving} className="w-full h-16 rounded-[2rem] text-sm font-black uppercase tracking-widest shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all duration-500">
+                            {channel ? 'Sauvegarder les modifications' : 'Lancer mon Studio'}
+                        </Button>
+                    </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             <Modal
                 isOpen={Boolean(selectedHighlight)}
@@ -933,6 +1098,7 @@ export default function ChannelStudioPage() {
                 )}
             </Modal>
 
+            <div className="mx-auto max-w-[1600px] space-y-6 px-4 pb-12 sm:px-8">
             <section className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                     <div>
@@ -1044,6 +1210,7 @@ export default function ChannelStudioPage() {
                     </div>
                 )}
             </section>
+            </div>
         </div>
     );
 }

@@ -30,6 +30,8 @@ import {
     X,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import PlayerAmbientBackground from '../components/PlayerAmbientBackground';
+import PlayerEnergyStreakOverlay from '../components/PlayerEnergyStreakOverlay';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
 import { useAuth } from '../../contexts/AuthContext';
 // ─── Top nav links (shown in the horizontal top bar) ─────────────────────────
@@ -423,11 +425,19 @@ export default function PlayerLayout() {
                 </div>
 
                     {/* ═══ Main Content ═══ */}
-                    <main className="flex-1 overflow-auto bg-[#0a0c0f] scrollbar-hide">
-                        <div className={cn(
-                            "transition-all duration-500",
-                            location.pathname.startsWith('/watch/') ? "p-0" : "p-8"
-                        )}>
+                    <main className="relative flex-1 overflow-auto bg-[#0a0c0f] scrollbar-hide">
+                        <PlayerAmbientBackground />
+                        <PlayerEnergyStreakOverlay />
+                        <div
+                            className={cn(
+                                'relative z-10 transition-all duration-500',
+                                location.pathname.startsWith('/watch/') ||
+                                    location.pathname === '/player/channel' ||
+                                    location.pathname.startsWith('/player/channel/')
+                                    ? 'p-0'
+                                    : 'p-8',
+                            )}
+                        >
                             <Outlet context={{ profile }} />
                         </div>
                     </main>

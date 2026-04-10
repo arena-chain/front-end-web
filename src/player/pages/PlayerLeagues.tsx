@@ -305,9 +305,9 @@ export default function PlayerLeagues() {
                             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200"
                                 style={{
-                                    background: activeTab === tab.key ? lc.accent : 'transparent',
+                                    background: activeTab === tab.key ? 'var(--color-primary)' : 'transparent',
                                     color: activeTab === tab.key ? '#000' : 'rgba(255,255,255,0.35)',
-                                    boxShadow: activeTab === tab.key ? `0 0 14px ${lc.accent}50` : 'none',
+                                    boxShadow: activeTab === tab.key ? '0 0 14px color-mix(in srgb, var(--color-primary) 35%, transparent)' : 'none',
                                 }}>
                                 {tab.icon}{tab.label}
                             </button>
