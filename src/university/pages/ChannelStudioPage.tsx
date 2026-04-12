@@ -18,6 +18,7 @@ import {
     Clapperboard,
     Pencil,
     Settings2,
+    Package,
 } from 'lucide-react';
 import { Badge, Button, Input, Textarea, Modal } from '../../components/ui/core';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
@@ -372,6 +373,13 @@ export default function ChannelStudioPage() {
                                 Page publique
                             </Link>
                         ) : null}
+                        <Link
+                            to="/player/inventory"
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/[0.08] px-4 text-xs font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
+                            <Package className="h-3.5 w-3.5" aria-hidden />
+                            Inventaire & NFT
+                        </Link>
                         <button
                             type="button"
                             onClick={openCustomize}

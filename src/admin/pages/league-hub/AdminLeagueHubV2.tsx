@@ -264,13 +264,6 @@ export default function AdminLeagueHubV2() {
 
     useEffect(() => { load(); }, [id]);
 
-    // Auto-redirect to workspace when seasons are loaded
-    useEffect(() => {
-        if (loading || seasons.length === 0) return;
-        const target = seasons.find(s => s.status === 'ONGOING') ?? seasons[seasons.length - 1];
-        navigate(`/admin/leagues/${id}/seasons/${target._id}`, { replace: true });
-    }, [loading, seasons]);
-
     const handleDeleteSeason = async (s: Season) => {
         if (!confirm(`Delete season "${s.name}"? This cannot be undone.`)) return;
         try {

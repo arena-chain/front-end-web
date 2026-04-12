@@ -2,8 +2,8 @@ import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Trophy, Settings, LogOut, Menu,
-    MessageSquare, Gamepad2, Ticket, Handshake, Gem, Layers,
-    Box, Zap, Newspaper, ShieldCheck,
+    MessageSquare, Gamepad2, Ticket, Handshake,
+    Zap, Newspaper, ShieldCheck, Archive, Wand2,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -35,9 +35,13 @@ const NAV_GROUPS = [
     {
         label: 'NFT Studio',
         items: [
-            { to: '/admin/nft-avatars',     icon: Gem,    label: 'NFT Avatars' },
-            { to: '/admin/nft-collections', icon: Layers, label: 'Collections' },
-            { to: '/admin/nft-manager',     icon: Box,    label: 'NFT Manager' },
+            { to: '/admin/nft-manager', icon: Wand2, label: 'Studio' },
+        ],
+    },
+    {
+        label: 'Inventory',
+        items: [
+            { to: '/admin/nft-inventory', icon: Archive, label: 'NFT Inventory' },
         ],
     },
     {

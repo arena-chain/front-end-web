@@ -16,8 +16,9 @@ export type OutfitCatalogEntry = {
 };
 
 export const OUTFIT_MODEL_CATALOG: OutfitCatalogEntry[] = [
-    { id: 'none', label: 'None (body only)', glbPath: null },
-    { id: 'outfit_default', label: 'Imported outfit (OBJ export)', glbPath: `${BASE}models/outfits/outfit_default.glb` },
+    { id: 'none',          label: 'None',          glbPath: null },
+    { id: 'outfit_default', label: 'Outfit Default', glbPath: `${BASE}models/outfits/outfit_default.glb` },
+    { id: 'clothes',       label: 'Clothes',        glbPath: `${BASE}models/outfits/clothes.glb` },
 ];
 
 export function resolveOutfitModelUrl(id: string): string | null {

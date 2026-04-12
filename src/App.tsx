@@ -68,10 +68,9 @@ import ScouterRecommendations from './scouter/pages/ScouterRecommendations';
 import ScouterWatchlist from './scouter/pages/ScouterWatchlist';
 
 // NFT
-import NftAvatars from './admin/pages/NftAvatars';
-import NftCollections from './admin/pages/NftCollections';
 import NftManager from './admin/pages/NftManager';
 import PlayerMarketplace from './player/pages/PlayerMarketplace';
+import PlayerInventoryPage from './player/pages/PlayerInventoryPage';
 import ChannelStudioPage from './university/pages/ChannelStudioPage';
 import PlayerVideoHighlightsPage from './player/pages/PlayerVideoHighlightsPage';
 import PlayerMyVideosPage from './player/pages/PlayerMyVideosPage';
@@ -132,6 +131,7 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/watch/:channelId" element={<WatchChannelPage />} />
+          <Route path="/channel/:channelId/detail" element={<ChannelDetailPage />} />
 
         {/* ── Admin ──────────────────────────────────────────────────── */}
         <Route path="/admin" element={<RequireRole allow={['admin']}><AdminLayout /></RequireRole>}>
@@ -148,9 +148,8 @@ function App() {
           <Route path="partnerships" element={<Partnerships />} />
           <Route path="matches" element={<Matches />} />
           <Route path="channels" element={<Channels />} />
-          <Route path="nft-avatars" element={<NftAvatars />} />
-          <Route path="nft-collections" element={<NftCollections />} />
           <Route path="nft-manager" element={<NftManager />} />
+          <Route path="nft-inventory" element={<NftManager />} />
           <Route path="settings" element={<Settings />} />
 
           {/* Standalone (MUST come before the :id wildcard) */}
@@ -200,6 +199,7 @@ function App() {
             <Route path="leagues/:id" element={<PlayerLeagues />} />
             <Route path="rankings" element={<PlayerRankings />} />
             <Route path="marketplace" element={<PlayerMarketplace />} />
+            <Route path="inventory" element={<PlayerInventoryPage />} />
             <Route path="news" element={<PlayerNews />} />
             <Route path="news/:id" element={<NewsArticlePage />} />
             <Route path="channel" element={<ChannelStudioPage />} />

@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { leagueService } from '../../../services/leagueService';
 import { seasonService, type Season } from '../../../services/seasonService';
+import catalogService from '../../../services/catalogService';
+import type { Game } from '../../../models/game';
 import {
     getSeasonRules, createSeasonRule, updateSeasonRule, deleteSeasonRule,
     getPrizePool, createPrizePool, updatePrizePool,
@@ -204,9 +206,16 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
     const [mapInput, setMapInput] = useState('');
     const [busy, setBusy]         = useState(false);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [games, setGames]       = useState<Game[]>([]);
 
     const load = () => getSeasonRules(seasonId).then(setRules);
     useEffect(() => { load(); }, [seasonId]);
+
+    useEffect(() => {
+        catalogService.fetchGames()
+            .then(list => setGames([...list].sort((a, b) => a.title.localeCompare(b.title))))
+            .catch(() => toast.error('Could not load games — check Games Catalog or API'));
+    }, []);
 
     const startEdit = (r: SeasonRule) => {
         setForm({
@@ -242,7 +251,7 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
     };
 
     const save = async () => {
-        if (!form.name || !form.gameId) { toast.error('Name and Game ID are required'); return; }
+        if (!form.name || !form.gameId) { toast.error('Ruleset name and game are required'); return; }
         setBusy(true);
         try {
             if (editingId === 'new') {
@@ -299,9 +308,28 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
                         <input value={f.name} onChange={e => sf('name')(e.target.value)} placeholder="e.g. Standard BO3"
                             className="w-full bg-[#0d0f14] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00ff00]/40" />
                     </div>
-                    <div><label className="text-[10px] text-gray-500 mb-1 block">Game ID *</label>
-                        <input value={f.gameId} onChange={e => sf('gameId')(e.target.value)} placeholder="MongoDB ObjectId"
-                            className="w-full bg-[#0d0f14] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00ff00]/40" />
+                    <div>
+                        <label className="text-[10px] text-gray-500 mb-1 block">Game *</label>
+                        <select
+                            value={f.gameId}
+                            onChange={e => sf('gameId')(e.target.value)}
+                            className="w-full bg-[#0d0f14] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00ff00]/40"
+                        >
+                            <option value="">— Select game —</option>
+                            {f.gameId && !games.some(g => g._id === f.gameId) && (
+                                <option value={f.gameId}>Saved game (not in catalog)</option>
+                            )}
+                            {games.map(g => (
+                                <option key={g._id} value={g._id}>
+                                    {g.title}{g.genre ? ` · ${g.genre}` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        {games.length === 0 && (
+                            <p className="mt-1 text-[9px] text-amber-500/90">
+                                No games loaded — add titles under Admin → Games Catalog.
+                            </p>
+                        )}
                     </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -469,7 +497,12 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
                             <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02] border-b border-white/5">
                                 <div>
                                     <h3 className="font-bold text-white text-sm">{r.name}</h3>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">{r.formatType} · {r.matchType} · Tiebreaker: {r.tiebreaker}</p>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">
+                                        <span className="text-gray-300">
+                                            {games.find(g => g._id === r.gameId)?.title ?? (r.gameId ? 'Game (not in catalog)' : '—')}
+                                        </span>
+                                        {' · '}{r.formatType} · {r.matchType} · Tiebreaker: {r.tiebreaker}
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <EditInlineBtn onClick={() => startEdit(r)} />
@@ -636,7 +669,22 @@ function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string
     );
 }
 
-function TeamsPanel({ seasonId }: { seasonId: string }) {
+function registrationClosedReason(season: Season): string | null {
+    if (season.status === 'FINISHED') {
+        return 'This season is finished — the API does not accept new team registrations.';
+    }
+    if (season.status === 'ONGOING') {
+        return 'The season has already started — registrations are closed.';
+    }
+    const deadline = new Date(season.registrationDeadline);
+    if (Number.isFinite(deadline.getTime()) && Date.now() > deadline.getTime()) {
+        return `Registration deadline passed (${fmt(season.registrationDeadline)}).`;
+    }
+    return null;
+}
+
+function TeamsPanel({ season }: { season: Season }) {
+    const seasonId = season._id;
     const [entries, setEntries]     = useState<SeasonTeamEntry[]>([]);
     const [allTeams, setAllTeams]   = useState<TeamRef[]>([]);
     const [teamsLoaded, setTeamsLoaded] = useState(false);
@@ -657,12 +705,21 @@ function TeamsPanel({ seasonId }: { seasonId: string }) {
     useEffect(() => { load(); }, [load]);
 
     const teamIdToRegister = selTeam || manualId.trim();
+    const blockReason = registrationClosedReason(season);
 
     const register = async () => {
-        if (!teamIdToRegister) return;
+        if (!teamIdToRegister || blockReason) return;
         setBusy(true);
         try {
-            await registerTeam({ seasonId, teamId: teamIdToRegister, seed: seed ? +seed : undefined });
+            const seedTrim = seed.trim();
+            const seedNum = seedTrim === '' ? undefined : Number(seedTrim);
+            const payload: { seasonId: string; teamId: string; seed?: number } = {
+                seasonId,
+                teamId: teamIdToRegister,
+            };
+            if (Number.isFinite(seedNum) && seedNum >= 1) payload.seed = Math.floor(seedNum);
+
+            await registerTeam(payload);
             toast.success('Team registered');
             setSelTeam(''); setManualId(''); setSeed('');
             load();
@@ -691,6 +748,16 @@ function TeamsPanel({ seasonId }: { seasonId: string }) {
                     </button>
                 </div>
 
+                {blockReason && (
+                    <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2.5 mb-3">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-[11px] text-amber-200/90 leading-snug">
+                            <p className="font-bold text-amber-100/95 mb-0.5">Registration closed</p>
+                            <p>{blockReason} Use a <strong className="text-white/90">PLANNED</strong> season before the deadline, or adjust dates/status in the backend if you need an exception.</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Warning if team list couldn't be fetched */}
                 {teamsLoaded && allTeams.length === 0 && (
                     <div className="flex items-start gap-2 bg-yellow-500/5 border border-yellow-500/20 rounded-xl px-3 py-2 mb-3">
@@ -714,9 +781,10 @@ function TeamsPanel({ seasonId }: { seasonId: string }) {
                             placeholder="Paste Team ID…"
                             className="flex-1 min-w-[180px] bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#00ff00]/40" />
                     )}
-                    <input type="number" placeholder="Seed" value={seed} onChange={e => setSeed(e.target.value)}
+                    <input type="number" min={1} placeholder="Seed" title="Optional — integer ≥ 1"
+                        value={seed} onChange={e => setSeed(e.target.value)}
                         className="w-20 bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white text-center focus:outline-none" />
-                    <button onClick={register} disabled={!teamIdToRegister || busy}
+                    <button onClick={register} disabled={!teamIdToRegister || busy || Boolean(blockReason)}
                         className="px-4 py-2 rounded-xl bg-[#00ff00] text-black font-bold text-sm hover:bg-[#00ff00]/90 disabled:opacity-40 transition-all">
                         {busy ? '…' : <><Plus className="inline w-3.5 h-3.5" /> Add</>}
                     </button>
@@ -1324,7 +1392,7 @@ export default function AdminSeasonWorkspace() {
 
                     {/* Participants */}
                     <SectionCard icon={<Users className="w-4 h-4" />} title="Participants">
-                        <TeamsPanel seasonId={season._id} />
+                        <TeamsPanel season={season} />
                     </SectionCard>
 
                     {/* Stages */}

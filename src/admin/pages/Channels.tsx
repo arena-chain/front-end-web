@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Hash, Users, RefreshCw, Tv2, Calendar } from 'lucide-react';
 import { Button } from '../../components/ui/core';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
 
 export default function Channels() {
+    const navigate = useNavigate();
     const [channels, setChannels] = useState<ChannelRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export default function Channels() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {channels.map((channel) => (
-                        <div key={channel._id} className="bg-surface border border-white/5 rounded-xl p-6 hover:border-primary/30 transition-all duration-300 group">
+                        <div key={channel._id} onClick={() => navigate(`/channel/${channel._id}/detail`)} className="bg-surface border border-white/5 rounded-xl p-6 hover:border-primary/30 transition-all duration-300 group cursor-pointer">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="p-3 bg-white/5 rounded-lg text-white group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                                     {channel.avatarUrl ? (

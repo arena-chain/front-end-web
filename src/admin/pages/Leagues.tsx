@@ -1,15 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, Trophy, Search, Loader2, Globe, Edit2, Trash2,
     ChevronRight, Calendar, Zap, Star,
-    CheckSquare, AlertTriangle,
+    CheckSquare, AlertTriangle, MapPin,
 } from 'lucide-react';
 import { leagueService, type League, LeagueLevel } from '../../services/leagueService';
 import CreateLeagueModal from '../components/leagues/CreateLeagueModal';
 import { cn } from '../../lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Summary row under the grid — one card per `LeagueLevel` (same set as filter pills, minus ALL). */
+const LEVEL_QUICK_STAT: Record<LeagueLevel, { label: string; icon: ReactNode; color: string }> = {
+    INTERNATIONAL: { label: 'International', icon: <Star size={14} />, color: 'text-purple-400' },
+    CONTINENTAL: { label: 'Continental', icon: <Calendar size={14} />, color: 'text-blue-400' },
+    NATIONAL: { label: 'National', icon: <CheckSquare size={14} />, color: 'text-green-400' },
+    REGIONAL: { label: 'Regional', icon: <MapPin size={14} />, color: 'text-gray-400' },
+};
 
 const LEVEL_COLORS: Record<string, { pill: string; glow: string; border: string; hex: string }> = {
     INTERNATIONAL: { pill: 'bg-purple-500/15 text-purple-300 border-purple-500/25', glow: 'rgba(168,85,247,0.15)', border: 'border-purple-500/20', hex: '#a855f7' },
@@ -307,23 +315,30 @@ export default function AdminLeagues() {
                 </div>
             )}
 
-            {/* Quick stats */}
+            {/* Quick stats — mirrors filter levels (ALL is only in pills; here: total + each LeagueLevel) */}
             {leagues.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-white/5 pt-6">
-                    {[
-                        { label: 'Total', val: leagues.length, icon: <Trophy size={14} />, color: 'text-white' },
-                        { label: 'International', val: leagues.filter(l => l.level === 'INTERNATIONAL').length, icon: <Star size={14} />, color: 'text-primary' },
-                        { label: 'Continental', val: leagues.filter(l => l.level === 'CONTINENTAL').length, icon: <Calendar size={14} />, color: 'text-blue-400' },
-                        { label: 'National', val: leagues.filter(l => l.level === 'NATIONAL').length, icon: <CheckSquare size={14} />, color: 'text-text-muted' },
-                    ].map(s => (
-                        <div key={s.label} className="bg-surface border border-white/5 rounded-2xl p-4 flex items-center gap-3">
-                            <span className={cn('opacity-60', s.color)}>{s.icon}</span>
-                            <div>
-                                <p className={cn('text-2xl font-black', s.color)}>{s.val}</p>
-                                <p className="text-text-muted text-[10px] uppercase tracking-widest">{s.label}</p>
-                            </div>
+                <div className="grid grid-cols-2 gap-3 border-t border-white/5 pt-6 sm:grid-cols-3 lg:grid-cols-5">
+                    <div className="bg-surface border border-white/5 rounded-2xl p-4 flex items-center gap-3">
+                        <span className="text-white opacity-60"><Trophy size={14} /></span>
+                        <div>
+                            <p className="text-2xl font-black text-white">{leagues.length}</p>
+                            <p className="text-text-muted text-[10px] uppercase tracking-widest">Total</p>
                         </div>
-                    ))}
+                    </div>
+                    {(Object.keys(LeagueLevel) as (keyof typeof LeagueLevel)[]).map(key => {
+                        const level = LeagueLevel[key];
+                        const meta = LEVEL_QUICK_STAT[level];
+                        const val = leagues.filter(l => l.level === level).length;
+                        return (
+                            <div key={level} className="bg-surface border border-white/5 rounded-2xl p-4 flex items-center gap-3">
+                                <span className={cn('opacity-60', meta.color)}>{meta.icon}</span>
+                                <div>
+                                    <p className={cn('text-2xl font-black', meta.color)}>{val}</p>
+                                    <p className="text-text-muted text-[10px] uppercase tracking-widest">{meta.label}</p>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 

@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Store, Gem, ShoppingCart, Tag, X, Search, Heart,
     Sparkles, Crown, Star, Diamond, ArrowUpDown,
-    ChevronLeft, ChevronRight, Clock,
+    ChevronLeft, ChevronRight, Clock, Package,
 } from 'lucide-react';
-import { nftService } from '../../services/nftService';
 import type { NftAvatar, NftRarity } from '../../services/nftService';
+import {
+    nftInventoryApi,
+    nftTemplateImage,
+    type NftItemOwned,
+    type NftTemplate,
+} from '../../services/nftInventoryApi';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -22,6 +28,37 @@ const RARITY_ICON: Record<NftRarity, React.ReactNode> = {
     EPIC: <Crown size={12} />,
     LEGENDARY: <Diamond size={12} />,
 };
+
+function uiRarity(r?: string): NftRarity {
+    const u = (r || 'COMMON').toUpperCase();
+    if (u === 'LEGENDARY' || u === 'MYTHIC') return 'LEGENDARY';
+    if (u === 'EPIC') return 'EPIC';
+    if (u === 'RARE' || u === 'UNCOMMON') return 'RARE';
+    return 'COMMON';
+}
+
+function mapNftItemToCard(item: NftItemOwned): NftAvatar {
+    const nft = typeof item.nftId === 'object' && item.nftId ? (item.nftId as NftTemplate) : undefined;
+    const mp = item.metadata?.marketplace as { price?: number } | undefined;
+    const price = mp?.price ?? 0;
+    const oid = item.ownerId as unknown;
+    const ownerId: NftAvatar['ownerId'] =
+        oid && typeof oid === 'object' && 'username' in (oid as object)
+            ? (oid as { _id: string; username: string })
+            : { _id: String(oid ?? ''), username: 'Seller' };
+    return {
+        _id: item._id,
+        name: nft?.name || 'NFT Item',
+        image: nftTemplateImage(nft),
+        description: nft?.description || '',
+        rarity: uiRarity(nft?.rarity),
+        price,
+        listPrice: mp?.price,
+        listed: item.status === 'LISTED',
+        ownerId,
+        createdAt: item.createdAt || new Date().toISOString(),
+    };
+}
 
 const CATEGORIES = [
     { key: 'ALL', label: 'All', icon: <Gem size={14} /> },
@@ -78,13 +115,15 @@ export default function PlayerMarketplace() {
     const [buying, setBuying] = useState(false);
     const [auctionPage, setAuctionPage] = useState(0);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const [mkt, my] = await Promise.all([
-                nftService.getMarketplace().catch(() => DEMO_MARKETPLACE),
-                nftService.getMyNfts().catch(() => DEMO_MY_NFTS),
+            const [listings, mine] = await Promise.all([
+                nftInventoryApi.getMarketplaceListings({ limit: 100 }),
+                nftInventoryApi.getMyNftItems(),
             ]);
+            const mkt = (Array.isArray(listings) ? listings : []).map(mapNftItemToCard);
+            const my = (Array.isArray(mine) ? mine : []).map(mapNftItemToCard);
             setMarketplace(mkt.length > 0 ? mkt : DEMO_MARKETPLACE);
             setMyNfts(my.length > 0 ? my : DEMO_MY_NFTS);
         } catch {
@@ -93,16 +132,18 @@ export default function PlayerMarketplace() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => {
+        void loadData();
+    }, [loadData]);
 
     const handleBuy = async (nft: NftAvatar) => {
         try {
             setBuying(true);
-            const bought = await nftService.buy(nft._id);
-            setMarketplace(prev => prev.filter(n => n._id !== nft._id));
-            setMyNfts(prev => [bought, ...prev]);
+            const bought = await nftInventoryApi.purchaseListing(nft._id);
+            setMarketplace((prev) => prev.filter((n) => n._id !== nft._id));
+            setMyNfts((prev) => [mapNftItemToCard(bought), ...prev]);
             setShowBuyConfirm(null);
         } catch (e) {
             console.error('Buy failed', e);
@@ -113,8 +154,8 @@ export default function PlayerMarketplace() {
 
     const handleUnlist = async (nft: NftAvatar) => {
         try {
-            const updated = await nftService.unlist(nft._id);
-            setMyNfts(prev => prev.map(n => n._id === nft._id ? updated : n));
+            const updated = await nftInventoryApi.unlistItem(nft._id);
+            setMyNfts((prev) => prev.map((n) => (n._id === nft._id ? mapNftItemToCard(updated) : n)));
         } catch (e) {
             console.error('Unlist failed', e);
         }
@@ -186,6 +227,13 @@ export default function PlayerMarketplace() {
                             >
                                 My Collection
                             </button>
+                            <Link
+                                to="/player/inventory"
+                                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-sm font-black uppercase tracking-wider transition-all hover:bg-primary/15"
+                            >
+                                <Package size={16} />
+                                Inventory
+                            </Link>
                             <div className="ml-auto hidden sm:flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5">
                                 <Gem size={14} className="text-primary" />
                                 <span className="text-white font-black text-sm">2,500</span>
@@ -508,15 +556,15 @@ function NftCard({ nft, isMyNft, onBuy, onUnlist, onList }: {
 // ─── List for Sale Modal ─────────────────────────────────────────────────────
 
 function ListForSaleModal({ nft, onClose, onListed }: { nft: NftAvatar; onClose: () => void; onListed: (nft: NftAvatar) => void }) {
-    const [listPrice, setListPrice] = useState(Math.round(nft.price * 1.2));
+    const [listPrice, setListPrice] = useState(Math.max(1, Math.round(((nft.listPrice ?? nft.price) || 10) * 1.2)));
     const [saving, setSaving] = useState(false);
 
     const handleList = async () => {
         if (listPrice <= 0) return;
         try {
             setSaving(true);
-            const updated = await nftService.listForSale(nft._id, listPrice);
-            onListed(updated);
+            const updated = await nftInventoryApi.listItemForSale(nft._id, listPrice, 'USD');
+            onListed(mapNftItemToCard(updated));
         } catch (e) {
             console.error('List failed', e);
         } finally {

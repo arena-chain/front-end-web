@@ -4,6 +4,7 @@ import type * as React from 'react';
 type ModelViewerProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
     src?: string;
     alt?: string;
+    crossOrigin?: 'anonymous' | 'use-credentials';
     poster?: string;
     'camera-controls'?: boolean;
     'auto-rotate'?: boolean;

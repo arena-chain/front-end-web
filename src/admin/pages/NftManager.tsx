@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, type CSSProperties } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import '@google/model-viewer';
 import type { ModelViewerElement } from '@google/model-viewer';
 import {
@@ -7,10 +7,18 @@ import {
     Shield, Sword, Zap, Heart, Star, Crown, Diamond, Flame,
     Send, BarChart3, Box, Palette, User, SlidersHorizontal,
     RotateCcw, Save, Wand2, ChevronLeft, ChevronRight,
+    ScanFace, Shirt, Layers, Swords, Crosshair, Hand,
+    type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { applyAvatarDynamicConfig } from '../avatar/modelViewerAvatarBridge';
+import { applyAvatarDynamicConfig, applyWeaponColors, loadOutfitIntoScene, startAvatarPreviewAnimation, type WeaponColors } from '../avatar/modelViewerAvatarBridge';
+import {
+    AVATAR_LAYER_PRESETS,
+    countLayerPresets,
+    type AvatarLayerKey,
+} from '../avatar/avatarLayerPresetCatalog';
 import { OUTFIT_MODEL_CATALOG, resolveOutfitModelUrl } from '../avatar/outfitCatalog';
+import { weaponsForGame, type WeaponEntry } from '../avatar/weaponCatalog';
 import {
     nftCoreService, nftCollectionService, nftAttributeService, nftMintService,
     NFT_CATEGORIES, NFT_RARITIES, RARITY_COLORS, RARITY_GRADIENTS,
@@ -18,8 +26,15 @@ import {
     type Nft, type NftCollection, type NftAttribute, type NftCategory, type NftRarity,
 } from '../../services/nftAdminService';
 
-/** Served from `public/models/` — reliable URL + no import-analysis issues */
-const AVATAR_GLB_URL = `${import.meta.env.BASE_URL}models/BodyMaleTemplate.glb`;
+/** Base body GLBs from `public/models/` — switched with Gender (M / F) in Avatar Studio */
+const AVATAR_BODY_GLB = {
+    MALE: `${import.meta.env.BASE_URL}models/BodyMaleTemplate.glb`,
+    FEMALE: `${import.meta.env.BASE_URL}models/female_avatar.glb`,
+} as const;
+
+function resolveAvatarBodyGlbUrl(gender: string): string {
+    return gender === 'MALE' ? AVATAR_BODY_GLB.MALE : AVATAR_BODY_GLB.FEMALE;
+}
 
 // ─── Rarity tailwind helpers ─────────────────────────────────────────────────
 
@@ -40,9 +55,58 @@ const STAT_ICONS: Record<string, React.ReactNode> = {
     Control: <Shield size={12} />, Stamina: <Heart size={12} />, Endurance: <Shield size={12} />,
 };
 
+type GameId = 'cs2' | 'valorant' | 'lol' | 'dota2';
+type GameItemId = 'agent' | 'weapon' | 'knife' | 'gloves' | 'melee' | 'champion' | 'arcana' | 'hero';
+type GameItemDef = { id: GameItemId; label: string; desc: string; icon: LucideIcon; mode: 'avatar' | 'weapon'; };
+type GameDef = { label: string; short: string; accent: string; glow: string; icon: LucideIcon; items: GameItemDef[]; };
+
+const GAME_DEFS: Record<GameId, GameDef> = {
+    cs2: {
+        label: 'Counter-Strike 2', short: 'CS2',
+        accent: '#F0A500', glow: 'rgba(240,165,0,0.2)',
+        icon: Crosshair,
+        items: [
+            { id: 'agent',  label: 'Agent',  desc: 'Player skin',     icon: User,    mode: 'avatar'  },
+            { id: 'weapon', label: 'Weapon', desc: 'Rifle · Pistol',   icon: Swords,  mode: 'weapon'  },
+            { id: 'knife',  label: 'Knife',  desc: 'Melee blade',     icon: Sword,   mode: 'weapon'  },
+            { id: 'gloves', label: 'Gloves', desc: 'Hand wraps',      icon: Hand,    mode: 'weapon'  },
+        ],
+    },
+    valorant: {
+        label: 'Valorant', short: 'VALORANT',
+        accent: '#FF4655', glow: 'rgba(255,70,85,0.2)',
+        icon: Flame,
+        items: [
+            { id: 'agent',  label: 'Agent',  desc: 'Playable agent',  icon: User,    mode: 'avatar'  },
+            { id: 'weapon', label: 'Weapon', desc: 'Primary · Side',   icon: Swords,  mode: 'weapon'  },
+            { id: 'melee',  label: 'Melee',  desc: 'Combat knife',    icon: Sword,   mode: 'weapon'  },
+        ],
+    },
+    lol: {
+        label: 'League of Legends', short: 'LoL',
+        accent: '#C89B3C', glow: 'rgba(200,155,60,0.2)',
+        icon: Crown,
+        items: [
+            { id: 'champion', label: 'Champion', desc: 'Hero skin',   icon: User,    mode: 'avatar'  },
+            { id: 'weapon',   label: 'Weapon',   desc: 'Item · Skin',  icon: Sword,   mode: 'weapon'  },
+        ],
+    },
+    dota2: {
+        label: 'Dota 2', short: 'DOTA 2',
+        accent: '#BE3D3D', glow: 'rgba(190,61,61,0.2)',
+        icon: Swords,
+        items: [
+            { id: 'hero',   label: 'Hero',   desc: 'Playable hero',   icon: Shield,   mode: 'avatar'  },
+            { id: 'weapon', label: 'Weapon', desc: 'Hero weapon',     icon: Sword,    mode: 'weapon'  },
+            { id: 'arcana', label: 'Arcana', desc: 'Legendary item',  icon: Sparkles, mode: 'weapon'  },
+        ],
+    },
+};
+
 export default function NftManager() {
     const [searchParams] = useSearchParams();
     const collectionFilter = searchParams.get('collectionId') || '';
+    const location = useLocation();
 
     const [nfts, setNfts] = useState<Nft[]>([]);
     const [collections, setCollections] = useState<NftCollection[]>([]);
@@ -52,7 +116,13 @@ export default function NftManager() {
     const [filterRarity, setFilterRarity] = useState<NftRarity | 'ALL'>('ALL');
     const [selectedNft, setSelectedNft] = useState<(Nft & { attributes: NftAttribute[] }) | null>(null);
     const [showCreate, setShowCreate] = useState(false);
-    const [activeView, setActiveView] = useState<'studio' | 'inventory'>('studio');
+    const [activeView, setActiveView] = useState<'studio' | 'inventory'>(
+        location.pathname.includes('nft-inventory') ? 'inventory' : 'studio'
+    );
+    const [selectedGame, setSelectedGame] = useState<GameId>('cs2');
+    const [selectedItemType, setSelectedItemType] = useState<GameItemId>('agent');
+    const studioMode: 'avatar' | 'weapon' =
+        GAME_DEFS[selectedGame].items.find(i => i.id === selectedItemType)?.mode ?? 'avatar';
 
     const load = async () => {
         try {
@@ -116,9 +186,9 @@ export default function NftManager() {
                     <div className="bg-surface border border-white/10 rounded-xl p-1 flex items-center gap-1">
                         <button
                             onClick={() => setActiveView('studio')}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'studio' ? 'bg-primary text-black' : 'text-text-muted hover:text-white'}`}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'studio' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white'}`}
                         >
-                            Avatar Studio
+                            Studio
                         </button>
                         <button
                             onClick={() => setActiveView('inventory')}
@@ -137,13 +207,84 @@ export default function NftManager() {
             </div>
 
             {activeView === 'studio' && (
-                <AvatarStudio
-                    onDraftCreated={(nft) => {
-                        setActiveView('inventory');
-                        load();
-                        viewDetail(nft);
-                    }}
-                />
+                <div className="space-y-4">
+                    {/* ── Game Selector ── */}
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {(Object.entries(GAME_DEFS) as [GameId, GameDef][]).map(([gid, game]) => {
+                            const isActive = selectedGame === gid;
+                            const GameIcon = game.icon;
+                            return (
+                                <button
+                                    key={gid}
+                                    type="button"
+                                    onClick={() => { setSelectedGame(gid); setSelectedItemType(game.items[0].id); }}
+                                    style={isActive ? {
+                                        borderColor: 'rgba(0,255,136,0.55)',
+                                        boxShadow: '0 0 18px rgba(0,255,136,0.22), 0 0 6px rgba(0,255,136,0.12), inset 0 1px 0 rgba(0,255,136,0.08)',
+                                        background: 'linear-gradient(135deg, rgba(0,255,136,0.07) 0%, transparent 55%)',
+                                    } : {}}
+                                    className={cn(
+                                        'group relative flex items-center gap-3 rounded-xl border px-4 py-2.5 transition-all duration-200',
+                                        isActive ? 'bg-black/50' : 'border-white/8 bg-black/20 hover:border-white/20 hover:bg-black/30',
+                                    )}
+                                >
+                                    <div className={cn('shrink-0 transition-colors duration-200', isActive ? 'text-primary' : 'text-text-muted group-hover:text-white')}>
+                                        <GameIcon size={18} strokeWidth={1.5} />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className={cn('text-[11px] font-black uppercase tracking-[0.12em]', isActive ? 'text-primary' : 'text-white')}>
+                                            {game.short}
+                                        </p>
+                                        <p className="text-[9px] text-text-muted">{game.label}</p>
+                                    </div>
+                                    {isActive && (
+                                        <span className="absolute right-2 top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[7px] font-black text-black">✓</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* ── Item Type Selector ── */}
+                    <div className="flex items-stretch gap-2 rounded-2xl border border-white/10 bg-black/20 p-2">
+                        {GAME_DEFS[selectedGame].items.map(item => {
+                            const isActive = selectedItemType === item.id;
+                            const ItemIcon = item.icon;
+                            return (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => setSelectedItemType(item.id)}
+                                    style={isActive ? {
+                                        borderColor: 'rgba(0,255,136,0.45)',
+                                        backgroundColor: 'rgba(0,255,136,0.07)',
+                                        color: '#00ff88',
+                                        boxShadow: '0 0 12px rgba(0,255,136,0.15), inset 0 1px 0 rgba(0,255,136,0.06)',
+                                    } : {}}
+                                    className={cn(
+                                        'flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 transition-all duration-150',
+                                        isActive ? '' : 'border-transparent text-text-muted hover:bg-white/5 hover:text-white',
+                                    )}
+                                >
+                                    <ItemIcon size={13} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+                                    <span className="hidden text-[8px] opacity-50 sm:block">{item.desc}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* ── Studio ── */}
+                    <Studio
+                        selectedGame={selectedGame}
+                        studioMode={studioMode}
+                        onDraftCreated={(nft) => {
+                            setActiveView('inventory');
+                            load();
+                            viewDetail(nft);
+                        }}
+                    />
+                </div>
             )}
 
             {activeView === 'inventory' && (
@@ -271,7 +412,6 @@ export default function NftManager() {
 // AVATAR STUDIO
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type AvatarLayerKey = 'base' | 'hair' | 'ears' | 'outfit' | 'accessory';
 type AvatarLayer = { file: File | null; preview: string | null };
 type AvatarLayers = Record<AvatarLayerKey, AvatarLayer>;
 type AvatarView = 'front' | 'side' | 'back';
@@ -285,12 +425,90 @@ const LAYER_LABELS: Record<AvatarLayerKey, string> = {
     accessory: 'Accessory Layer',
 };
 
+/** Single source for Avatar Studio selects — counts drive the sidebar “option” badges */
+const STUDIO_OPTIONS = {
+    bodyType: ['Athletic', 'Lean', 'Heavy', 'Heroic'],
+    faceStyle: ['Sharp', 'Soft', 'Strong', 'Angular'],
+    hairstyle: ['Bald', 'Buzz', 'Short', 'Long', 'Braids', 'Mohawk'],
+    earType: ['Human', 'Elf', 'Cyber', 'Pointed'],
+    outfit: ['Tactical', 'Streetwear', 'Cyber Suit', 'Stealth', 'Battle Armor'],
+    accessory: ['Holster', 'Necklace', 'Headset', 'Blade', 'None'],
+    aura: ['Neon', 'Ice', 'Shadow', 'Fire', 'Gold'],
+    eyebrow: ['Angled', 'Straight', 'Arched', 'Thick'],
+    nose: ['Straight', 'Wide', 'Narrow', 'Button'],
+    mouth: ['Neutral', 'Smile', 'Grim', 'Fangs'],
+    boots: ['Combat', 'Street', 'Tactical', 'Stealth', 'Formal'],
+} as const;
+
+type StudioNavId = 'body' | 'colors' | 'face' | 'style' | 'layers' | 'morph';
+
+function studioNavGroups(): { title: string; items: { id: StudioNavId; label: string; icon: LucideIcon; count: number }[] }[] {
+    const bodyMeshOptions =
+        STUDIO_OPTIONS.bodyType.length + OUTFIT_MODEL_CATALOG.length;
+    const faceOptions =
+        STUDIO_OPTIONS.faceStyle.length
+        + STUDIO_OPTIONS.earType.length
+        + STUDIO_OPTIONS.eyebrow.length
+        + STUDIO_OPTIONS.nose.length
+        + STUDIO_OPTIONS.mouth.length;
+    const styleOptions =
+        STUDIO_OPTIONS.hairstyle.length
+        + STUDIO_OPTIONS.outfit.length
+        + STUDIO_OPTIONS.accessory.length
+        + STUDIO_OPTIONS.boots.length;
+    return [
+        {
+            title: 'Body',
+            items: [{ id: 'body', label: 'Body & mesh', icon: User, count: bodyMeshOptions }],
+        },
+        {
+            title: 'Face',
+            items: [
+                { id: 'colors', label: 'Colors', icon: Palette, count: 3 + STUDIO_OPTIONS.aura.length },
+                { id: 'face', label: 'Face features', icon: ScanFace, count: faceOptions },
+            ],
+        },
+        {
+            title: 'Style',
+            items: [{ id: 'style', label: 'Outfit & hair', icon: Shirt, count: styleOptions }],
+        },
+        {
+            title: 'Layers',
+            items: [{ id: 'layers', label: 'Presets', icon: Layers, count: countLayerPresets() }],
+        },
+        {
+            title: 'Tune',
+            items: [{ id: 'morph', label: 'Morph & stats', icon: SlidersHorizontal, count: 5 }],
+        },
+    ];
+}
+
 /** model-viewer orbit: theta phi radius — radius as % of model bounds (higher = farther = full body) */
 const AVATAR_CAMERA_ORBIT: Record<AvatarView, string> = {
     front: '0deg 68deg 168%',
     side: '90deg 68deg 168%',
     back: '180deg 68deg 168%',
 };
+
+/** Loose framing: dolly close for face/hair, far out for full body; wide phi for top/down angles */
+const AVATAR_MIN_CAMERA_ORBIT = 'auto 2deg 6%';
+const AVATAR_MAX_CAMERA_ORBIT = 'auto 98deg 2200%';
+const AVATAR_MIN_FOV = '4deg';
+const AVATAR_MAX_FOV = '95deg';
+/** +/- buttons: keep in sync with min/max orbit radius (third component, %) */
+const AVATAR_ZOOM_RADIUS_MIN = 6;
+const AVATAR_ZOOM_RADIUS_MAX = 2200;
+
+/**
+ * One-click framing: orbit alone zooms toward the model’s default pivot (usually ~torso).
+ * `target` moves the orbit pivot in **model space (m)** so Head / Body actually frame those regions.
+ * Tune Y if a new GLB uses a different origin (feet at Y=0 is assumed).
+ */
+const AVATAR_FRAME_FOCUS = {
+    head:  { orbit: '0deg 82deg 32%',  target: '0m 1.62m 0m' },
+    torso: { orbit: '0deg 82deg 78%',  target: '0m 1.05m 0m' },
+    full:  { orbit: '0deg 78deg 190%', target: 'auto'         },
+} as const;
 
 const CAMERA_PRESET_ORBIT: Record<CameraPreset, string> = {
     front: '0deg 68deg 168%',
@@ -301,15 +519,40 @@ const CAMERA_PRESET_ORBIT: Record<CameraPreset, string> = {
     bottom: '0deg 172deg 210%',
 };
 
-function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }) {
-    const [studioConfigCollapsed, setStudioConfigCollapsed] = useState(true);
-    const fileRefs = useRef<Record<AvatarLayerKey, HTMLInputElement | null>>({
-        base: null,
-        hair: null,
-        ears: null,
-        outfit: null,
-        accessory: null,
+function Studio({ onDraftCreated, studioMode, selectedGame }: {
+    onDraftCreated: (nft: Nft) => void;
+    studioMode: 'avatar' | 'weapon';
+    selectedGame: GameId;
+}) {
+    /** User-added weapons per game (session only). */
+    const [weaponCatalogExtras, setWeaponCatalogExtras] = useState<Partial<Record<GameId, WeaponEntry[]>>>({});
+    const localWeaponCatalog = useMemo(
+        () => [...weaponsForGame(selectedGame), ...(weaponCatalogExtras[selectedGame] ?? [])],
+        [selectedGame, weaponCatalogExtras],
+    );
+    const [selectedWeaponId, setSelectedWeaponId] = useState<string>(() => weaponsForGame('cs2')[0]?.id ?? '');
+    const [weaponColors, setWeaponColors] = useState<WeaponColors>({
+        primary: '#ffffff',
+        glow: '#00ff88',
+        metalness: 0.7,
+        roughness: 0.3,
     });
+    const weaponViewerRef = useRef<HTMLElement | null>(null);
+    const [weaponNav, setWeaponNav] = useState<'info' | 'materials' | 'attachments'>('materials');
+    const [showAddWeapon, setShowAddWeapon] = useState(false);
+    const [newWeaponDraft, setNewWeaponDraft] = useState({ label: '', type: 'Assault', glbPath: '' });
+    const [weaponInfo, setWeaponInfo] = useState({ name: 'Combat Weapon', type: 'Assault', description: '', tags: '' });
+    const [weaponAttachments, setWeaponAttachments] = useState([
+        { id: 'scope',     label: 'Scope',          active: false },
+        { id: 'silencer',  label: 'Silencer',        active: false },
+        { id: 'laser',     label: 'Laser Sight',     active: false },
+        { id: 'extmag',    label: 'Ext. Magazine',   active: false },
+        { id: 'foregrip',  label: 'Foregrip',        active: false },
+        { id: 'stockless', label: 'Stockless Stock', active: false },
+    ]);
+    const [studioConfigCollapsed, setStudioConfigCollapsed] = useState(false);
+    const [studioNavId, setStudioNavId] = useState<StudioNavId>('body');
+    const [layerPresetSlot, setLayerPresetSlot] = useState<AvatarLayerKey>('accessory');
     const [saving, setSaving] = useState(false);
     const [layers, setLayers] = useState<AvatarLayers>({
         base: { file: null, preview: null },
@@ -319,10 +562,10 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
         accessory: { file: null, preview: null },
     });
     const [config, setConfig] = useState({
-        gender: 'FEMALE',
+        gender: 'MALE',
         view: 'front' as AvatarView,
         bodyType: 'Athletic',
-        skinTone: '#d1a07d',
+        skinTone: '#ffffff',
         faceStyle: 'Sharp',
         hairstyle: 'Long',
         hairLength: 74,
@@ -345,23 +588,14 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
         focus: 88,
     });
 
-    const pickLayer = (key: AvatarLayerKey, e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            setLayers(prev => ({
-                ...prev,
-                [key]: { file, preview: reader.result as string },
-            }));
-        };
-        reader.readAsDataURL(file);
+    const applyLayerPreset = (key: AvatarLayerKey, src: string | null) => {
+        setLayers(prev => ({ ...prev, [key]: { file: null, preview: src } }));
     };
 
-    const clearLayer = (key: AvatarLayerKey) => {
-        setLayers(prev => ({ ...prev, [key]: { file: null, preview: null } }));
-        if (fileRefs.current[key]) fileRefs.current[key]!.value = '';
-    };
+    useEffect(() => {
+        const list = [...weaponsForGame(selectedGame), ...(weaponCatalogExtras[selectedGame] ?? [])];
+        setSelectedWeaponId((prev) => (list.some((w) => w.id === prev) ? prev : list[0]?.id ?? ''));
+    }, [selectedGame, weaponCatalogExtras]);
 
     const resetStudio = () => {
         setLayers({
@@ -372,10 +606,10 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
             accessory: { file: null, preview: null },
         });
         setConfig({
-            gender: 'FEMALE',
+            gender: 'MALE',
             view: 'front',
             bodyType: 'Athletic',
-            skinTone: '#d1a07d',
+            skinTone: '#ffffff',
             faceStyle: 'Sharp',
             hairstyle: 'Long',
             hairLength: 74,
@@ -397,6 +631,21 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
             agility: 76,
             focus: 88,
         });
+        setWeaponCatalogExtras({});
+        setSelectedWeaponId(weaponsForGame(selectedGame)[0]?.id ?? '');
+        setWeaponColors({ primary: '#ffffff', glow: '#00ff88', metalness: 0.7, roughness: 0.3 });
+        setWeaponNav('materials');
+        setShowAddWeapon(false);
+        setNewWeaponDraft({ label: '', type: 'Assault', glbPath: '' });
+        setWeaponInfo({ name: 'Combat Weapon', type: 'Assault', description: '', tags: '' });
+        setWeaponAttachments([
+            { id: 'scope',     label: 'Scope',          active: false },
+            { id: 'silencer',  label: 'Silencer',        active: false },
+            { id: 'laser',     label: 'Laser Sight',     active: false },
+            { id: 'extmag',    label: 'Ext. Magazine',   active: false },
+            { id: 'foregrip',  label: 'Foregrip',        active: false },
+            { id: 'stockless', label: 'Stockless Stock', active: false },
+        ]);
     };
 
     const score = Math.round((config.power + config.agility + config.focus) / 3);
@@ -478,6 +727,24 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
         }
     };
 
+    const selectedWeapon = localWeaponCatalog.find(w => w.id === selectedWeaponId) ?? localWeaponCatalog[0];
+
+    // Apply weapon colors live whenever they change
+    useEffect(() => {
+        if (studioMode !== 'weapon') return;
+        const el = weaponViewerRef.current;
+        if (!el) return;
+        applyWeaponColors(el, weaponColors);
+    }, [studioMode, weaponColors]);
+    const weaponScore = Math.round(((weaponColors.metalness) + (1 - weaponColors.roughness)) / 2 * 100);
+    const weaponRarity: NftRarity =
+        weaponScore >= 90 ? 'MYTHIC'
+            : weaponScore >= 80 ? 'LEGENDARY'
+                : weaponScore >= 68 ? 'EPIC'
+                    : weaponScore >= 56 ? 'RARE'
+                        : weaponScore >= 40 ? 'UNCOMMON'
+                            : 'COMMON';
+
     return (
         <div className="flex flex-col gap-5 xl:h-[calc(100vh-9rem)] xl:flex-row xl:gap-0 xl:overflow-hidden xl:rounded-2xl xl:border xl:border-white/10 xl:bg-[#0d0f12]">
             <aside
@@ -486,135 +753,508 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
                     'rounded-2xl xl:rounded-none xl:border-y-0 xl:border-l-0',
                     studioConfigCollapsed
                         ? 'xl:pointer-events-none xl:w-0 xl:border-r-0 xl:opacity-0'
-                        : 'xl:w-[min(100%,22rem)] 2xl:w-96 xl:border-r xl:border-white/10 xl:opacity-100',
+                        : 'xl:w-[min(100%,30rem)] 2xl:w-[min(36rem,95vw)] xl:border-r xl:border-white/10 xl:opacity-100',
                 )}
             >
-                <div className="h-full max-h-[65vh] min-w-0 space-y-6 overflow-y-auto overflow-x-hidden p-4 sm:p-5 xl:max-h-none xl:h-full xl:w-full">
-                <div className="flex items-center justify-between gap-3">
-                    <h2 className="flex min-w-0 items-center gap-2 text-sm font-black uppercase tracking-widest text-white">
-                        <Wand2 size={15} className="shrink-0 text-primary" />
-                        <span className="min-w-0 leading-tight">Character creator</span>
-                    </h2>
-                    <button
-                        type="button"
-                        onClick={resetStudio}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/20 hover:text-white"
-                    >
-                        <RotateCcw size={12} /> Reset
-                    </button>
-                </div>
+                <div className="flex h-full max-h-[65vh] min-h-0 flex-col overflow-hidden p-4 sm:p-5 xl:max-h-none xl:h-full xl:w-full">
+                    <div className="shrink-0 space-y-6">
+                        <div className="flex items-center justify-between gap-3">
+                            <h2 className="flex min-w-0 items-center gap-2 text-sm font-black uppercase tracking-widest text-white">
+                                {studioMode === 'avatar'
+                                    ? <><Wand2 size={15} className="shrink-0 text-primary" /><span className="min-w-0 leading-tight">Character creator</span></>
+                                    : <><Swords size={15} className="shrink-0 text-primary" /><span className="min-w-0 leading-tight">Weapon studio</span></>}
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={resetStudio}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/20 hover:text-white"
+                            >
+                                <RotateCcw size={12} /> Reset
+                            </button>
+                        </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setConfig(prev => ({ ...prev, gender: 'MALE' }))}
-                        className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'MALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
-                    >
-                        Male
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setConfig(prev => ({ ...prev, gender: 'FEMALE' }))}
-                        className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'FEMALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
-                    >
-                        Female
-                    </button>
-                </div>
+                        {studioMode === 'avatar' && (
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setConfig(prev => ({ ...prev, gender: 'MALE' }))}
+                                className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'MALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
+                            >
+                                Male
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setConfig(prev => ({ ...prev, gender: 'FEMALE' }))}
+                                className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'FEMALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
+                            >
+                                Female
+                            </button>
+                        </div>
+                        )}
+                        {studioMode === 'avatar' && (<>
+                        <p className="text-[9px] leading-snug text-text-muted/80">
+                            Choix du corps 3D dans l'aperçu : modèle homme (<span className="text-white/50">BodyMaleTemplate</span>) ou femme (
+                            <span className="text-white/50">female_avatar</span>).
+                        </p>
 
-                <div className="grid grid-cols-3 gap-2">
-                    {(['front', 'side', 'back'] as AvatarView[]).map(view => (
-                        <button
-                            key={view}
-                            type="button"
-                            onClick={() => setConfig(prev => ({ ...prev, view }))}
-                            className={`flex min-h-12 items-center justify-center rounded-xl px-1 py-2 text-center text-[9px] font-black uppercase leading-tight tracking-wider border transition-all sm:text-[10px] sm:tracking-widest ${config.view === view ? 'bg-white/15 text-white border-white/20' : 'text-text-muted border-white/10 hover:text-white'}`}
-                        >
-                            {view} view
-                        </button>
-                    ))}
-                </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            {(['front', 'side', 'back'] as AvatarView[]).map(view => (
+                                <button
+                                    key={view}
+                                    type="button"
+                                    onClick={() => setConfig(prev => ({ ...prev, view }))}
+                                    className={`flex min-h-12 items-center justify-center rounded-xl px-1 py-2 text-center text-[9px] font-black uppercase leading-tight tracking-wider border transition-all sm:text-[10px] sm:tracking-widest ${config.view === view ? 'bg-white/15 text-white border-white/20' : 'text-text-muted border-white/10 hover:text-white'}`}
+                                >
+                                    {view} view
+                                </button>
+                            ))}
+                        </div>
+                        </>)}
+                    </div>
 
-                <div className="space-y-3 border-t border-white/5 pt-5">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Layer uploads</p>
-                    <div className="grid grid-cols-1 gap-3">
-                        {(Object.keys(LAYER_LABELS) as AvatarLayerKey[]).map(key => (
-                            <div key={key} className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-3 sm:p-3.5">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{LAYER_LABELS[key]}</p>
-                                <div className="mt-3 grid grid-cols-2 gap-2">
+                    {studioMode === 'weapon' && (
+                        <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto border-t border-white/5 pt-4">
+
+                            {/* ── Catalog ── */}
+                            <div>
+                                <div className="mb-2 flex items-center justify-between">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                        Select Weapon · {GAME_DEFS[selectedGame].short}
+                                    </p>
                                     <button
                                         type="button"
-                                        onClick={() => fileRefs.current[key]?.click()}
-                                        className="min-h-10 w-full min-w-0 rounded-lg bg-white/10 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-white/15"
+                                        onClick={() => setShowAddWeapon(v => !v)}
+                                        className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-primary transition-colors hover:text-primary/80"
                                     >
-                                        Upload
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => clearLayer(key)}
-                                        className="min-h-10 w-full min-w-0 rounded-lg border border-white/15 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/25 hover:text-white"
-                                    >
-                                        Clear
+                                        {showAddWeapon ? <><X size={10} /> Cancel</> : <><Plus size={10} /> Add</>}
                                     </button>
                                 </div>
-                                <input
-                                    ref={el => { fileRefs.current[key] = el; }}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={e => pickLayer(key, e)}
-                                    className="hidden"
-                                />
+                                {showAddWeapon && (
+                                    <div className="mb-3 space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                                        <input
+                                            placeholder="Weapon name"
+                                            value={newWeaponDraft.label}
+                                            onChange={e => setNewWeaponDraft(p => ({ ...p, label: e.target.value }))}
+                                            className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white outline-none placeholder-white/20 focus:border-primary/50"
+                                        />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <select
+                                                value={newWeaponDraft.type}
+                                                onChange={e => setNewWeaponDraft(p => ({ ...p, type: e.target.value }))}
+                                                className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-white outline-none focus:border-primary/50"
+                                            >
+                                                {['Assault','Pistol','Sniper','Shotgun','SMG','Melee','Explosive'].map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                disabled={!newWeaponDraft.label.trim() || !newWeaponDraft.glbPath.trim()}
+                                                onClick={() => {
+                                                    const id = `custom_${Date.now()}`;
+                                                    const entry: WeaponEntry = {
+                                                        id,
+                                                        label: newWeaponDraft.label.trim(),
+                                                        type: newWeaponDraft.type,
+                                                        glbPath: newWeaponDraft.glbPath.trim(),
+                                                        gameId: selectedGame,
+                                                    };
+                                                    setWeaponCatalogExtras((prev) => ({
+                                                        ...prev,
+                                                        [selectedGame]: [...(prev[selectedGame] ?? []), entry],
+                                                    }));
+                                                    setSelectedWeaponId(id);
+                                                    setNewWeaponDraft({ label: '', type: 'Assault', glbPath: '' });
+                                                    setShowAddWeapon(false);
+                                                }}
+                                                className="rounded-lg bg-primary px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-black transition-all disabled:opacity-40"
+                                            >Add</button>
+                                        </div>
+                                        <input
+                                            placeholder="GLB path / URL (e.g. /models/weapons/my.glb)"
+                                            value={newWeaponDraft.glbPath}
+                                            onChange={e => setNewWeaponDraft(p => ({ ...p, glbPath: e.target.value }))}
+                                            className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white outline-none placeholder-white/20 focus:border-primary/50"
+                                        />
+                                    </div>
+                                )}
+                                {localWeaponCatalog.length === 0 ? (
+                                    <p className="rounded-xl border border-white/10 bg-black/20 p-4 text-center text-[11px] leading-relaxed text-text-muted">
+                                        No weapons for <span className="font-bold text-white/70">{GAME_DEFS[selectedGame].label}</span> yet.
+                                        Add a GLB URL with <span className="text-primary">+ Add</span>, or place models under{' '}
+                                        <code className="rounded bg-white/10 px-1 text-[10px]">uploads/inventory/weapens/…</code> on the API server.
+                                    </p>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {localWeaponCatalog.map((w) => {
+                                            const active = selectedWeaponId === w.id;
+                                            return (
+                                                <button key={w.id} type="button" onClick={() => setSelectedWeaponId(w.id)}
+                                                    className={cn('relative flex flex-col items-center gap-1 overflow-hidden rounded-xl border p-1.5 pb-2 text-center transition-all', active ? 'border-primary/60 bg-primary/10 shadow-[0_0_10px_rgba(0,255,136,0.15)]' : 'border-white/10 bg-white/5 hover:border-white/25')}
+                                                >
+                                                    <div className="relative h-28 w-full overflow-hidden rounded-lg bg-black/30">
+                                                        <model-viewer
+                                                            src={w.glbPath}
+                                                            crossOrigin="anonymous"
+                                                            reveal="auto"
+                                                            camera-orbit="45deg 75deg 120%"
+                                                            interaction-prompt="none"
+                                                            style={{ width: '100%', height: '100%', backgroundColor: 'transparent', pointerEvents: 'none' } as CSSProperties}
+                                                            {...({ '--poster-color': 'transparent' } as object)}
+                                                        />
+                                                        {active && <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] font-black text-black">✓</span>}
+                                                        {w.id.startsWith('custom_') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setWeaponCatalogExtras((prev) => ({
+                                                                        ...prev,
+                                                                        [selectedGame]: (prev[selectedGame] ?? []).filter((x) => x.id !== w.id),
+                                                                    }));
+                                                                    if (active) {
+                                                                        const rest = localWeaponCatalog.filter((x) => x.id !== w.id);
+                                                                        setSelectedWeaponId(rest[0]?.id ?? '');
+                                                                    }
+                                                                }}
+                                                                className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/80 text-white transition-colors hover:bg-red-500"
+                                                            >
+                                                                <X size={9} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <span className={cn('text-[9px] font-black uppercase tracking-wide', active ? 'text-primary' : 'text-white/50')}>{w.label}</span>
+                                                    <span className={cn('text-[8px] uppercase tracking-wide', active ? 'text-primary/70' : 'text-white/25')}>{w.type}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
-                        ))}
+
+                            {/* ── Tab nav ── */}
+                            <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
+                                {(['info','materials','attachments'] as const).map(tab => (
+                                    <button key={tab} type="button" onClick={() => setWeaponNav(tab)}
+                                        className={cn('rounded-lg py-1.5 text-[8px] font-black uppercase tracking-widest transition-all', weaponNav === tab ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white')}
+                                    >{tab}</button>
+                                ))}
+                            </div>
+
+                            {/* ── Info ── */}
+                            {weaponNav === 'info' && (
+                                <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-text-muted">Name</label>
+                                        <input value={weaponInfo.name} onChange={e => setWeaponInfo(p => ({ ...p, name: e.target.value }))}
+                                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-primary/50" />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-text-muted">Type</label>
+                                        <select value={weaponInfo.type} onChange={e => setWeaponInfo(p => ({ ...p, type: e.target.value }))}
+                                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-primary/50">
+                                            {['Assault','Pistol','Sniper','Shotgun','SMG','Melee','Explosive'].map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-text-muted">Description</label>
+                                        <textarea value={weaponInfo.description} onChange={e => setWeaponInfo(p => ({ ...p, description: e.target.value }))}
+                                            rows={3} placeholder="Weapon lore, special abilities..."
+                                            className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none placeholder-white/20 focus:border-primary/50" />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-text-muted">Tags (comma separated)</label>
+                                        <input value={weaponInfo.tags} onChange={e => setWeaponInfo(p => ({ ...p, tags: e.target.value }))}
+                                            placeholder="fire, legendary, season-1"
+                                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none placeholder-white/20 focus:border-primary/50" />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Materials ── */}
+                            {weaponNav === 'materials' && (
+                                <div className="space-y-4 rounded-xl border border-white/10 bg-black/20 p-4">
+                                    <ColorPicker label="Primary Tint" value={weaponColors.primary} onChange={v => setWeaponColors(prev => ({ ...prev, primary: v }))} />
+                                    <ColorPicker label="Glow / Emission" value={weaponColors.glow} onChange={v => setWeaponColors(prev => ({ ...prev, glow: v }))} />
+                                    {(['metalness','roughness'] as const).map(key => (
+                                        <div key={key}>
+                                            <label className="mb-2 flex items-center justify-between gap-2 text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                                <span>{key}</span>
+                                                <span className="font-mono text-white/60">{Math.round(weaponColors[key] * 100)}</span>
+                                            </label>
+                                            <input type="range" min={0} max={1} step={0.01} value={weaponColors[key]}
+                                                onChange={e => setWeaponColors(prev => ({ ...prev, [key]: Number(e.target.value) }))}
+                                                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* ── Attachments ── */}
+                            {weaponNav === 'attachments' && (
+                                <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Attachments</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {weaponAttachments.map((att, idx) => (
+                                            <button key={att.id} type="button"
+                                                onClick={() => setWeaponAttachments(prev => prev.map((a, i) => i === idx ? { ...a, active: !a.active } : a))}
+                                                className={cn('flex items-center gap-2 rounded-xl border px-3 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all',
+                                                    att.active ? 'border-primary/60 bg-primary/10 text-primary shadow-[0_0_8px_rgba(0,255,136,0.12)]' : 'border-white/10 bg-white/5 text-text-muted hover:border-white/20 hover:text-white')}
+                                            >
+                                                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', att.active ? 'bg-primary' : 'bg-white/20')} />
+                                                {att.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button type="button"
+                                        onClick={() => setWeaponAttachments(prev => [...prev, { id: `att_${Date.now()}`, label: 'Custom', active: false }])}
+                                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/15 py-2 text-[9px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/30 hover:text-white"
+                                    ><Plus size={10} /> Add Attachment</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {studioMode === 'avatar' && <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-white/5 pt-4">
+                        <div className="flex min-h-0 flex-1 gap-2">
+                            <nav
+                                className="w-[6.5rem] shrink-0 overflow-y-auto overflow-x-hidden pr-1 sm:w-[7.25rem]"
+                                aria-label="Avatar studio sections"
+                            >
+                                {studioNavGroups().map(group => (
+                                    <div key={group.title || group.items.map(i => i.id).join('-')} className="mb-3 last:mb-0">
+                                        {group.title ? (
+                                            <p className="mb-1.5 px-1 text-[9px] font-black uppercase tracking-widest text-text-muted/80">
+                                                {group.title}
+                                            </p>
+                                        ) : null}
+                                        <div className="space-y-0.5">
+                                            {group.items.map(item => {
+                                                const Icon = item.icon;
+                                                const active = studioNavId === item.id;
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        onClick={() => setStudioNavId(item.id)}
+                                                        className={cn(
+                                                            'flex w-full items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-1 text-left transition-colors',
+                                                            active
+                                                                ? 'border-l-2 border-primary bg-primary/12 text-white'
+                                                                : 'border-l-2 border-transparent text-text-muted hover:bg-white/[0.04] hover:text-white/90',
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cn(
+                                                                'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border',
+                                                                active
+                                                                    ? 'border-primary/45 bg-primary/15 text-primary'
+                                                                    : 'border-white/10 bg-black/35 text-text-muted',
+                                                            )}
+                                                        >
+                                                            <Icon size={13} strokeWidth={2} />
+                                                        </span>
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="line-clamp-2 text-[8px] font-bold uppercase leading-tight tracking-wide sm:text-[9px]">
+                                                                {item.label}
+                                                            </span>
+                                                        </span>
+                                                        <span className="shrink-0 tabular-nums text-[8px] font-semibold text-white/35 sm:text-[9px]">
+                                                            {item.count}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </nav>
+
+                            <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden border-l border-white/10 pl-3">
+                                {studioNavId === 'body' && (
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Body & mesh</p>
+                                        <StudioSelect label="Body Type" icon={<User size={12} />} value={config.bodyType} options={[...STUDIO_OPTIONS.bodyType]} onChange={value => setConfig(prev => ({ ...prev, bodyType: value }))} />
+                                        <div className="min-w-0">
+                                            <label className="mb-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                                <Shirt size={12} className="shrink-0" />
+                                                3D Outfit
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {OUTFIT_MODEL_CATALOG.map(o => {
+                                                    const active = config.outfitModelId === o.id;
+                                                    return (
+                                                        <button
+                                                            key={o.id}
+                                                            type="button"
+                                                            onClick={() => setConfig(prev => ({ ...prev, outfitModelId: o.id }))}
+                                                            className={cn(
+                                                                'relative flex flex-col items-center gap-1 overflow-hidden rounded-xl border p-1.5 pb-2 text-center transition-all',
+                                                                active
+                                                                    ? 'border-primary/60 bg-primary/10 shadow-[0_0_10px_rgba(0,255,136,0.15)]'
+                                                                    : 'border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/8',
+                                                            )}
+                                                        >
+                                                            {o.glbPath ? (
+                                                                <div className="relative h-24 w-full overflow-hidden rounded-lg bg-black/30">
+                                                                    <model-viewer
+                                                                        src={o.glbPath}
+                                                                        reveal="auto"
+                                                                        interaction-prompt="none"
+                                                                        camera-orbit="0deg 80deg 120%"
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            height: '100%',
+                                                                            backgroundColor: 'transparent',
+                                                                            pointerEvents: 'none',
+                                                                        } as CSSProperties}
+                                                                        {...({ '--poster-color': 'transparent' } as object)}
+                                                                    />
+                                                                    {active && (
+                                                                        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] font-black text-black">✓</span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex h-24 w-full items-center justify-center rounded-lg bg-black/20">
+                                                                    <User size={28} className="text-white/20" />
+                                                                </div>
+                                                            )}
+                                                            <span className={cn(
+                                                                'text-[9px] font-black uppercase tracking-wide',
+                                                                active ? 'text-primary' : 'text-white/50',
+                                                            )}>
+                                                                {o.label}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {studioNavId === 'colors' && (
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Colors</p>
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-4">
+                                            <ColorPicker label="Skin Tone" value={config.skinTone} onChange={value => setConfig(prev => ({ ...prev, skinTone: value }))} />
+                                            <ColorPicker label="Hair Color" value={config.hairColor} onChange={value => setConfig(prev => ({ ...prev, hairColor: value }))} />
+                                            <ColorPicker label="Eye Color" value={config.eyeColor} onChange={value => setConfig(prev => ({ ...prev, eyeColor: value }))} />
+                                            <StudioSelect label="Aura" icon={<Sparkles size={12} />} value={config.aura} options={[...STUDIO_OPTIONS.aura]} onChange={value => setConfig(prev => ({ ...prev, aura: value }))} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {studioNavId === 'face' && (
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Face features</p>
+                                        <StudioSelect label="Face Style" icon={<User size={12} />} value={config.faceStyle} options={[...STUDIO_OPTIONS.faceStyle]} onChange={value => setConfig(prev => ({ ...prev, faceStyle: value }))} />
+                                        <StudioSelect label="Ear Type" icon={<Sparkles size={12} />} value={config.earType} options={[...STUDIO_OPTIONS.earType]} onChange={value => setConfig(prev => ({ ...prev, earType: value }))} />
+                                        <StudioSelect label="Eyebrow" icon={<Sparkles size={12} />} value={config.eyebrow} options={[...STUDIO_OPTIONS.eyebrow]} onChange={value => setConfig(prev => ({ ...prev, eyebrow: value }))} />
+                                        <StudioSelect label="Nose" icon={<Sparkles size={12} />} value={config.nose} options={[...STUDIO_OPTIONS.nose]} onChange={value => setConfig(prev => ({ ...prev, nose: value }))} />
+                                        <StudioSelect label="Mouth" icon={<Sparkles size={12} />} value={config.mouth} options={[...STUDIO_OPTIONS.mouth]} onChange={value => setConfig(prev => ({ ...prev, mouth: value }))} />
+                                    </div>
+                                )}
+
+                                {studioNavId === 'style' && (
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Outfit & hair</p>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <StudioSelect label="Hair Style" icon={<Sparkles size={12} />} value={config.hairstyle} options={[...STUDIO_OPTIONS.hairstyle]} onChange={value => setConfig(prev => ({ ...prev, hairstyle: value }))} />
+                                            <StudioSelect label="Outfit" icon={<Palette size={12} />} value={config.outfit} options={[...STUDIO_OPTIONS.outfit]} onChange={value => setConfig(prev => ({ ...prev, outfit: value }))} />
+                                            <StudioSelect label="Accessory" icon={<Sparkles size={12} />} value={config.accessory} options={[...STUDIO_OPTIONS.accessory]} onChange={value => setConfig(prev => ({ ...prev, accessory: value }))} />
+                                            <StudioSelect label="Boots" icon={<Sparkles size={12} />} value={config.boots} options={[...STUDIO_OPTIONS.boots]} onChange={value => setConfig(prev => ({ ...prev, boots: value }))} />
+                                        </div>
+                                        <div className="space-y-4 rounded-xl border border-white/10 bg-black/20 p-4">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Hair & ears</p>
+                                            <StudioSlider label="Hair Length" value={config.hairLength} onChange={value => setConfig(prev => ({ ...prev, hairLength: value }))} />
+                                            <StudioSlider label="Ear Size" value={config.earSize} onChange={value => setConfig(prev => ({ ...prev, earSize: value }))} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {studioNavId === 'layers' && (
+                                    <div className="flex min-h-0 flex-1 flex-col gap-3">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Layer presets</p>
+                                            <p className="mt-1 text-[9px] leading-snug text-text-muted/80">
+                                                Lists are defined in code (<span className="text-white/55">avatarLayerPresetCatalog.ts</span>) with files under{' '}
+                                                <span className="text-white/55">public/avatar-presets/</span>. Admins pick only; new assets are shipped by the team.
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {(Object.keys(LAYER_LABELS) as AvatarLayerKey[]).map(key => (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    onClick={() => setLayerPresetSlot(key)}
+                                                    className={cn(
+                                                        'rounded-lg border px-2 py-1.5 text-[9px] font-black uppercase tracking-wide transition-colors',
+                                                        layerPresetSlot === key
+                                                            ? 'border-primary bg-primary/15 text-primary'
+                                                            : 'border-white/10 text-text-muted hover:border-white/20 hover:text-white',
+                                                    )}
+                                                >
+                                                    {LAYER_LABELS[key].replace(' Layer', '')}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-2">
+                                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                                {AVATAR_LAYER_PRESETS[layerPresetSlot].map(preset => {
+                                                    const active =
+                                                        preset.src === null
+                                                            ? layers[layerPresetSlot].preview === null
+                                                            : layers[layerPresetSlot].preview === preset.src;
+                                                    return (
+                                                        <button
+                                                            key={preset.id}
+                                                            type="button"
+                                                            onClick={() => applyLayerPreset(layerPresetSlot, preset.src)}
+                                                            className={cn(
+                                                                'flex aspect-square flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border p-1 text-center transition-colors',
+                                                                active
+                                                                    ? 'border-primary bg-primary/15 ring-1 ring-primary/40'
+                                                                    : 'border-white/10 bg-black/30 hover:border-white/20',
+                                                            )}
+                                                            title={preset.label}
+                                                        >
+                                                            {preset.src ? (
+                                                                <img
+                                                                    src={preset.src}
+                                                                    alt=""
+                                                                    className="max-h-[70%] max-w-full object-contain"
+                                                                />
+                                                            ) : (
+                                                                <span className="text-[9px] font-black uppercase tracking-wide text-text-muted">None</span>
+                                                            )}
+                                                            <span className="line-clamp-2 w-full text-[7px] font-bold uppercase leading-tight text-white/70">
+                                                                {preset.label}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {studioNavId === 'morph' && (
+                                    <div className="space-y-4 rounded-xl border border-white/10 bg-black/20 p-4 sm:p-5">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                                            <SlidersHorizontal size={12} className="shrink-0" />
+                                            Morph & stats
+                                        </p>
+                                        <div className="space-y-4">
+                                            <StudioSlider label="Body Size (3D)" value={config.bodySize} onChange={value => setConfig(prev => ({ ...prev, bodySize: value }))} />
+                                            <StudioSlider label="Head Size (3D)" value={config.headSize} onChange={value => setConfig(prev => ({ ...prev, headSize: value }))} />
+                                            <StudioSlider label="Power" value={config.power} onChange={value => setConfig(prev => ({ ...prev, power: value }))} />
+                                            <StudioSlider label="Agility" value={config.agility} onChange={value => setConfig(prev => ({ ...prev, agility: value }))} />
+                                            <StudioSlider label="Focus" value={config.focus} onChange={value => setConfig(prev => ({ ...prev, focus: value }))} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                <div className="min-w-0 border-t border-white/5 pt-5">
-                    <label className="mb-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        <Palette size={12} className="shrink-0" />
-                        3D outfit (GLB)
-                    </label>
-                    <select
-                        value={config.outfitModelId}
-                        onChange={e => setConfig(prev => ({ ...prev, outfitModelId: e.target.value }))}
-                        className="studio-select box-border w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white focus:border-primary/60 focus:outline-none"
-                    >
-                        {OUTFIT_MODEL_CATALOG.map(o => (
-                            <option key={o.id} value={o.id}>{o.label}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 border-t border-white/5 pt-5">
-                    <StudioSelect label="Body Type" icon={<User size={12} />} value={config.bodyType} options={['Athletic', 'Lean', 'Heavy', 'Heroic']} onChange={value => setConfig(prev => ({ ...prev, bodyType: value }))} />
-                    <StudioSelect label="Face Style" icon={<User size={12} />} value={config.faceStyle} options={['Sharp', 'Soft', 'Strong', 'Angular']} onChange={value => setConfig(prev => ({ ...prev, faceStyle: value }))} />
-                    <StudioSelect label="Hair Style" icon={<Sparkles size={12} />} value={config.hairstyle} options={['Bald', 'Buzz', 'Short', 'Long', 'Braids', 'Mohawk']} onChange={value => setConfig(prev => ({ ...prev, hairstyle: value }))} />
-                    <StudioSelect label="Ear Type" icon={<Sparkles size={12} />} value={config.earType} options={['Human', 'Elf', 'Cyber', 'Pointed']} onChange={value => setConfig(prev => ({ ...prev, earType: value }))} />
-                    <StudioSelect label="Outfit" icon={<Palette size={12} />} value={config.outfit} options={['Tactical', 'Streetwear', 'Cyber Suit', 'Stealth', 'Battle Armor']} onChange={value => setConfig(prev => ({ ...prev, outfit: value }))} />
-                    <StudioSelect label="Accessory" icon={<Sparkles size={12} />} value={config.accessory} options={['Holster', 'Necklace', 'Headset', 'Blade', 'None']} onChange={value => setConfig(prev => ({ ...prev, accessory: value }))} />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 border-t border-white/5 pt-5 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-4">
-                    <ColorPicker label="Skin Tone" value={config.skinTone} onChange={value => setConfig(prev => ({ ...prev, skinTone: value }))} />
-                    <ColorPicker label="Hair Color" value={config.hairColor} onChange={value => setConfig(prev => ({ ...prev, hairColor: value }))} />
-                    <ColorPicker label="Eye Color" value={config.eyeColor} onChange={value => setConfig(prev => ({ ...prev, eyeColor: value }))} />
-                    <StudioSelect label="Aura" icon={<Sparkles size={12} />} value={config.aura} options={['Neon', 'Ice', 'Shadow', 'Fire', 'Gold']} onChange={value => setConfig(prev => ({ ...prev, aura: value }))} />
-                </div>
-
-                <div className="space-y-4 rounded-xl border border-white/10 bg-black/20 p-4 sm:p-5">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
-                        <SlidersHorizontal size={12} className="shrink-0" />
-                        Morph controls
-                    </p>
-                    <div className="space-y-4">
-                        <StudioSlider label="Hair Length" value={config.hairLength} onChange={value => setConfig(prev => ({ ...prev, hairLength: value }))} />
-                        <StudioSlider label="Ear Size" value={config.earSize} onChange={value => setConfig(prev => ({ ...prev, earSize: value }))} />
-                        <StudioSlider label="Body Size (3D)" value={config.bodySize} onChange={value => setConfig(prev => ({ ...prev, bodySize: value }))} />
-                        <StudioSlider label="Head Size (3D)" value={config.headSize} onChange={value => setConfig(prev => ({ ...prev, headSize: value }))} />
-                        <StudioSlider label="Power" value={config.power} onChange={value => setConfig(prev => ({ ...prev, power: value }))} />
-                        <StudioSlider label="Agility" value={config.agility} onChange={value => setConfig(prev => ({ ...prev, agility: value }))} />
-                        <StudioSlider label="Focus" value={config.focus} onChange={value => setConfig(prev => ({ ...prev, focus: value }))} />
-                    </div>
-                </div>
+                    }
                 </div>
             </aside>
 
@@ -643,29 +1283,76 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
                     >
                         <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Live preview</p>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-white/35">
-                            Drag to rotate · scroll to zoom
+                            Drag to orbit · right-drag / two-finger pan · scroll to zoom
                         </p>
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col xl:min-h-0">
-                        <AvatarPreviewCard
-                            view={config.view}
-                            config={config}
-                            layers={layers}
-                            fullBleed={studioConfigCollapsed}
-                            outfitModelUrl={resolveOutfitModelUrl(config.outfitModelId)}
-                        />
+                        {studioMode === 'avatar' ? (
+                            <AvatarPreviewCard
+                                view={config.view}
+                                config={config}
+                                layers={layers}
+                                fullBleed={studioConfigCollapsed}
+                                outfitModelUrl={resolveOutfitModelUrl(config.outfitModelId)}
+                            />
+                        ) : (
+                            <div className="relative flex min-h-0 flex-1 overflow-hidden rounded-2xl bg-[#05070a]">
+                                {selectedWeapon && (
+                                    <model-viewer
+                                        key={selectedWeapon.id}
+                                        ref={(el: HTMLElement | null) => {
+                                            weaponViewerRef.current = el;
+                                            if (!el) return;
+                                            const handler = () => applyWeaponColors(el, weaponColors);
+                                            el.addEventListener('load', handler, { once: true });
+                                        }}
+                                        src={selectedWeapon.glbPath}
+                                        crossOrigin="anonymous"
+                                        camera-controls
+                                        reveal="auto"
+                                        interaction-prompt="none"
+                                        camera-orbit="45deg 75deg 120%"
+                                        min-field-of-view="10deg"
+                                        max-field-of-view="45deg"
+                                        environment-image="neutral"
+                                        tone-mapping="aces"
+                                        shadow-intensity="0.5"
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            backgroundColor: '#05070a',
+                                        } as CSSProperties}
+                                        {...({ '--poster-color': 'transparent' } as object)}
+                                    />
+                                )}
+                                <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-xl border border-white/10 bg-black/70 px-3 py-1.5 backdrop-blur-md">
+                                    <p className="text-center text-[9px] font-bold uppercase tracking-widest text-white/40">Drag to orbit · Scroll to zoom</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className={cn('grid shrink-0 grid-cols-2 gap-2', studioConfigCollapsed && 'xl:px-4 xl:pb-2')}>
-                        <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Generated Name</p>
-                            <p className="truncate text-sm font-bold text-white">{generatedName}</p>
-                        </div>
-                        <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Auto Rarity</p>
-                            <p className="text-sm font-black" style={{ color: RARITY_COLORS[rarity] }}>{rarity}</p>
-                        </div>
+                        {studioMode === 'avatar' ? (<>
+                            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Generated Name</p>
+                                <p className="truncate text-sm font-bold text-white">{generatedName}</p>
+                            </div>
+                            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Auto Rarity</p>
+                                <p className="text-sm font-black" style={{ color: RARITY_COLORS[rarity] }}>{rarity}</p>
+                            </div>
+                        </>) : (<>
+                            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Weapon</p>
+                                <p className="truncate text-sm font-bold text-white">{selectedWeapon?.label ?? '—'}</p>
+                            </div>
+                            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Auto Rarity</p>
+                                <p className="text-sm font-black" style={{ color: RARITY_COLORS[weaponRarity] }}>{weaponRarity}</p>
+                            </div>
+                        </>)}
                     </div>
 
                     <button
@@ -676,8 +1363,8 @@ function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }
                             studioConfigCollapsed && 'xl:mx-4 xl:mb-4',
                         )}
                     >
-                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                        {saving ? 'Saving Draft...' : 'Save Character as NFT'}
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : studioMode === 'avatar' ? <Save size={16} /> : <Swords size={16} />}
+                        {saving ? 'Saving Draft...' : studioMode === 'avatar' ? 'Save Character as NFT' : 'Save Weapon as NFT'}
                     </button>
                 </div>
             </div>
@@ -707,12 +1394,33 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
     outfitModelUrl?: string | null;
 }) {
     const viewerRef = useRef<HTMLElement | null>(null);
-    const outfitViewerRef = useRef<HTMLElement | null>(null);
+    const outfitModelUrlRef = useRef<string | null>(outfitModelUrl ?? null);
     const configRef = useRef(config);
     configRef.current = config;
+    const viewRef = useRef(view);
+    viewRef.current = view;
+    /** True while we set orbit from UI (presets / zoom / frame) — ignore camera-change for preset highlight */
+    const programmaticCameraRef = useRef(false);
     const [modelFailed, setModelFailed] = useState(false);
     const [cameraOrbit, setCameraOrbit] = useState<string>(AVATAR_CAMERA_ORBIT[view]);
-    const [activePreset, setActivePreset] = useState<CameraPreset>(view === 'side' ? 'right' : view);
+    const [activePreset, setActivePreset] = useState<CameraPreset | 'free'>(view === 'side' ? 'right' : view);
+
+    /**
+     * Push orbit (and optionally camera target) imperatively — avoids React resetting camera on re-renders.
+     * @param cameraTarget pass `'auto'` to reset pivot to model-viewer default; omit to leave target unchanged.
+     */
+    const applyOrbitToViewer = useCallback((orbit: string, jumpToGoal: boolean, cameraTarget?: string) => {
+        programmaticCameraRef.current = true;
+        setCameraOrbit(orbit);
+        const el = viewerRef.current as ModelViewerElement | null;
+        if (!el) return;
+        if (cameraTarget !== undefined) el.cameraTarget = cameraTarget;
+        el.cameraOrbit = orbit;
+        if (jumpToGoal) el.jumpCameraToGoal?.();
+        window.setTimeout(() => {
+            programmaticCameraRef.current = false;
+        }, 120);
+    }, []);
 
     const auraBg: Record<string, string> = {
         Neon: 'linear-gradient(160deg, #0a1220, #172554 65%, #0e7490)',
@@ -723,11 +1431,12 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
     };
     const bodyScale = config.bodyType === 'Heroic' ? 1.06 : config.bodyType === 'Lean' ? 0.94 : 1;
     const viewTransform = view === 'side' ? 'rotateY(24deg)' : view === 'back' ? 'rotateY(180deg)' : 'none';
+    const baseBodySrc = resolveAvatarBodyGlbUrl(config.gender);
     useEffect(() => {
         const nextOrbit = AVATAR_CAMERA_ORBIT[view];
-        setCameraOrbit(nextOrbit);
+        applyOrbitToViewer(nextOrbit, true, 'auto');
         setActivePreset(view === 'side' ? 'right' : view);
-    }, [view]);
+    }, [view, applyOrbitToViewer]);
 
     useEffect(() => {
         if (compact) return;
@@ -736,22 +1445,21 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
         const el = viewerRef.current;
         if (!el) return;
 
-        const mv = el as unknown as {
-            updateFraming?: () => Promise<void>;
-            cameraOrbit?: string;
-        };
+        const mv = el as ModelViewerElement;
 
         const onLoad = () => {
             setModelFailed(false);
             void (async () => {
                 try {
                     await mv.updateFraming?.();
-                    mv.cameraOrbit = cameraOrbit;
                 } catch {
                     /* ignore framing errors */
                 }
                 requestAnimationFrame(() => {
-                    mv.cameraOrbit = cameraOrbit;
+                    const orbit = AVATAR_CAMERA_ORBIT[viewRef.current];
+                    mv.cameraTarget = 'auto';
+                    mv.cameraOrbit = orbit;
+                    setCameraOrbit(orbit);
                     const c = configRef.current;
                     void applyAvatarDynamicConfig(el, {
                         skinTone: c.skinTone,
@@ -761,6 +1469,12 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
                         bodyType: c.bodyType,
                         bodySize: c.bodySize,
                         headSize: c.headSize,
+                    }).then(() => {
+                        startAvatarPreviewAnimation(el);
+                        // Re-inject outfit after body reloads (gender switch resets the scene)
+                        if (outfitModelUrlRef.current) {
+                            loadOutfitIntoScene(el, outfitModelUrlRef.current).catch(console.error);
+                        }
                     });
                 });
             })();
@@ -775,14 +1489,20 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
             el.removeEventListener('load', onLoad);
             el.removeEventListener('error', onError);
         };
-    }, [compact, cameraOrbit]);
+    }, [compact, baseBodySrc]);
 
     useEffect(() => {
         if (compact) return;
-        const el = viewerRef.current;
+        const el = viewerRef.current as ModelViewerElement | null;
         if (!el) return;
-        (el as unknown as { cameraOrbit?: string }).cameraOrbit = cameraOrbit;
-    }, [cameraOrbit, compact]);
+        const onCameraChange = () => {
+            const next = el.getCameraOrbit().toString();
+            setCameraOrbit(prev => (prev === next ? prev : next));
+            if (!programmaticCameraRef.current) setActivePreset('free');
+        };
+        el.addEventListener('camera-change', onCameraChange);
+        return () => el.removeEventListener('camera-change', onCameraChange);
+    }, [compact, baseBodySrc]);
 
     useEffect(() => {
         if (compact) return;
@@ -806,36 +1526,37 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
         config.bodyType,
         config.bodySize,
         config.headSize,
+        baseBodySrc,
     ]);
 
+    // Keep ref in sync so onLoad can access the latest outfitModelUrl without stale closure
     useEffect(() => {
-        if (compact || !outfitModelUrl) return;
-        const body = viewerRef.current as ModelViewerElement | null;
-        const outfit = outfitViewerRef.current as ModelViewerElement | null;
-        if (!body || !outfit) return;
+        outfitModelUrlRef.current = outfitModelUrl ?? null;
+    }, [outfitModelUrl]);
 
-        const sync = () => {
-            outfit.cameraOrbit = body.getCameraOrbit().toString();
-            outfit.cameraTarget = body.getCameraTarget().toString();
-            outfit.fieldOfView = `${body.getFieldOfView()}deg`;
-        };
-
-        const onOutfitLoad = () => {
-            void outfit.updateFraming().then(sync).catch(() => { sync(); });
-        };
-
-        body.addEventListener('camera-change', sync);
-        outfit.addEventListener('load', onOutfitLoad);
-        sync();
-        return () => {
-            body.removeEventListener('camera-change', sync);
-            outfit.removeEventListener('load', onOutfitLoad);
-        };
+    // When the outfit selection changes, inject the new GLB directly into the body scene
+    useEffect(() => {
+        if (compact) return;
+        const el = viewerRef.current;
+        if (!el) return;
+        loadOutfitIntoScene(el, outfitModelUrl ?? null).catch(console.error);
     }, [compact, outfitModelUrl]);
 
     const applyPreset = (preset: CameraPreset) => {
         setActivePreset(preset);
-        setCameraOrbit(CAMERA_PRESET_ORBIT[preset]);
+        applyOrbitToViewer(CAMERA_PRESET_ORBIT[preset], true, 'auto');
+    };
+
+    const applyFrameFocus = (key: keyof typeof AVATAR_FRAME_FOCUS) => {
+        setActivePreset('free');
+        const { orbit, target } = AVATAR_FRAME_FOCUS[key];
+        const el = viewerRef.current as ModelViewerElement | null;
+        if (!el) return;
+        el.cameraTarget = target;
+        requestAnimationFrame(() => {
+            el.cameraOrbit = orbit;
+            el.jumpCameraToGoal?.();
+        });
     };
 
     const stepZoom = (direction: 'in' | 'out') => {
@@ -845,10 +1566,11 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
         if (!radius.endsWith('%')) return;
         const current = Number.parseFloat(radius.replace('%', ''));
         if (!Number.isFinite(current)) return;
-        const next = direction === 'in' ? current * 0.9 : current * 1.12;
-        const clamped = Math.max(70, Math.min(340, next));
+        const next = direction === 'in' ? current * 0.88 : current * 1.14;
+        const clamped = Math.max(AVATAR_ZOOM_RADIUS_MIN, Math.min(AVATAR_ZOOM_RADIUS_MAX, next));
         orbit[2] = `${clamped.toFixed(1)}%`;
-        setCameraOrbit(orbit.join(' '));
+        setActivePreset('free');
+        applyOrbitToViewer(orbit.join(' '), true);
     };
 
     const vignette = 'absolute inset-0 bg-[radial-gradient(ellipse_at_50%_32%,rgba(0,255,136,0.07),transparent_55%)]';
@@ -910,20 +1632,23 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
 
                 <div className="relative z-10 h-full min-h-[240px] w-full">
                     <model-viewer
+                        key={baseBodySrc}
                         ref={viewerRef}
                         className="absolute inset-0 h-full w-full"
-                        src={AVATAR_GLB_URL}
+                        src={baseBodySrc}
                         camera-controls
+                        autoplay
                         touch-action="none"
                         reveal="auto"
                         interaction-prompt="none"
-                        interpolation-decay="120"
-                        camera-orbit={cameraOrbit}
-                        min-camera-orbit="auto 22deg 72%"
-                        max-camera-orbit="auto 175deg 340%"
-                        min-field-of-view="18deg"
-                        max-field-of-view="48deg"
-                        zoom-sensitivity="0.35"
+                        interpolation-decay="24"
+                        min-camera-orbit={AVATAR_MIN_CAMERA_ORBIT}
+                        max-camera-orbit={AVATAR_MAX_CAMERA_ORBIT}
+                        min-field-of-view={AVATAR_MIN_FOV}
+                        max-field-of-view={AVATAR_MAX_FOV}
+                        orbit-sensitivity="1.2"
+                        zoom-sensitivity="1.05"
+                        pan-sensitivity="1.15"
                         exposure="1"
                         shadow-intensity="0.45"
                         shadow-softness="0.85"
@@ -935,73 +1660,65 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
                             ...({ '--poster-color': 'transparent' } as CSSProperties),
                         }}
                     />
-                    {outfitModelUrl ? (
-                        <model-viewer
-                            ref={outfitViewerRef}
-                            className="pointer-events-none absolute inset-0 z-[11] h-full w-full"
-                            src={outfitModelUrl}
-                            reveal="auto"
-                            interaction-prompt="none"
-                            interpolation-decay="120"
-                            camera-orbit={cameraOrbit}
-                            min-camera-orbit="auto 22deg 72%"
-                            max-camera-orbit="auto 175deg 340%"
-                            min-field-of-view="18deg"
-                            max-field-of-view="48deg"
-                            zoom-sensitivity="0.35"
-                            exposure="1"
-                            shadow-intensity="0"
-                            environment-image="neutral"
-                            tone-mapping="aces"
-                            style={{
-                                touchAction: 'none',
-                                backgroundColor: 'transparent',
-                                ...({ '--poster-color': 'transparent' } as CSSProperties),
-                            }}
-                        />
-                    ) : null}
+                    {/* Outfit is injected into the body scene via loadOutfitIntoScene — no second model-viewer needed */}
                 </div>
 
-                <div className="absolute right-3 top-3 z-30 flex flex-col gap-2 rounded-xl border border-white/10 bg-black/45 p-2 backdrop-blur-sm">
-                    <div className="grid grid-cols-2 gap-1">
+                <div className="absolute right-3 top-3 z-30 flex w-[4.5rem] flex-col gap-1 rounded-2xl border border-white/10 bg-black/65 p-2 backdrop-blur-md">
+                    {/* ── Frame ── */}
+                    <p className="mb-0.5 px-0.5 text-[7px] font-black uppercase tracking-widest text-white/35">Frame</p>
+                    {([
+                        { key: 'head' as const, label: 'Head' },
+                        { key: 'torso' as const, label: 'Body' },
+                        { key: 'full' as const, label: 'Full' },
+                    ]).map(({ key, label }) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => applyFrameFocus(key)}
+                            className="w-full rounded-lg border border-white/10 py-1.5 text-[9px] font-black uppercase tracking-wide text-white/60 transition-all hover:border-primary/40 hover:bg-primary/15 hover:text-primary"
+                        >
+                            {label}
+                        </button>
+                    ))}
+
+                    {/* ── Zoom ── */}
+                    <div className="mt-1 flex gap-1">
                         <button
                             type="button"
                             onClick={() => stepZoom('in')}
-                            className="h-7 w-7 rounded-lg border border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
                             title="Zoom in"
-                        >
-                            +
-                        </button>
+                            className="flex-1 rounded-lg border border-white/10 py-1.5 text-sm font-bold leading-none text-white/60 transition-all hover:bg-white/10 hover:text-white"
+                        >+</button>
                         <button
                             type="button"
                             onClick={() => stepZoom('out')}
-                            className="h-7 w-7 rounded-lg border border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
                             title="Zoom out"
+                            className="flex-1 rounded-lg border border-white/10 py-1.5 text-sm font-bold leading-none text-white/60 transition-all hover:bg-white/10 hover:text-white"
+                        >−</button>
+                    </div>
+
+                    {/* ── Angle ── */}
+                    <p className="mb-0.5 mt-1 px-0.5 text-[7px] font-black uppercase tracking-widest text-white/35">Angle</p>
+                    {(['front', 'right', 'back', 'left', 'top', 'bottom'] as CameraPreset[]).map((preset) => (
+                        <button
+                            key={preset}
+                            type="button"
+                            onClick={() => applyPreset(preset)}
+                            className={cn(
+                                'w-full rounded-lg border py-1.5 text-[9px] font-black uppercase tracking-wide transition-all',
+                                activePreset === preset
+                                    ? 'border-primary/50 bg-primary/20 text-primary'
+                                    : 'border-white/10 text-white/55 hover:bg-white/10 hover:text-white',
+                            )}
                         >
-                            -
+                            {preset}
                         </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1">
-                        {(['front', 'right', 'back', 'left', 'top', 'bottom'] as CameraPreset[]).map((preset) => (
-                            <button
-                                key={preset}
-                                type="button"
-                                onClick={() => applyPreset(preset)}
-                                className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-widest transition-all ${
-                                    activePreset === preset
-                                        ? 'border-primary/60 bg-primary/20 text-primary'
-                                        : 'border-white/15 text-white/70 hover:bg-white/10 hover:text-white'
-                                }`}
-                            >
-                                {preset}
-                            </button>
-                        ))}
-                    </div>
+                    ))}
                 </div>
 
                 {modelFailed && (
                     <span className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-lg border border-amber-500/30 bg-black/70 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-amber-200/90">
-                        3D model failed to load — check /public/models/BodyMaleTemplate.glb
+                        3D model failed to load — check /public/models/BodyMaleTemplate.glb or female_avatar.glb
                     </span>
                 )}
 
