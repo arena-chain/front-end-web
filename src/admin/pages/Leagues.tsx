@@ -165,13 +165,14 @@ export default function AdminLeagues() {
             if (editingLeague) {
                 await leagueService.updateLeague(editingLeague._id, data);
                 notify('League updated');
+                setShowModal(false);
+                setEditingLeague(null);
+                await fetchLeagues();
             } else {
-                await leagueService.createLeague(data);
-                notify('League created');
+                const created = await leagueService.createLeague(data) as { _id: string };
+                setShowModal(false);
+                navigate(`/admin/leagues/${created._id}`);
             }
-            setShowModal(false);
-            setEditingLeague(null);
-            await fetchLeagues();
         } catch (e) { notify(apiErr(e), 'err'); throw e; }
     };
 

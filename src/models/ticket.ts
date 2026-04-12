@@ -52,13 +52,6 @@ export interface Ticket {
     qrCode: string;          // Base64 data URL or QR code data
     type: string;            // "VIP", "Standard", etc.
     perks?: string;          // Special perks for VIP tickets
-    
-    // NFT-specific fields
-    nftTokenId?: string;
-    nftContractAddress?: string;
-    blockchain?: string;
-    metadataUrl?: string;
-
     usedAt?: string;
     expiresAt?: string;
     createdAt: string;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Trophy, Calendar, Users, Globe, ArrowLeft, PlayCircle,
@@ -9,11 +9,18 @@ import {
 import { leagueService, type League } from '../../services/leagueService';
 import { seasonService, type Season } from '../../services/seasonService';
 import {
-    getSeasonTeams, getPrizePool, getStages, getGroups,
+    getSeasonTeamsWithPlayers,
+    getPrizePool, getStages, getGroups,
     getAdminRounds, getMatchesByRound, getAdminStandings, getAdminBracket,
-    type SeasonTeamEntry, type PrizePool, type Stage, type Group,
+    type SeasonTeamEntry, type SeasonTeamWithPlayersRow, type PrizePool, type Stage, type Group,
     type AdminRound, type AdminMatch, type StandingEntry, type AdminBracket,
 } from '../../services/adminLeagueService';
+import {
+    LiquipediaParticipantCard,
+    buildTeamNameMapFromRows,
+    teamNameFromMap,
+} from '../../components/leagues/LiquipediaParticipantCard';
+import { expandPlaceholderSingleElimBracket } from '../../lib/syntheticSingleElimBracket';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt     = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -251,26 +258,17 @@ function OverviewTab({ season, stages, teams, matches }: { season: Season; stage
 }
 
 // ─── Participants Tab ─────────────────────────────────────────────────────────
-function ParticipantsTab({ teams }: { teams: SeasonTeamEntry[] }) {
-    if (!teams.length) return (
+function ParticipantsTab({ rows }: { rows: SeasonTeamWithPlayersRow[] }) {
+    if (!rows.length) return (
         <div className="text-center py-16 text-slate-500">
             <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p>Participants will be announced soon.</p>
         </div>
     );
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-            {teams.map((entry) => (
-                <div key={entry._id} className="bg-[#1a1e28] border border-white/8 rounded-xl p-4 text-center hover:border-white/15 transition-all group">
-                    <div className="w-12 h-12 rounded-xl bg-[#00ff00]/8 border border-[#00ff00]/15 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                        <Shield className="w-6 h-6 text-[#00ff00]/40" />
-                    </div>
-                    {entry.seed && (
-                        <span className="text-[9px] font-black text-slate-500 border border-white/10 px-1.5 py-0.5 rounded-full">#{entry.seed}</span>
-                    )}
-                    <p className="text-white font-bold text-xs mt-1 group-hover:text-[#00ff00] transition-colors">{tName(entry.teamId)}</p>
-                    <span className={`mt-2 inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${S_CLS[entry.status]}`}>{entry.status}</span>
-                </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-3">
+            {rows.map((row) => (
+                <LiquipediaParticipantCard key={row.registration._id} row={row} />
             ))}
         </div>
     );
@@ -387,7 +385,7 @@ function GroupsTab({ seasonId, groupStage }: { seasonId: string; groupStage: Sta
 }
 
 // ─── Playoffs Tab ─────────────────────────────────────────────────────────────
-function PlayoffsTab({ bracket }: { bracket: AdminBracket | null }) {
+function PlayoffsTab({ bracket, teamById }: { bracket: AdminBracket | null; teamById: Map<string, string> }) {
     if (!bracket) return (
         <div className="text-center py-16 text-slate-500">
             <GitBranch className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -406,56 +404,57 @@ function PlayoffsTab({ bracket }: { bracket: AdminBracket | null }) {
         return `Round ${r}`;
     };
 
+    const champLabel = bracket.championId ? teamNameFromMap(teamById, bracket.championId) : '';
+
     return (
         <div className="space-y-5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <Crown className="w-5 h-5 text-yellow-400" />
                     <h3 className="font-black text-white uppercase tracking-wide">{bracket.format.replace('_', ' ')}</h3>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${S_CLS[bracket.status]}`}>{bracket.status}</span>
                 </div>
-                {bracket.championId && (
+                {bracket.championId && champLabel !== 'TBD' && (
                     <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/25 rounded-xl px-4 py-2">
                         <Crown className="w-4 h-4 text-yellow-400" />
-                        <span className="text-yellow-400 font-black text-sm">Champion: {bracket.championId}</span>
+                        <span className="text-yellow-400 font-black text-sm">Champion: {champLabel}</span>
                     </div>
                 )}
             </div>
 
-            <div className="overflow-x-auto pb-4">
-                <div className="flex gap-8 min-w-max items-start pt-2">
+            <div className="w-full overflow-x-auto rounded-xl border border-white/10 bg-black/30 pb-4">
+                <div className="flex gap-8 min-w-max items-start pt-3 px-3">
                     {roundNums.map((r, ri) => (
-                        <div key={r} className="flex flex-col">
-                            {/* Round label */}
-                            <div className={`text-center mb-4 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider mx-auto ${r === bracket.totalRounds ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25' : 'bg-white/5 text-slate-400 border border-white/8'}`}>
+                        <div key={r} className="flex flex-col w-[220px] shrink-0">
+                            <div className={`text-center mb-3 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider mx-auto ${r === bracket.totalRounds ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25' : 'bg-white/5 text-slate-400 border border-white/8'}`}>
                                 {label(r)}
                             </div>
-                            {/* Slots */}
                             <div className="flex flex-col" style={{ gap: `${Math.pow(2, ri) * 16 + 8}px` }}>
                                 {byRound[r].map(slot => {
-                                    const t1wins = slot.status === 'COMPLETED' && slot.winnerId === slot.team1Id;
-                                    const t2wins = slot.status === 'COMPLETED' && slot.winnerId === slot.team2Id;
+                                    const wid = slot.winnerId != null ? String(slot.winnerId) : '';
+                                    const t1 = slot.team1Id != null ? String(slot.team1Id) : '';
+                                    const t2 = slot.team2Id != null ? String(slot.team2Id) : '';
+                                    const t1wins = slot.status === 'COMPLETED' && wid !== '' && t1 !== '' && wid === t1;
+                                    const t2wins = slot.status === 'COMPLETED' && wid !== '' && t2 !== '' && wid === t2;
                                     const isGF   = r === bracket.totalRounds;
                                     return (
-                                        <div key={slot.slotId} className={`w-52 rounded-2xl overflow-hidden border transition-all ${isGF ? 'border-yellow-500/30 shadow-[0_0_24px_rgba(234,179,8,0.12)]' : slot.status === 'READY' ? 'border-[#00ff00]/30 shadow-[0_0_16px_rgba(0,255,0,0.06)]' : 'border-white/8'} bg-[#1a1e28]`}>
-                                            {slot.status === 'PENDING' ? (
+                                        <div key={slot.slotId} className={`rounded-2xl overflow-hidden border transition-all ${isGF ? 'border-yellow-500/30 shadow-[0_0_24px_rgba(234,179,8,0.12)]' : slot.status === 'READY' ? 'border-[#00ff00]/30 shadow-[0_0_16px_rgba(0,255,0,0.06)]' : 'border-white/8'} bg-[#1a1e28]`}>
+                                            {slot.status === 'PENDING' && !t1 && !t2 ? (
                                                 <div className="px-4 py-5 text-center text-xs text-slate-600 italic">TBD</div>
                                             ) : (
                                                 <>
-                                                    {/* Team 1 */}
-                                                    <div className={`flex items-center gap-2.5 px-4 py-3 border-b border-white/5 ${t1wins ? 'bg-white/[0.05]' : ''}`}>
+                                                    <div className={`flex items-center gap-2.5 px-4 py-3 border-b border-white/5 ${t1wins ? 'bg-[#00ff00]/10 border-l-2 border-l-[#00ff00]' : ''}`}>
                                                         <div className="w-6 h-6 rounded bg-[#00ff00]/8 border border-[#00ff00]/12 flex items-center justify-center flex-shrink-0">
                                                             <Shield className="w-3.5 h-3.5 text-[#00ff00]/40" />
                                                         </div>
-                                                        <span className={`text-xs font-bold flex-1 truncate ${t1wins ? 'text-white' : 'text-slate-400'}`}>{slot.team1Id ? slot.team1Id.toString().slice(-6) : 'TBD'}</span>
+                                                        <span className={`text-xs font-bold flex-1 truncate ${t1wins ? 'text-white' : 'text-slate-400'}`}>{teamNameFromMap(teamById, slot.team1Id)}</span>
                                                         {t1wins && <Crown className="w-3 h-3 text-yellow-400 flex-shrink-0" />}
                                                     </div>
-                                                    {/* Team 2 */}
-                                                    <div className={`flex items-center gap-2.5 px-4 py-3 ${t2wins ? 'bg-white/[0.05]' : ''}`}>
+                                                    <div className={`flex items-center gap-2.5 px-4 py-3 ${t2wins ? 'bg-[#00ff00]/10 border-l-2 border-l-[#00ff00]' : ''}`}>
                                                         <div className="w-6 h-6 rounded bg-[#00ff00]/8 border border-[#00ff00]/12 flex items-center justify-center flex-shrink-0">
                                                             <Shield className="w-3.5 h-3.5 text-[#00ff00]/40" />
                                                         </div>
-                                                        <span className={`text-xs font-bold flex-1 truncate ${t2wins ? 'text-white' : 'text-slate-400'}`}>{slot.team2Id ? slot.team2Id.toString().slice(-6) : 'TBD'}</span>
+                                                        <span className={`text-xs font-bold flex-1 truncate ${t2wins ? 'text-white' : 'text-slate-400'}`}>{teamNameFromMap(teamById, slot.team2Id)}</span>
                                                         {t2wins && <Crown className="w-3 h-3 text-yellow-400 flex-shrink-0" />}
                                                     </div>
                                                 </>
@@ -613,6 +612,7 @@ export default function TournamentPage() {
     const [league, setLeague]   = useState<League | null>(null);
     const [season, setSeason]   = useState<Season | null>(null);
     const [teams, setTeams]     = useState<SeasonTeamEntry[]>([]);
+    const [participantRows, setParticipantRows] = useState<SeasonTeamWithPlayersRow[]>([]);
     const [stages, setStages]   = useState<Stage[]>([]);
     const [matches, setMatches] = useState<AdminMatch[]>([]);
     const [prize, setPrize]     = useState<PrizePool | null>(null);
@@ -625,14 +625,31 @@ export default function TournamentPage() {
         Promise.all([
             leagueService.getLeagueById(leagueId).catch(() => null),
             seasonService.getById(seasonId).catch(() => null),
-            getSeasonTeams(seasonId),
+            getSeasonTeamsWithPlayers(seasonId),
             getStages(seasonId),
             getPrizePool(seasonId),
             getAdminBracket(seasonId),
         ]).then(async ([lg, sn, tm, st, pr, br]) => {
             setLeague(lg as League);
             setSeason(sn as Season);
-            setTeams(tm);
+            const rows = (tm as SeasonTeamWithPlayersRow[]) ?? [];
+            setParticipantRows(rows);
+            setTeams(
+                rows
+                    .filter((r) => r.team)
+                    .map((r) => ({
+                        _id: r.registration._id,
+                        seasonId,
+                        teamId: {
+                            _id: r.team!._id,
+                            name: r.team!.name,
+                            logo: r.team!.logo,
+                            tag: r.team!.tag,
+                        },
+                        seed: r.registration.seed,
+                        status: (r.registration.status as SeasonTeamEntry['status']) || 'ACTIVE',
+                    })),
+            );
             setStages(st);
             setPrize(pr);
             setBracket(br);
@@ -646,6 +663,11 @@ export default function TournamentPage() {
 
     const groupStage = stages.find(s => s.stageType === 'GROUPS') ?? null;
 
+    const teamById = useMemo(() => buildTeamNameMapFromRows(participantRows), [participantRows]);
+    const displayBracket = useMemo(
+        () => expandPlaceholderSingleElimBracket(bracket, participantRows),
+        [bracket, participantRows],
+    );
 
     if (loading) return (
         <div className="min-h-screen bg-[#0d0f14] flex items-center justify-center text-slate-500">
@@ -748,7 +770,7 @@ export default function TournamentPage() {
 
                         {/* Participants */}
                         <PublicSection icon={<Users className="w-4 h-4" />} title="Participants">
-                            <ParticipantsTab teams={teams} />
+                            <ParticipantsTab rows={participantRows} />
                         </PublicSection>
 
                         {/* Group Stage */}
@@ -765,7 +787,7 @@ export default function TournamentPage() {
 
                         {/* Playoffs */}
                         <PublicSection icon={<GitBranch className="w-4 h-4" />} title="Playoffs Bracket">
-                            <PlayoffsTab bracket={bracket} />
+                            <PlayoffsTab bracket={displayBracket} teamById={teamById} />
                         </PublicSection>
 
                         {/* Standings */}

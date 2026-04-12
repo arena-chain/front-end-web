@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     GitBranch, Zap, RotateCcw, Trash2, Trophy,
-    X, Shield, Clock, Swords,
+    X, Shield, Clock, Swords, Layers, Plus,
 } from 'lucide-react';
 import { bracketService } from '../../../services/bracketService';
 import type { Bracket, BracketSlot, BracketFormat } from '../../../services/bracketService';
@@ -131,6 +131,9 @@ export default function BracketsPage() {
     const [genForm, setGenForm] = useState<{ format: BracketFormat; seededTeamIds: string }>({ format: 'SINGLE_ELIMINATION', seededTeamIds: '' });
     const [showGenForm, setShowGenForm] = useState(false);
     const [activeTab, setActiveTab] = useState<'bracket' | 'matches'>('bracket');
+    const [showManualForm, setShowManualForm] = useState(false);
+    const [manualCreating, setManualCreating] = useState(false);
+    const [manualForm, setManualForm] = useState<{ format: BracketFormat; teamCount: 4 | 8 | 16 | 32 }>({ format: 'SINGLE_ELIMINATION', teamCount: 8 });
 
     // Use demo bracket as fallback for design preview
     const isDemo = !bracket;
@@ -174,6 +177,21 @@ export default function BracketsPage() {
         if (!confirm('Reset bracket? All results will be cleared.')) return;
         try { setBracket(await bracketService.reset(bracket._id)); notify('Bracket reset', 'ok'); }
         catch (e) { console.error('Reset failed', e); notify('Reset failed', 'err'); }
+    };
+
+    const handleCreateManual = async () => {
+        if (!selectedSeason) return;
+        const totalRounds = Math.ceil(Math.log2(manualForm.teamCount));
+        try {
+            setManualCreating(true);
+            const b = await bracketService.createManual({ seasonId: selectedSeason._id, format: manualForm.format, totalRounds });
+            setBracket(b);
+            setShowManualForm(false);
+            notify('Empty bracket created!', 'ok');
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { message?: string } }; message?: string };
+            notify(`Failed: ${err?.response?.data?.message || err?.message || 'Unknown error'}`, 'err');
+        } finally { setManualCreating(false); }
     };
 
     const handleDelete = async () => {
@@ -236,10 +254,16 @@ export default function BracketsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     {!bracket && (
-                        <button onClick={() => setShowGenForm(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-black bg-primary hover:bg-primary/90 transition-all shrink-0">
-                            <Zap size={16} /> Generate Bracket
-                        </button>
+                        <>
+                            <button onClick={() => setShowManualForm(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all shrink-0">
+                                <Layers size={16} /> Build Empty
+                            </button>
+                            <button onClick={() => setShowGenForm(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-black bg-primary hover:bg-primary/90 transition-all shrink-0">
+                                <Zap size={16} /> Generate from Teams
+                            </button>
+                        </>
                     )}
                     {bracket && (
                         <>
@@ -452,6 +476,51 @@ export default function BracketsPage() {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Manual create modal */}
+            {showManualForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-white font-black uppercase tracking-widest">Build Empty Bracket</h2>
+                                <p className="text-text-muted text-xs mt-0.5">No registered teams required — slots start as TBD</p>
+                            </div>
+                            <button onClick={() => setShowManualForm(false)} className="text-text-muted hover:text-white"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">Format</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {(['SINGLE_ELIMINATION', 'DOUBLE_ELIMINATION'] as BracketFormat[]).map(f => (
+                                    <button key={f} onClick={() => setManualForm(p => ({ ...p, format: f }))}
+                                        className={`py-3 rounded-xl border text-[11px] font-black uppercase tracking-wider transition-all ${manualForm.format === f ? 'bg-primary/15 text-primary border-primary/40' : 'bg-black/30 text-text-muted border-white/10 hover:border-white/20 hover:text-white'}`}>
+                                        {f === 'SINGLE_ELIMINATION' ? 'Single Elim.' : 'Double Elim.'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">Number of Teams</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {([4, 8, 16, 32] as const).map(n => (
+                                    <button key={n} onClick={() => setManualForm(p => ({ ...p, teamCount: n }))}
+                                        className={`py-2.5 rounded-xl border text-sm font-black transition-all ${manualForm.teamCount === n ? 'bg-primary/15 text-primary border-primary/40' : 'bg-black/30 text-text-muted border-white/10 hover:border-white/20 hover:text-white'}`}>
+                                        {n}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-text-muted mt-2">{Math.ceil(Math.log2(manualForm.teamCount))} rounds · {manualForm.teamCount} empty slots</p>
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button onClick={() => setShowManualForm(false)} className="flex-1 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white text-sm font-bold">Cancel</button>
+                            <button onClick={handleCreateManual} disabled={manualCreating}
+                                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-black uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2">
+                                {manualCreating ? 'Creating…' : <><Plus size={14} /> Create</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Generate modal */}

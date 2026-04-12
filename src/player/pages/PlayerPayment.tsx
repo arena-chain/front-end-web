@@ -1,20 +1,11 @@
-import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck, CreditCard, Lock, ArrowLeft } from 'lucide-react';
 import { Button, Input } from '../../components/ui/core';
 import { useState } from 'react';
-import axios from 'axios';
-import { toast } from 'sonner';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export default function PlayerPayment() {
     const location = useLocation();
     const navigate = useNavigate();
-    const context = useOutletContext<{ profile?: { _id: string } | null } | null>();
-    
-    // Fallback if no internal profile, try to get from localStorage (optional)
-    const userId = context?.profile?._id;
-
     const { planId, billingCycle } = location.state || { planId: 'pro', billingCycle: 'monthly' };
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -37,30 +28,14 @@ export default function PlayerPayment() {
     const tax = plan.price * 0.1; // 10% tax
     const total = plan.price + tax;
 
-    const handlePayment = async () => {
-        if (!userId) {
-            toast.error('User session not found. Please log in again.');
-            return;
-        }
-
+    const handlePayment = () => {
         setIsProcessing(true);
-        try {
-            await axios.post(`${API_URL}/users/subscribe`, {
-                userId,
-                plan: planId,
-                cycle: billingCycle
-            });
-            
-            toast.success(`Payment Successful! Welcome to ${plan.name}`);
-            setTimeout(() => {
-                navigate('/player/dashboard');
-            }, 1500);
-        } catch (error) {
-            console.error('Payment Error:', error);
-            toast.error('Payment failed. Please try again.');
-        } finally {
+        // Simulate payment processing
+        setTimeout(() => {
             setIsProcessing(false);
-        }
+            alert('Payment Successful! Welcome to ' + plan.name);
+            navigate('/player/dashboard');
+        }, 2000);
     };
 
     return (

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { clsx } from 'clsx';
 import { Ticket as TicketIcon, Calendar, ArrowRight, Download, Share2 } from 'lucide-react';
 import { Button, Badge } from '../../components/ui/core';
 import ticketService from '../../services/ticketService';
@@ -81,11 +80,8 @@ export default function MyTickets() {
     );
 }
 
-import { motion } from 'framer-motion';
-
 function TicketCard({ ticket }: { ticket: Ticket }) {
-    const isNFT = ticket.type.toUpperCase() === 'VIP NFT' || !!ticket.nftTokenId;
-
+    // Determine status color
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'VALID': return 'success';
@@ -97,118 +93,73 @@ function TicketCard({ ticket }: { ticket: Ticket }) {
     };
 
     return (
-        <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={clsx(
-                "group relative bg-surface border rounded-2xl overflow-hidden transition-all duration-500",
-                isNFT ? "border-primary/50 shadow-[0_0_20px_rgba(0,255,0,0.1)]" : "border-white/10 hover:border-primary/30"
-            )}
-        >
-            {/* Holographic Shimmer for NFT */}
-            {isNFT && (
-                <motion.div 
-                    animate={{ 
-                        background: [
-                            'linear-gradient(120deg, transparent 0%, rgba(0,255,0,0.05) 50%, transparent 100%)',
-                            'linear-gradient(120deg, transparent 100%, rgba(0,255,0,0.05) 50%, transparent 0%)'
-                        ],
-                        x: ['-100%', '100%']
-                    }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-0 z-0 pointer-events-none"
-                />
-            )}
-
+        <div className="group relative bg-surface border border-white/10 rounded-2xl overflow-hidden hover:border-primary/30 transition-all duration-300">
             {/* Ticket "Rip" Effect CSS */}
-            <div className="absolute top-1/2 -left-3 w-6 h-6 bg-background rounded-full z-10 border-r border-white/10"></div>
-            <div className="absolute top-1/2 -right-3 w-6 h-6 bg-background rounded-full z-10 border-l border-white/10"></div>
+            <div className="absolute top-1/2 -left-3 w-6 h-6 bg-background rounded-full z-10"></div>
+            <div className="absolute top-1/2 -right-3 w-6 h-6 bg-background rounded-full z-10"></div>
 
-            <div className="flex flex-col md:flex-row h-full relative z-1">
+            <div className="flex flex-col md:flex-row h-full">
                 {/* Left Section: Info */}
                 <div className="flex-1 p-6 md:pr-12 flex flex-col justify-between min-h-[220px]">
                     <div>
                         <div className="flex justify-between items-start mb-4">
-                            <div className="flex gap-2">
-                                <Badge variant={getStatusColor(ticket.status) as any} className="uppercase tracking-wider text-[10px]">
-                                    {ticket.status}
-                                </Badge>
-                                {isNFT && (
-                                    <Badge variant="primary" className="bg-primary text-black border-none font-black text-[10px]">
-                                        NFT VIP
-                                    </Badge>
-                                )}
-                            </div>
+                            <Badge variant={getStatusColor(ticket.status) as 'secondary' | 'success' | 'warning' | 'danger' | 'primary' | 'info'} className="uppercase tracking-wider text-[10px]">
+                                {ticket.status}
+                            </Badge>
                             <span className="text-xs font-mono text-white/30 truncate max-w-[100px]">
                                 #{ticket.ticketNumber.split('-')[1]}
                             </span>
                         </div>
 
                         <h3 className="text-xl font-black uppercase tracking-tight mb-2 group-hover:text-primary transition-colors">
-                            {typeof ticket.tournament === 'object' ? ticket.tournament?.name : 'Tournament Name'}
+                            {typeof ticket.tournament === 'object' ? ticket.tournament?.name || 'Tournament Name' : 'Tournament Name'}
                         </h3>
 
-                        <div className="grid grid-cols-2 gap-4 mt-6">
-                            <div className="space-y-1">
-                                <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest">Date</span>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Calendar className="w-3 h-3 text-primary" />
-                                    <span>{typeof ticket.tournament === 'object' && ticket.tournament?.startDate ? new Date(ticket.tournament.startDate).toLocaleDateString() : 'TBD'}</span>
-                                </div>
+                        <div className="space-y-3 mt-4">
+                            <div className="flex items-center gap-3 text-sm text-gray-300">
+                                <Calendar className="w-4 h-4 text-primary opacity-70" />
+                                <span>{typeof ticket.tournament === 'object' && ticket.tournament?.startDate ? new Date(ticket.tournament.startDate).toLocaleDateString() : 'Date TBD'}</span>
                             </div>
-                            <div className="space-y-1">
-                                <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest">Tier</span>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <TicketIcon className="w-3 h-3 text-primary" />
-                                    <span className="font-bold">{ticket.type}</span>
-                                </div>
+                            <div className="flex items-center gap-3 text-sm text-gray-300">
+                                <TicketIcon className="w-4 h-4 text-primary opacity-70" />
+                                <span className="font-bold">{ticket.type} Access</span>
                             </div>
                         </div>
-
-                        {isNFT && (
-                            <div className="mt-4 p-2 bg-primary/5 rounded border border-primary/20">
-                                <p className="text-[9px] text-primary font-bold uppercase tracking-wider flex items-center gap-1">
-                                    <span className="w-1 h-1 bg-primary rounded-full animate-pulse" />
-                                    Blockchain Verified: {ticket.blockchain || 'Polygon'} #{ticket.nftTokenId}
-                                </p>
-                            </div>
-                        )}
                     </div>
 
-                    <div className="pt-4 mt-6 border-t border-white/5 flex items-center justify-between">
-                        <div className="text-[10px] text-text-muted font-mono uppercase">
-                            LOC: ARENA-HQ-SEC-01
+                    <div className="pt-6 mt-6 border-t border-white/5 flex items-center justify-between">
+                        <div className="text-xs text-text-muted">
+                            Purchased on {new Date(ticket.purchaseDate).toLocaleDateString()}
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs hover:bg-white/5" onClick={() => window.location.href = `/player/tickets/${ticket._id}`}>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs hover:bg-white/5">
                             Details <ArrowRight className="w-3 h-3 ml-1" />
                         </Button>
                     </div>
                 </div>
 
                 {/* Right Section: QR Code */}
-                <div className="md:w-48 bg-black/40 border-t md:border-t-0 md:border-l border-white/10 p-6 flex flex-col items-center justify-center relative backdrop-blur-sm">
+                <div className="md:w-48 bg-black/40 border-t md:border-t-0 md:border-l border-white/10 p-6 flex flex-col items-center justify-center relative">
+                    {/* Dashed Separator for Mobile */}
+                    <div className="md:hidden absolute top-0 left-6 right-6 border-t border-dashed border-white/20"></div>
+
+                    {/* Vertical Dashed Separator for Desktop */}
                     <div className="hidden md:block absolute left-0 top-6 bottom-6 border-l border-dashed border-white/20"></div>
 
-                    <div className={clsx(
-                        "p-2 rounded-xl shadow-2xl mb-3 transition-transform duration-500 group-hover:scale-105",
-                        isNFT ? "bg-gradient-to-br from-primary to-blue-500 p-[2px]" : "bg-white/10"
-                    )}>
-                        <div className="bg-white p-2 rounded-[10px]">
-                            <img src={ticket.qrCode || placeholderImage(150, 150, 'QR')} alt="Ticket QR" className="w-28 h-28 object-contain" />
-                        </div>
+                    <div className="w-32 h-32 bg-white p-2 rounded-xl shadow-lg mb-3">
+                        <img src={ticket.qrCode || placeholderImage(150, 150, 'QR')} alt="Ticket QR" className="w-full h-full object-contain" />
                     </div>
-                    <span className="text-[10px] uppercase font-black tracking-[0.2em] text-white/40">Entry Pass</span>
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Scan for Entry</span>
 
-                    <div className="flex gap-2 mt-4">
-                        <button className="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-all">
+                    <div className="flex gap-2 mt-4 w-full justify-center">
+                        <button className="p-2 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-colors">
                             <Download className="w-4 h-4" />
                         </button>
-                        <button className="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-all">
+                        <button className="p-2 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-colors">
                             <Share2 className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 }

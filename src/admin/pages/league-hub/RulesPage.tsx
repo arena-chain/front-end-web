@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     BookOpen, Plus, Loader2, Trash2, Search, AlertTriangle,
     CheckSquare, ChevronRight, RefreshCw, X, Gamepad2, Map,
-    ToggleLeft, ToggleRight, Zap, Calendar, Users,
+    ToggleLeft, ToggleRight, Zap, Calendar, Users, Pencil,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import {
@@ -310,6 +310,7 @@ export default function RulesPage() {
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState<CreateForm>(EMPTY);
     const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+    const [editingRule, setEditingRule] = useState<SeasonRule | null>(null);
 
     const notify = (msg: string, type: 'ok' | 'err') => {
         setToast({ msg, type });
@@ -385,30 +386,70 @@ export default function RulesPage() {
         notify(`${title} preset applied!`, 'ok');
     };
 
+    const populateFormFromRule = (r: SeasonRule) => {
+        const gameId = typeof r.gameId === 'object' ? r.gameId._id : r.gameId;
+        setForm({
+            name: r.name,
+            gameId,
+            formatType: r.formatType,
+            matchType: r.matchType,
+            pointsWin: r.pointsWin,
+            pointsLoss: r.pointsLoss,
+            maxTeams: r.maxTeams,
+            maxForfeitsBeforeDisqualification: r.maxForfeitsBeforeDisqualification ?? 3,
+            forfeitCountsAsLoss: r.forfeitCountsAsLoss ?? true,
+            tiebreaker: r.tiebreaker,
+            mapVetoEnabled: r.mapVetoEnabled ?? false,
+            mapVetoFormat: r.mapVetoFormat ?? null,
+            vetoFirstPick: r.vetoFirstPick ?? null,
+            mapPool: r.mapPool ?? [],
+            overtimeConfig: r.overtimeConfig ?? { format: 'NONE', enabled: false, maxOvertimePeriods: 0 },
+            ruleUsage: r.ruleUsage ?? ['REGULAR_SEASON'],
+            sideSelection: r.sideSelection ?? 'HIGHER_SEED_CHOOSES',
+            scoreSubmissionMethod: r.scoreSubmissionMethod ?? 'ADMIN_VERIFIED',
+            substitutionsAllowed: r.substitutionsAllowed ?? false,
+            maxSubstitutions: r.maxSubstitutions ?? 0,
+            emergencySubsOnly: r.emergencySubsOnly ?? false,
+            pauseAllowedForDisconnect: r.pauseAllowedForDisconnect ?? true,
+            replayConditions: r.replayConditions ?? '',
+            remakeConditions: r.remakeConditions ?? '',
+            adminDecisionRequired: r.adminDecisionRequired ?? false,
+        });
+        setEditingRule(r);
+        setShowForm(true);
+    };
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedSeason) { notify('Select a season first', 'err'); return; }
         setCreating(true);
+        const payload = {
+            ...form,
+            seasonId: selectedSeason._id,
+            mapVetoFormat: form.mapVetoEnabled ? form.mapVetoFormat : null,
+            vetoFirstPick: form.mapVetoEnabled ? form.vetoFirstPick : null,
+            ruleUsage: (form.ruleUsage.length ? form.ruleUsage : ['REGULAR_SEASON']) as RuleUsage[],
+            sideSelection: form.sideSelection,
+            scoreSubmissionMethod: form.scoreSubmissionMethod,
+            substitutionsAllowed: form.substitutionsAllowed,
+            maxSubstitutions: form.maxSubstitutions,
+            emergencySubsOnly: form.emergencySubsOnly,
+            pauseAllowedForDisconnect: form.pauseAllowedForDisconnect,
+            replayConditions: form.replayConditions || undefined,
+            remakeConditions: form.remakeConditions || undefined,
+            adminDecisionRequired: form.adminDecisionRequired,
+        };
         try {
-            await leagueRulesService.create({
-                ...form,
-                seasonId: selectedSeason._id,   // ← key: tie rule to this season
-                mapVetoFormat: form.mapVetoEnabled ? form.mapVetoFormat : null,
-                vetoFirstPick: form.mapVetoEnabled ? form.vetoFirstPick : null,
-                ruleUsage: form.ruleUsage.length ? form.ruleUsage : ['REGULAR_SEASON'],
-                sideSelection: form.sideSelection,
-                scoreSubmissionMethod: form.scoreSubmissionMethod,
-                substitutionsAllowed: form.substitutionsAllowed,
-                maxSubstitutions: form.maxSubstitutions,
-                emergencySubsOnly: form.emergencySubsOnly,
-                pauseAllowedForDisconnect: form.pauseAllowedForDisconnect,
-                replayConditions: form.replayConditions || undefined,
-                remakeConditions: form.remakeConditions || undefined,
-                adminDecisionRequired: form.adminDecisionRequired,
-            });
-            notify('Season rule created!', 'ok');
+            if (editingRule) {
+                await leagueRulesService.update(editingRule._id, payload);
+                notify('Rule updated!', 'ok');
+            } else {
+                await leagueRulesService.create(payload);
+                notify('Season rule created!', 'ok');
+            }
             setShowForm(false);
             setForm(EMPTY);
+            setEditingRule(null);
             loadRules(selectedSeason._id);
         } catch (e) { notify(apiErr(e), 'err'); }
         finally { setCreating(false); }
@@ -453,7 +494,7 @@ export default function RulesPage() {
                     <p className="text-text-muted text-sm mt-1">Rules configured per season — each season owns its own ruleset.</p>
                 </div>
                 <button
-                    onClick={() => { if (!selectedSeason) { notify('Select a season first', 'err'); return; } setShowForm(v => !v); }}
+                    onClick={() => { if (!selectedSeason) { notify('Select a season first', 'err'); return; } if (showForm) { setShowForm(false); setForm(EMPTY); setEditingRule(null); } else { setShowForm(true); } }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-black bg-green-400 hover:bg-green-300 transition-all shrink-0">
                     {showForm ? <X size={16} /> : <Plus size={16} />}
                     {showForm ? 'Cancel' : 'New Rule'}
@@ -507,9 +548,12 @@ export default function RulesPage() {
             {selectedSeason && showForm && (
                 <form onSubmit={handleCreate} className="space-y-6">
                     {/* Season context tag */}
-                    <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
-                        <Calendar size={13} />
-                        Creating rule for <span className="font-black">{selectedSeason.name}</span>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
+                            <Calendar size={13} />
+                            {editingRule ? <>Editing rule for <span className="font-black">{selectedSeason.name}</span></> : <>Creating rule for <span className="font-black">{selectedSeason.name}</span></>}
+                        </div>
+                        {editingRule && <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">Edit mode</span>}
                     </div>
 
                     <div className="grid lg:grid-cols-2 gap-6">
@@ -748,8 +792,8 @@ export default function RulesPage() {
                     <div className="flex justify-end pt-2">
                         <button type="submit" disabled={creating}
                             className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-black bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 transition-colors">
-                            {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                            Create rule
+                            {creating ? <Loader2 size={16} className="animate-spin" /> : editingRule ? <Pencil size={16} /> : <Plus size={16} />}
+                            {editingRule ? 'Save changes' : 'Create rule'}
                         </button>
                     </div>
                 </form>
@@ -825,6 +869,9 @@ export default function RulesPage() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 flex-shrink-0">
+                                                    <button onClick={() => populateFormFromRule(r)} className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-transparent hover:border-blue-500/20 text-blue-500/60 hover:text-blue-400 transition-colors" title="Edit Rule">
+                                                        <Pencil size={14} />
+                                                    </button>
                                                     <button onClick={() => del(r._id)} className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-transparent hover:border-red-500/20 text-red-500/60 hover:text-red-400 transition-colors" title="Delete Rule">
                                                         <Trash2 size={14} />
                                                     </button>

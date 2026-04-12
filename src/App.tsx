@@ -8,6 +8,7 @@ import DownloadPage from './_public/pages/DownloadPage';
 import LeaguesPage from './_public/pages/LeaguesPage';
 import Login from './feature_auth/login';
 import Register from './feature_auth/register';
+import AuthTransitionLayout from './feature_auth/AuthTransitionLayout';
 import ForgotPassword from './feature_auth/forgot-password';
 import ResetPassword from './feature_auth/reset-password';
 import VerifyEmail from './feature_auth/verify-email';
@@ -21,7 +22,6 @@ import Matches from './admin/pages/Matches';
 import Channels from './admin/pages/Channels';
 import Settings from './admin/pages/Settings';
 import AdminNews from './admin/pages/News';
-import RankingConfig from './admin/pages/RankingConfig';
 
 // Player Imports
 import PlayerLayout from './player/layout/PlayerLayout';
@@ -31,6 +31,7 @@ import PlayerLeagues from './player/pages/PlayerLeagues';
 import PlayerLeagueWikiPage from './player/pages/PlayerLeagueWikiPage';
 import PlayerProfile from './player/pages/PlayerProfile';
 import PlayerTournaments from './player/pages/PlayerTournaments';
+import PlayerTicketMarket from './player/pages/PlayerTicketMarket';
 import PlayerTournamentDetails from './player/pages/PlayerTournamentDetails';
 import ReservationConfirmation from './player/pages/ReservationConfirmation';
 import BookingHistory from './player/pages/BookingHistory';
@@ -41,11 +42,7 @@ import PlayerSubscription from './player/pages/PlayerSubscription';
 import PlayerPayment from './player/pages/PlayerPayment';
 import PlayerRankings from './player/pages/PlayerRankings';
 import PlayerNews from './player/pages/PlayerNews';
-import PlayerSettings from './player/pages/PlayerSettings';
 import NewsArticlePage from './_public/pages/NewsArticlePage';
-import ChannelDiscovery from './player/pages/ChannelDiscovery';
-import EventBrowsing from './player/pages/EventBrowsing';
-import EventDetails from './player/pages/EventDetails';
 
 // Manager Imports
 import ManagerLayout from './manager/layout/ManagerLayout';
@@ -76,6 +73,9 @@ import NftCollections from './admin/pages/NftCollections';
 import NftManager from './admin/pages/NftManager';
 import PlayerMarketplace from './player/pages/PlayerMarketplace';
 import ChannelStudioPage from './university/pages/ChannelStudioPage';
+import PlayerVideoHighlightsPage from './player/pages/PlayerVideoHighlightsPage';
+import PlayerMyVideosPage from './player/pages/PlayerMyVideosPage';
+import PlayerHighlightsHubPage from './player/pages/PlayerHighlightsHubPage';
 import GoLivePage from './university/pages/GoLivePage';
 import AllLivesPage from './university/pages/AllLivesPage';
 import WatchChannelPage from './university/pages/WatchChannelPage';
@@ -124,8 +124,10 @@ function App() {
           <Route path="/leagues" element={<LeaguesPage />} />
           <Route path="/leagues/:id" element={<LeaguesPage />} />
           <Route path="/leagues/:leagueId/seasons/:seasonId" element={<TournamentPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route element={<AuthTransitionLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Route>
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
@@ -149,7 +151,6 @@ function App() {
           <Route path="nft-avatars" element={<NftAvatars />} />
           <Route path="nft-collections" element={<NftCollections />} />
           <Route path="nft-manager" element={<NftManager />} />
-          <Route path="ranking-config" element={<RankingConfig />} />
           <Route path="settings" element={<Settings />} />
 
           {/* Standalone (MUST come before the :id wildcard) */}
@@ -187,7 +188,7 @@ function App() {
             <Route path="dashboard" element={<PlayerDashboard />} />
             <Route path="tournaments" element={<PlayerTournaments />} />
             <Route path="tournaments/:id" element={<PlayerTournamentDetails />} />
-            <Route path="market" element={<EventBrowsing />} />
+            <Route path="market" element={<PlayerTicketMarket />} />
             <Route path="tournaments/:id/tickets" element={<TicketBooking />} />
             <Route path="reservation-confirmation" element={<ReservationConfirmation />} />
             <Route path="my-tickets" element={<MyTickets />} />
@@ -197,22 +198,20 @@ function App() {
             <Route path="leagues" element={<PlayerLeagues />} />
             <Route path="leagues/:id/hub" element={<PlayerLeagueWikiPage />} />
             <Route path="leagues/:id" element={<PlayerLeagues />} />
-            <Route path="events" element={<EventBrowsing />} />
-            <Route path="events/:id" element={<EventDetails />} />
             <Route path="rankings" element={<PlayerRankings />} />
             <Route path="marketplace" element={<PlayerMarketplace />} />
             <Route path="news" element={<PlayerNews />} />
             <Route path="news/:id" element={<NewsArticlePage />} />
             <Route path="channel" element={<ChannelStudioPage />} />
+            <Route path="my-videos" element={<PlayerMyVideosPage />} />
+            <Route path="highlights" element={<PlayerHighlightsHubPage />} />
+            <Route path="videos/:videoId/highlights" element={<PlayerVideoHighlightsPage />} />
             <Route path="channel/:channelId/detail" element={<ChannelDetailPage />} />
             <Route path="go-live" element={<GoLivePage />} />
-            <Route path="discovery" element={<ChannelDiscovery />} />
             <Route path="all-lives" element={<AllLivesPage />} />
             <Route path="profile" element={<PlayerProfile />} />
-            <Route path="profile/:id" element={<PlayerProfile />} />
             <Route path="subscription" element={<PlayerSubscription />} />
             <Route path="payment" element={<PlayerPayment />} />
-            <Route path="settings" element={<PlayerSettings />} />
           </Route>
 
         {/* ── Manager ────────────────────────────────────────────────── */}
@@ -241,6 +240,8 @@ function App() {
           <Route path="reports" element={<ScouterReports />} />
           <Route path="recommendations" element={<ScouterRecommendations />} />
           <Route path="highlights" element={<ScouterHighlights />} />
+          <Route path="reels" element={<Navigate to="/scouter/highlights" replace />} />
+          <Route path="best-highlights" element={<Navigate to="/scouter/highlights" replace />} />
           <Route path="evaluated" element={<ScouterEvaluated />} />
         </Route>
       </Routes>

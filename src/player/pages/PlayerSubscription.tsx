@@ -85,7 +85,7 @@ export default function PlayerSubscription() {
                     <span className={`text-sm font-bold ${billingCycle === 'monthly' ? 'text-white' : 'text-text-muted'}`}>Monthly</span>
                     <button
                         onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
-                        className="w-14 h-7 bg-white/10 rounded-full relative transition-all focus:outline-none"
+                        className="w-14 h-7 bg-white/10 rounded-full relative transition-colors focus:outline-none"
                     >
                         <div className={`absolute top-1 left-1 w-5 h-5 bg-primary rounded-full transition-transform ${billingCycle === 'yearly' ? 'translate-x-7' : ''}`} />
                     </button>

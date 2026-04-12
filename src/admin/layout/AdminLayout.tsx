@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Trophy, Settings, LogOut, Menu,
     MessageSquare, Gamepad2, Ticket, Handshake, Gem, Layers,
-    Box, Zap, Newspaper, ShieldCheck, BarChart3,
+    Box, Zap, Newspaper, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -43,7 +43,6 @@ const NAV_GROUPS = [
     {
         label: 'System',
         items: [
-            { to: '/admin/ranking-config', icon: BarChart3, label: 'Rankings Config' },
             { to: '/admin/settings', icon: Settings, label: 'Settings' },
         ],
     },

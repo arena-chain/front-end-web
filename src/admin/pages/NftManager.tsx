@@ -1,16 +1,25 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import '@google/model-viewer';
+import type { ModelViewerElement } from '@google/model-viewer';
 import {
     Plus, Search, X, Loader2, Trash2, Upload, Sparkles,
     Shield, Sword, Zap, Heart, Star, Crown, Diamond, Flame,
-    Send, BarChart3, Box,
+    Send, BarChart3, Box, Palette, User, SlidersHorizontal,
+    RotateCcw, Save, Wand2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { applyAvatarDynamicConfig } from '../avatar/modelViewerAvatarBridge';
+import { OUTFIT_MODEL_CATALOG, resolveOutfitModelUrl } from '../avatar/outfitCatalog';
 import {
     nftCoreService, nftCollectionService, nftAttributeService, nftMintService,
     NFT_CATEGORIES, NFT_RARITIES, RARITY_COLORS, RARITY_GRADIENTS,
     getImageUrl,
     type Nft, type NftCollection, type NftAttribute, type NftCategory, type NftRarity,
 } from '../../services/nftAdminService';
+
+/** Served from `public/models/` — reliable URL + no import-analysis issues */
+const AVATAR_GLB_URL = `${import.meta.env.BASE_URL}models/BodyMaleTemplate.glb`;
 
 // ─── Rarity tailwind helpers ─────────────────────────────────────────────────
 
@@ -43,6 +52,7 @@ export default function NftManager() {
     const [filterRarity, setFilterRarity] = useState<NftRarity | 'ALL'>('ALL');
     const [selectedNft, setSelectedNft] = useState<(Nft & { attributes: NftAttribute[] }) | null>(null);
     const [showCreate, setShowCreate] = useState(false);
+    const [activeView, setActiveView] = useState<'studio' | 'inventory'>('studio');
 
     const load = async () => {
         try {
@@ -98,122 +108,152 @@ export default function NftManager() {
                 <div>
                     <h1 className="text-2xl font-black text-white flex items-center gap-3">
                         <Box size={24} className="text-primary" />
-                        NFT Manager
+                        NFT Avatar Studio
                     </h1>
-                    <p className="text-text-muted text-sm mt-1">Create, manage and mint gaming NFTs</p>
+                    <p className="text-text-muted text-sm mt-1">Import a base avatar, customize traits, and save as draft NFT</p>
                 </div>
-                <button
-                    onClick={() => setShowCreate(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider transition-all"
-                >
-                    <Plus size={16} /> Create NFT
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="bg-surface border border-white/10 rounded-xl p-1 flex items-center gap-1">
+                        <button
+                            onClick={() => setActiveView('studio')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'studio' ? 'bg-primary text-black' : 'text-text-muted hover:text-white'}`}
+                        >
+                            Avatar Studio
+                        </button>
+                        <button
+                            onClick={() => setActiveView('inventory')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'inventory' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white'}`}
+                        >
+                            NFT Inventory
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider transition-all"
+                    >
+                        <Plus size={16} /> Create NFT
+                    </button>
+                </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative flex-1 max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                    <input
-                        type="text" placeholder="Search NFTs..." value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="w-full bg-surface border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-text-muted/50 focus:border-primary/50 outline-none"
-                    />
-                </div>
-                <select
-                    value={filterCat}
-                    onChange={e => setFilterCat(e.target.value as NftCategory | 'ALL')}
-                    className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
-                >
-                    <option value="ALL">All Categories</option>
-                    {NFT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-                <select
-                    value={filterRarity}
-                    onChange={e => setFilterRarity(e.target.value as NftRarity | 'ALL')}
-                    className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
-                >
-                    <option value="ALL">All Rarities</option>
-                    {NFT_RARITIES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-            </div>
+            {activeView === 'studio' && (
+                <AvatarStudio
+                    onDraftCreated={(nft) => {
+                        setActiveView('inventory');
+                        load();
+                        viewDetail(nft);
+                    }}
+                />
+            )}
 
-            {/* Main Content: Grid + Detail Panel */}
-            <div className="flex gap-6">
-                {/* Left: NFT Grid */}
-                <div className={`flex-1 ${selectedNft ? 'max-w-[60%]' : ''} transition-all`}>
-                    {loading ? (
-                        <div className="flex justify-center py-20"><Loader2 size={24} className="animate-spin text-primary" /></div>
-                    ) : filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center bg-surface border border-white/5 rounded-2xl">
-                            <Box className="w-12 h-12 text-primary opacity-20 mb-4" />
-                            <p className="text-white font-black text-lg">No NFTs found</p>
-                            <p className="text-text-muted text-sm mt-1">Create your first NFT to get started</p>
+            {activeView === 'inventory' && (
+                <>
+                    {/* Filters */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="relative flex-1 max-w-xs">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                            <input
+                                type="text" placeholder="Search NFTs..." value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-full bg-surface border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-text-muted/50 focus:border-primary/50 outline-none"
+                            />
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filtered.map(nft => {
-                                const rtw = RARITY_TW[nft.rarity];
-                                return (
-                                    <div
-                                        key={nft._id}
-                                        onClick={() => viewDetail(nft)}
-                                        className={`group cursor-pointer border rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${rtw.border} bg-[#111214] ${rtw.glow} ${selectedNft?._id === nft._id ? 'ring-2 ring-primary' : ''}`}
-                                    >
-                                        {/* Image */}
-                                        <div className="relative aspect-square bg-gradient-to-br from-black/40 to-black/60 flex items-center justify-center overflow-hidden">
-                                            {nft.imageUrl ? (
-                                                <img
-                                                    src={getImageUrl(nft.imageUrl)}
-                                                    alt={nft.name}
-                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                    onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${nft.name}`; }}
-                                                />
-                                            ) : (
-                                                <div className="text-4xl opacity-30">🎮</div>
-                                            )}
-                                            {/* Rarity badge */}
-                                            <span
-                                                className="absolute top-3 left-3 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white backdrop-blur-sm"
-                                                style={{ background: RARITY_COLORS[nft.rarity] + '40' }}
+                        <select
+                            value={filterCat}
+                            onChange={e => setFilterCat(e.target.value as NftCategory | 'ALL')}
+                            className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
+                        >
+                            <option value="ALL">All Categories</option>
+                            {NFT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                        <select
+                            value={filterRarity}
+                            onChange={e => setFilterRarity(e.target.value as NftRarity | 'ALL')}
+                            className="bg-surface border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
+                        >
+                            <option value="ALL">All Rarities</option>
+                            {NFT_RARITIES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
+                    </div>
+
+                    {/* Main Content: Grid + Detail Panel */}
+                    <div className="flex gap-6">
+                        {/* Left: NFT Grid */}
+                        <div className={`flex-1 ${selectedNft ? 'max-w-[60%]' : ''} transition-all`}>
+                            {loading ? (
+                                <div className="flex justify-center py-20"><Loader2 size={24} className="animate-spin text-primary" /></div>
+                            ) : filtered.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-center bg-surface border border-white/5 rounded-2xl">
+                                    <Box className="w-12 h-12 text-primary opacity-20 mb-4" />
+                                    <p className="text-white font-black text-lg">No NFTs found</p>
+                                    <p className="text-text-muted text-sm mt-1">Create your first NFT to get started</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {filtered.map(nft => {
+                                        const rtw = RARITY_TW[nft.rarity];
+                                        return (
+                                            <div
+                                                key={nft._id}
+                                                onClick={() => viewDetail(nft)}
+                                                className={`group cursor-pointer border rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${rtw.border} bg-[#111214] ${rtw.glow} ${selectedNft?._id === nft._id ? 'ring-2 ring-primary' : ''}`}
                                             >
-                                                {nft.rarity}
-                                            </span>
-                                            {/* Status */}
-                                            <span className={`absolute top-3 right-3 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase ${nft.status === 'DRAFT' ? 'bg-yellow-500/20 text-yellow-400' : nft.status === 'MINTED' ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white'}`}>
-                                                {nft.status}
-                                            </span>
-                                            {/* Category */}
-                                            <span className="absolute bottom-2 left-3 px-2 py-0.5 rounded-lg bg-black/50 backdrop-blur-sm text-[8px] font-bold text-white uppercase tracking-widest">
-                                                {nft.category}
-                                            </span>
-                                        </div>
+                                                {/* Image */}
+                                                <div className="relative aspect-square bg-gradient-to-br from-black/40 to-black/60 flex items-center justify-center overflow-hidden">
+                                                    {nft.imageUrl ? (
+                                                        <img
+                                                            src={getImageUrl(nft.imageUrl)}
+                                                            alt={nft.name}
+                                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                            onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${nft.name}`; }}
+                                                        />
+                                                    ) : (
+                                                        <div className="text-4xl opacity-30">🎮</div>
+                                                    )}
+                                                    {/* Rarity badge */}
+                                                    <span
+                                                        className="absolute top-3 left-3 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white backdrop-blur-sm"
+                                                        style={{ background: RARITY_COLORS[nft.rarity] + '40' }}
+                                                    >
+                                                        {nft.rarity}
+                                                    </span>
+                                                    {/* Status */}
+                                                    <span className={`absolute top-3 right-3 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase ${nft.status === 'DRAFT' ? 'bg-yellow-500/20 text-yellow-400' : nft.status === 'MINTED' ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white'}`}>
+                                                        {nft.status}
+                                                    </span>
+                                                    {/* Category */}
+                                                    <span className="absolute bottom-2 left-3 px-2 py-0.5 rounded-lg bg-black/50 backdrop-blur-sm text-[8px] font-bold text-white uppercase tracking-widest">
+                                                        {nft.category}
+                                                    </span>
+                                                </div>
 
-                                        {/* Info */}
-                                        <div className="p-3 space-y-2">
-                                            <h3 className="text-white font-black text-sm truncate">{nft.name}</h3>
-                                            <div className="flex items-center justify-between text-[10px] text-text-muted font-bold">
-                                                <span>Supply: {nft.supply}/{nft.maxSupply === 0 ? '∞' : nft.maxSupply}</span>
-                                                {nft.isTradeable && <span className="text-primary">Tradeable</span>}
+                                                {/* Info */}
+                                                <div className="p-3 space-y-2">
+                                                    <h3 className="text-white font-black text-sm truncate">{nft.name}</h3>
+                                                    <div className="flex items-center justify-between text-[10px] text-text-muted font-bold">
+                                                        <span>Supply: {nft.supply}/{nft.maxSupply === 0 ? '∞' : nft.maxSupply}</span>
+                                                        {nft.isTradeable && <span className="text-primary">Tradeable</span>}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
 
-                {/* Right: Detail Panel */}
-                {selectedNft && (
-                    <NftDetailPanel
-                        nft={selectedNft}
-                        onClose={() => setSelectedNft(null)}
-                        onDelete={() => handleDelete(selectedNft._id)}
-                        onRefresh={() => viewDetail(selectedNft)}
-                    />
-                )}
-            </div>
+                        {/* Right: Detail Panel */}
+                        {selectedNft && (
+                            <NftDetailPanel
+                                nft={selectedNft}
+                                onClose={() => setSelectedNft(null)}
+                                onDelete={() => handleDelete(selectedNft._id)}
+                                onRefresh={() => viewDetail(selectedNft)}
+                            />
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* Create Modal */}
             {showCreate && (
@@ -223,6 +263,819 @@ export default function NftManager() {
                     onCreated={(nft) => { setShowCreate(false); load(); viewDetail(nft); }}
                 />
             )}
+        </div>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AVATAR STUDIO
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type AvatarLayerKey = 'base' | 'hair' | 'ears' | 'outfit' | 'accessory';
+type AvatarLayer = { file: File | null; preview: string | null };
+type AvatarLayers = Record<AvatarLayerKey, AvatarLayer>;
+type AvatarView = 'front' | 'side' | 'back';
+type CameraPreset = 'front' | 'right' | 'back' | 'left' | 'top' | 'bottom';
+
+const LAYER_LABELS: Record<AvatarLayerKey, string> = {
+    base: 'Base Body',
+    hair: 'Hair Layer',
+    ears: 'Ears Layer',
+    outfit: 'Outfit Layer',
+    accessory: 'Accessory Layer',
+};
+
+/** model-viewer orbit: theta phi radius — radius as % of model bounds (higher = farther = full body) */
+const AVATAR_CAMERA_ORBIT: Record<AvatarView, string> = {
+    front: '0deg 68deg 168%',
+    side: '90deg 68deg 168%',
+    back: '180deg 68deg 168%',
+};
+
+const CAMERA_PRESET_ORBIT: Record<CameraPreset, string> = {
+    front: '0deg 68deg 168%',
+    right: '90deg 68deg 168%',
+    back: '180deg 68deg 168%',
+    left: '270deg 68deg 168%',
+    top: '0deg 8deg 210%',
+    bottom: '0deg 172deg 210%',
+};
+
+function AvatarStudio({ onDraftCreated }: { onDraftCreated: (nft: Nft) => void }) {
+    const [studioConfigCollapsed, setStudioConfigCollapsed] = useState(true);
+    const fileRefs = useRef<Record<AvatarLayerKey, HTMLInputElement | null>>({
+        base: null,
+        hair: null,
+        ears: null,
+        outfit: null,
+        accessory: null,
+    });
+    const [saving, setSaving] = useState(false);
+    const [layers, setLayers] = useState<AvatarLayers>({
+        base: { file: null, preview: null },
+        hair: { file: null, preview: null },
+        ears: { file: null, preview: null },
+        outfit: { file: null, preview: null },
+        accessory: { file: null, preview: null },
+    });
+    const [config, setConfig] = useState({
+        gender: 'FEMALE',
+        view: 'front' as AvatarView,
+        bodyType: 'Athletic',
+        skinTone: '#d1a07d',
+        faceStyle: 'Sharp',
+        hairstyle: 'Long',
+        hairLength: 74,
+        hairColor: '#111827',
+        earType: 'Human',
+        earSize: 58,
+        eyeColor: '#60a5fa',
+        eyebrow: 'Angled',
+        nose: 'Straight',
+        mouth: 'Neutral',
+        outfit: 'Tactical',
+        boots: 'Combat',
+        accessory: 'Holster',
+        aura: 'Neon',
+        outfitModelId: 'none',
+        bodySize: 52,
+        headSize: 50,
+        power: 84,
+        agility: 76,
+        focus: 88,
+    });
+
+    const pickLayer = (key: AvatarLayerKey, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            setLayers(prev => ({
+                ...prev,
+                [key]: { file, preview: reader.result as string },
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const clearLayer = (key: AvatarLayerKey) => {
+        setLayers(prev => ({ ...prev, [key]: { file: null, preview: null } }));
+        if (fileRefs.current[key]) fileRefs.current[key]!.value = '';
+    };
+
+    const resetStudio = () => {
+        setLayers({
+            base: { file: null, preview: null },
+            hair: { file: null, preview: null },
+            ears: { file: null, preview: null },
+            outfit: { file: null, preview: null },
+            accessory: { file: null, preview: null },
+        });
+        setConfig({
+            gender: 'FEMALE',
+            view: 'front',
+            bodyType: 'Athletic',
+            skinTone: '#d1a07d',
+            faceStyle: 'Sharp',
+            hairstyle: 'Long',
+            hairLength: 74,
+            hairColor: '#111827',
+            earType: 'Human',
+            earSize: 58,
+            eyeColor: '#60a5fa',
+            eyebrow: 'Angled',
+            nose: 'Straight',
+            mouth: 'Neutral',
+            outfit: 'Tactical',
+            boots: 'Combat',
+            accessory: 'Holster',
+            aura: 'Neon',
+            outfitModelId: 'none',
+            bodySize: 52,
+            headSize: 50,
+            power: 84,
+            agility: 76,
+            focus: 88,
+        });
+    };
+
+    const score = Math.round((config.power + config.agility + config.focus) / 3);
+    const rarity: NftRarity =
+        score >= 90 ? 'MYTHIC'
+            : score >= 80 ? 'LEGENDARY'
+                : score >= 68 ? 'EPIC'
+                    : score >= 56 ? 'RARE'
+                        : score >= 40 ? 'UNCOMMON'
+                            : 'COMMON';
+    const generatedName = `${config.gender === 'MALE' ? 'Male' : 'Female'} ${config.outfit} ${config.hairstyle}`;
+
+    const attributes = [
+        { traitType: 'Gender', value: config.gender },
+        { traitType: 'Body Type', value: config.bodyType },
+        { traitType: 'Skin Tone', value: config.skinTone },
+        { traitType: 'Face Style', value: config.faceStyle },
+        { traitType: 'Hair Style', value: config.hairstyle },
+        { traitType: 'Hair Length', value: String(config.hairLength), numericValue: config.hairLength, maxValue: 100 },
+        { traitType: 'Hair Color', value: config.hairColor },
+        { traitType: 'Ear Type', value: config.earType },
+        { traitType: 'Ear Size', value: String(config.earSize), numericValue: config.earSize, maxValue: 100 },
+        { traitType: 'Eye Color', value: config.eyeColor },
+        { traitType: 'Eyebrow', value: config.eyebrow },
+        { traitType: 'Nose', value: config.nose },
+        { traitType: 'Mouth', value: config.mouth },
+        { traitType: 'Outfit', value: config.outfit },
+        { traitType: 'Outfit 3D mesh', value: config.outfitModelId },
+        { traitType: 'Boots', value: config.boots },
+        { traitType: 'Accessory', value: config.accessory },
+        { traitType: 'Aura', value: config.aura },
+        { traitType: 'Body Size', value: String(config.bodySize), numericValue: config.bodySize, maxValue: 100 },
+        { traitType: 'Head Size', value: String(config.headSize), numericValue: config.headSize, maxValue: 100 },
+        { traitType: 'Power', value: String(config.power), numericValue: config.power, maxValue: 100 },
+        { traitType: 'Agility', value: String(config.agility), numericValue: config.agility, maxValue: 100 },
+        { traitType: 'Focus', value: String(config.focus), numericValue: config.focus, maxValue: 100 },
+    ];
+
+    const saveAsDraft = async () => {
+        try {
+            setSaving(true);
+            const fd = new FormData();
+            fd.append('name', generatedName);
+            fd.append('description', `${config.gender} avatar generated from layered base model with editable hair, ears, face, outfit, and accessories.`);
+            fd.append('category', 'AVATAR');
+            fd.append('rarity', rarity);
+            fd.append('tags', JSON.stringify([
+                'avatar-studio',
+                config.gender.toLowerCase(),
+                config.outfit.toLowerCase().replace(/\s+/g, '-'),
+                config.hairstyle.toLowerCase().replace(/\s+/g, '-'),
+                config.earType.toLowerCase(),
+            ]));
+            fd.append('isEquippable', 'true');
+            fd.append('isTradeable', 'true');
+            fd.append('isConsumable', 'false');
+            fd.append('maxSupply', '100');
+
+            const primaryFile = layers.base.file || layers.outfit.file || layers.hair.file || layers.ears.file || layers.accessory.file;
+            if (primaryFile) fd.append('file', primaryFile);
+
+            const created = await nftCoreService.create(fd);
+            for (const attr of attributes) {
+                await nftAttributeService.add({
+                    nftId: created._id,
+                    traitType: attr.traitType,
+                    value: attr.value,
+                    displayType: attr.numericValue != null ? 'number' : undefined,
+                    numericValue: attr.numericValue,
+                    maxValue: attr.maxValue,
+                });
+            }
+            onDraftCreated(created);
+            alert('Avatar draft created.');
+        } catch (e: unknown) {
+            alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to create avatar draft');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col gap-5 xl:h-[calc(100vh-9rem)] xl:flex-row xl:gap-0 xl:overflow-hidden xl:rounded-2xl xl:border xl:border-white/10 xl:bg-[#0d0f12]">
+            <aside
+                className={cn(
+                    'shrink-0 overflow-x-hidden border border-white/10 bg-[#111214] transition-[width,opacity] duration-300 ease-out',
+                    'rounded-2xl xl:rounded-none xl:border-y-0 xl:border-l-0',
+                    studioConfigCollapsed
+                        ? 'xl:pointer-events-none xl:w-0 xl:border-r-0 xl:opacity-0'
+                        : 'xl:w-[min(100%,22rem)] 2xl:w-96 xl:border-r xl:border-white/10 xl:opacity-100',
+                )}
+            >
+                <div className="h-full max-h-[65vh] min-w-0 space-y-6 overflow-y-auto overflow-x-hidden p-4 sm:p-5 xl:max-h-none xl:h-full xl:w-full">
+                <div className="flex items-center justify-between gap-3">
+                    <h2 className="flex min-w-0 items-center gap-2 text-sm font-black uppercase tracking-widest text-white">
+                        <Wand2 size={15} className="shrink-0 text-primary" />
+                        <span className="min-w-0 leading-tight">Character creator</span>
+                    </h2>
+                    <button
+                        type="button"
+                        onClick={resetStudio}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/20 hover:text-white"
+                    >
+                        <RotateCcw size={12} /> Reset
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setConfig(prev => ({ ...prev, gender: 'MALE' }))}
+                        className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'MALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
+                    >
+                        Male
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConfig(prev => ({ ...prev, gender: 'FEMALE' }))}
+                        className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'FEMALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
+                    >
+                        Female
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                    {(['front', 'side', 'back'] as AvatarView[]).map(view => (
+                        <button
+                            key={view}
+                            type="button"
+                            onClick={() => setConfig(prev => ({ ...prev, view }))}
+                            className={`flex min-h-12 items-center justify-center rounded-xl px-1 py-2 text-center text-[9px] font-black uppercase leading-tight tracking-wider border transition-all sm:text-[10px] sm:tracking-widest ${config.view === view ? 'bg-white/15 text-white border-white/20' : 'text-text-muted border-white/10 hover:text-white'}`}
+                        >
+                            {view} view
+                        </button>
+                    ))}
+                </div>
+
+                <div className="space-y-3 border-t border-white/5 pt-5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Layer uploads</p>
+                    <div className="grid grid-cols-1 gap-3">
+                        {(Object.keys(LAYER_LABELS) as AvatarLayerKey[]).map(key => (
+                            <div key={key} className="min-w-0 rounded-xl border border-white/10 bg-black/25 p-3 sm:p-3.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{LAYER_LABELS[key]}</p>
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => fileRefs.current[key]?.click()}
+                                        className="min-h-10 w-full min-w-0 rounded-lg bg-white/10 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-white/15"
+                                    >
+                                        Upload
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => clearLayer(key)}
+                                        className="min-h-10 w-full min-w-0 rounded-lg border border-white/15 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/25 hover:text-white"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                                <input
+                                    ref={el => { fileRefs.current[key] = el; }}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={e => pickLayer(key, e)}
+                                    className="hidden"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="min-w-0 border-t border-white/5 pt-5">
+                    <label className="mb-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted">
+                        <Palette size={12} className="shrink-0" />
+                        3D outfit (GLB)
+                    </label>
+                    <select
+                        value={config.outfitModelId}
+                        onChange={e => setConfig(prev => ({ ...prev, outfitModelId: e.target.value }))}
+                        className="studio-select box-border w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white focus:border-primary/60 focus:outline-none"
+                    >
+                        {OUTFIT_MODEL_CATALOG.map(o => (
+                            <option key={o.id} value={o.id}>{o.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 border-t border-white/5 pt-5">
+                    <StudioSelect label="Body Type" icon={<User size={12} />} value={config.bodyType} options={['Athletic', 'Lean', 'Heavy', 'Heroic']} onChange={value => setConfig(prev => ({ ...prev, bodyType: value }))} />
+                    <StudioSelect label="Face Style" icon={<User size={12} />} value={config.faceStyle} options={['Sharp', 'Soft', 'Strong', 'Angular']} onChange={value => setConfig(prev => ({ ...prev, faceStyle: value }))} />
+                    <StudioSelect label="Hair Style" icon={<Sparkles size={12} />} value={config.hairstyle} options={['Bald', 'Buzz', 'Short', 'Long', 'Braids', 'Mohawk']} onChange={value => setConfig(prev => ({ ...prev, hairstyle: value }))} />
+                    <StudioSelect label="Ear Type" icon={<Sparkles size={12} />} value={config.earType} options={['Human', 'Elf', 'Cyber', 'Pointed']} onChange={value => setConfig(prev => ({ ...prev, earType: value }))} />
+                    <StudioSelect label="Outfit" icon={<Palette size={12} />} value={config.outfit} options={['Tactical', 'Streetwear', 'Cyber Suit', 'Stealth', 'Battle Armor']} onChange={value => setConfig(prev => ({ ...prev, outfit: value }))} />
+                    <StudioSelect label="Accessory" icon={<Sparkles size={12} />} value={config.accessory} options={['Holster', 'Necklace', 'Headset', 'Blade', 'None']} onChange={value => setConfig(prev => ({ ...prev, accessory: value }))} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 border-t border-white/5 pt-5 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-4">
+                    <ColorPicker label="Skin Tone" value={config.skinTone} onChange={value => setConfig(prev => ({ ...prev, skinTone: value }))} />
+                    <ColorPicker label="Hair Color" value={config.hairColor} onChange={value => setConfig(prev => ({ ...prev, hairColor: value }))} />
+                    <ColorPicker label="Eye Color" value={config.eyeColor} onChange={value => setConfig(prev => ({ ...prev, eyeColor: value }))} />
+                    <StudioSelect label="Aura" icon={<Sparkles size={12} />} value={config.aura} options={['Neon', 'Ice', 'Shadow', 'Fire', 'Gold']} onChange={value => setConfig(prev => ({ ...prev, aura: value }))} />
+                </div>
+
+                <div className="space-y-4 rounded-xl border border-white/10 bg-black/20 p-4 sm:p-5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1.5">
+                        <SlidersHorizontal size={12} className="shrink-0" />
+                        Morph controls
+                    </p>
+                    <div className="space-y-4">
+                        <StudioSlider label="Hair Length" value={config.hairLength} onChange={value => setConfig(prev => ({ ...prev, hairLength: value }))} />
+                        <StudioSlider label="Ear Size" value={config.earSize} onChange={value => setConfig(prev => ({ ...prev, earSize: value }))} />
+                        <StudioSlider label="Body Size (3D)" value={config.bodySize} onChange={value => setConfig(prev => ({ ...prev, bodySize: value }))} />
+                        <StudioSlider label="Head Size (3D)" value={config.headSize} onChange={value => setConfig(prev => ({ ...prev, headSize: value }))} />
+                        <StudioSlider label="Power" value={config.power} onChange={value => setConfig(prev => ({ ...prev, power: value }))} />
+                        <StudioSlider label="Agility" value={config.agility} onChange={value => setConfig(prev => ({ ...prev, agility: value }))} />
+                        <StudioSlider label="Focus" value={config.focus} onChange={value => setConfig(prev => ({ ...prev, focus: value }))} />
+                    </div>
+                </div>
+                </div>
+            </aside>
+
+            <div className="relative flex min-h-[520px] flex-1 min-w-0 flex-col border border-white/10 bg-[#05070a] rounded-2xl xl:min-h-0 xl:rounded-none xl:border-0">
+                <button
+                    type="button"
+                    aria-expanded={!studioConfigCollapsed}
+                    aria-label={studioConfigCollapsed ? 'Show character settings' : 'Hide settings — full-width preview'}
+                    onClick={() => setStudioConfigCollapsed((c) => !c)}
+                    className="absolute left-0 top-1/2 z-40 flex h-24 w-8 -translate-y-1/2 items-center justify-center rounded-r-lg border border-l-0 border-white/20 bg-black/90 text-white/90 shadow-[6px_0_28px_rgba(0,0,0,0.55)] transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                    {studioConfigCollapsed ? <ChevronRight size={18} strokeWidth={2.5} /> : <ChevronLeft size={18} strokeWidth={2.5} />}
+                </button>
+
+                <div
+                    className={cn(
+                        'flex min-h-0 flex-1 flex-col gap-3 p-3 pl-4 sm:pl-5 xl:h-full',
+                        studioConfigCollapsed && 'xl:gap-2 xl:p-0',
+                    )}
+                >
+                    <div
+                        className={cn(
+                            'flex shrink-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between',
+                            studioConfigCollapsed && 'xl:absolute xl:left-10 xl:right-0 xl:top-0 xl:z-30 xl:flex-row xl:items-center xl:justify-between xl:bg-gradient-to-b xl:from-black/70 xl:to-transparent xl:px-4 xl:py-3 xl:pt-4',
+                        )}
+                    >
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Live preview</p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-white/35">
+                            Drag to rotate · scroll to zoom
+                        </p>
+                    </div>
+
+                    <div className="flex min-h-0 flex-1 flex-col xl:min-h-0">
+                        <AvatarPreviewCard
+                            view={config.view}
+                            config={config}
+                            layers={layers}
+                            fullBleed={studioConfigCollapsed}
+                            outfitModelUrl={resolveOutfitModelUrl(config.outfitModelId)}
+                        />
+                    </div>
+
+                    <div className={cn('grid shrink-0 grid-cols-2 gap-2', studioConfigCollapsed && 'xl:px-4 xl:pb-2')}>
+                        <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Generated Name</p>
+                            <p className="truncate text-sm font-bold text-white">{generatedName}</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Auto Rarity</p>
+                            <p className="text-sm font-black" style={{ color: RARITY_COLORS[rarity] }}>{rarity}</p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={saveAsDraft}
+                        disabled={saving}
+                        className={cn(
+                            'inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-black uppercase tracking-wider text-black transition-all hover:bg-primary/90 disabled:opacity-50',
+                            studioConfigCollapsed && 'xl:mx-4 xl:mb-4',
+                        )}
+                    >
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        {saving ? 'Saving Draft...' : 'Save Character as NFT'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = false, outfitModelUrl = null }: {
+    view: AvatarView;
+    config: {
+        gender: string;
+        bodyType: string;
+        skinTone: string;
+        hairLength: number;
+        hairColor: string;
+        earSize: number;
+        eyeColor: string;
+        aura: string;
+        bodySize: number;
+        headSize: number;
+    };
+    layers: AvatarLayers;
+    compact?: boolean;
+    /** Edge-to-edge 3D viewport (e.g. config panel collapsed). */
+    fullBleed?: boolean;
+    /** Second glTF layer (clothing), same camera as body */
+    outfitModelUrl?: string | null;
+}) {
+    const viewerRef = useRef<HTMLElement | null>(null);
+    const outfitViewerRef = useRef<HTMLElement | null>(null);
+    const configRef = useRef(config);
+    configRef.current = config;
+    const [modelFailed, setModelFailed] = useState(false);
+    const [cameraOrbit, setCameraOrbit] = useState<string>(AVATAR_CAMERA_ORBIT[view]);
+    const [activePreset, setActivePreset] = useState<CameraPreset>(view === 'side' ? 'right' : view);
+
+    const auraBg: Record<string, string> = {
+        Neon: 'linear-gradient(160deg, #0a1220, #172554 65%, #0e7490)',
+        Ice: 'linear-gradient(160deg, #0f172a, #1d4ed8 60%, #bae6fd)',
+        Shadow: 'linear-gradient(160deg, #020617, #312e81 55%, #581c87)',
+        Fire: 'linear-gradient(160deg, #111827, #9a3412 55%, #dc2626)',
+        Gold: 'linear-gradient(160deg, #111827, #78350f 55%, #f59e0b)',
+    };
+    const bodyScale = config.bodyType === 'Heroic' ? 1.06 : config.bodyType === 'Lean' ? 0.94 : 1;
+    const viewTransform = view === 'side' ? 'rotateY(24deg)' : view === 'back' ? 'rotateY(180deg)' : 'none';
+    useEffect(() => {
+        const nextOrbit = AVATAR_CAMERA_ORBIT[view];
+        setCameraOrbit(nextOrbit);
+        setActivePreset(view === 'side' ? 'right' : view);
+    }, [view]);
+
+    useEffect(() => {
+        if (compact) return;
+
+        setModelFailed(false);
+        const el = viewerRef.current;
+        if (!el) return;
+
+        const mv = el as unknown as {
+            updateFraming?: () => Promise<void>;
+            cameraOrbit?: string;
+        };
+
+        const onLoad = () => {
+            setModelFailed(false);
+            void (async () => {
+                try {
+                    await mv.updateFraming?.();
+                    mv.cameraOrbit = cameraOrbit;
+                } catch {
+                    /* ignore framing errors */
+                }
+                requestAnimationFrame(() => {
+                    mv.cameraOrbit = cameraOrbit;
+                    const c = configRef.current;
+                    void applyAvatarDynamicConfig(el, {
+                        skinTone: c.skinTone,
+                        hairColor: c.hairColor,
+                        eyeColor: c.eyeColor,
+                        aura: c.aura,
+                        bodyType: c.bodyType,
+                        bodySize: c.bodySize,
+                        headSize: c.headSize,
+                    });
+                });
+            })();
+        };
+        const onError = () => {
+            setModelFailed(true);
+        };
+
+        el.addEventListener('load', onLoad);
+        el.addEventListener('error', onError);
+        return () => {
+            el.removeEventListener('load', onLoad);
+            el.removeEventListener('error', onError);
+        };
+    }, [compact, cameraOrbit]);
+
+    useEffect(() => {
+        if (compact) return;
+        const el = viewerRef.current;
+        if (!el) return;
+        (el as unknown as { cameraOrbit?: string }).cameraOrbit = cameraOrbit;
+    }, [cameraOrbit, compact]);
+
+    useEffect(() => {
+        if (compact) return;
+        const el = viewerRef.current;
+        if (!el) return;
+        void applyAvatarDynamicConfig(el, {
+            skinTone: config.skinTone,
+            hairColor: config.hairColor,
+            eyeColor: config.eyeColor,
+            aura: config.aura,
+            bodyType: config.bodyType,
+            bodySize: config.bodySize,
+            headSize: config.headSize,
+        });
+    }, [
+        compact,
+        config.skinTone,
+        config.hairColor,
+        config.eyeColor,
+        config.aura,
+        config.bodyType,
+        config.bodySize,
+        config.headSize,
+    ]);
+
+    useEffect(() => {
+        if (compact || !outfitModelUrl) return;
+        const body = viewerRef.current as ModelViewerElement | null;
+        const outfit = outfitViewerRef.current as ModelViewerElement | null;
+        if (!body || !outfit) return;
+
+        const sync = () => {
+            outfit.cameraOrbit = body.getCameraOrbit().toString();
+            outfit.cameraTarget = body.getCameraTarget().toString();
+            outfit.fieldOfView = `${body.getFieldOfView()}deg`;
+        };
+
+        const onOutfitLoad = () => {
+            void outfit.updateFraming().then(sync).catch(() => { sync(); });
+        };
+
+        body.addEventListener('camera-change', sync);
+        outfit.addEventListener('load', onOutfitLoad);
+        sync();
+        return () => {
+            body.removeEventListener('camera-change', sync);
+            outfit.removeEventListener('load', onOutfitLoad);
+        };
+    }, [compact, outfitModelUrl]);
+
+    const applyPreset = (preset: CameraPreset) => {
+        setActivePreset(preset);
+        setCameraOrbit(CAMERA_PRESET_ORBIT[preset]);
+    };
+
+    const stepZoom = (direction: 'in' | 'out') => {
+        const orbit = cameraOrbit.split(' ');
+        if (orbit.length < 3) return;
+        const radius = orbit[2];
+        if (!radius.endsWith('%')) return;
+        const current = Number.parseFloat(radius.replace('%', ''));
+        if (!Number.isFinite(current)) return;
+        const next = direction === 'in' ? current * 0.9 : current * 1.12;
+        const clamped = Math.max(70, Math.min(340, next));
+        orbit[2] = `${clamped.toFixed(1)}%`;
+        setCameraOrbit(orbit.join(' '));
+    };
+
+    const vignette = 'absolute inset-0 bg-[radial-gradient(ellipse_at_50%_32%,rgba(0,255,136,0.07),transparent_55%)]';
+
+    const layerImages = [layers.base.preview, layers.outfit.preview, layers.hair.preview, layers.ears.preview, layers.accessory.preview].map((src, idx) => src && (
+        <img
+            key={`${idx}-${src}`}
+            src={src}
+            alt=""
+            className="absolute inset-0 z-[15] h-full w-full object-contain pointer-events-none"
+            style={{
+                transform: `${viewTransform} scale(${(compact ? 0.7 : bodyScale) + (idx === 2 ? config.hairLength / 500 : idx === 3 ? config.earSize / 700 : 0)})`,
+                filter: idx === 2 ? `drop-shadow(0 0 12px ${config.hairColor})` : undefined,
+            }}
+        />
+    ));
+
+    if (compact) {
+        return (
+            <div className="rounded-2xl border border-white/10 overflow-hidden" style={{ background: auraBg[config.aura] || auraBg.Neon }}>
+                <div className="relative flex h-40 items-center justify-center p-3" style={{ perspective: '900px' }}>
+                    <div className={`${vignette} pointer-events-none`} />
+                    <div
+                        className="relative z-10 w-[4.5rem] h-[7rem] rounded-full border border-white/25"
+                        style={{
+                            background: `linear-gradient(180deg, ${config.skinTone}ee, ${config.skinTone}aa)`,
+                            transform: `${viewTransform} scale(0.62)`,
+                            boxShadow: '0 0 24px rgba(0,255,136,0.12)',
+                        }}
+                    >
+                        <div className="absolute -top-6 left-1/2 h-10 w-10 -translate-x-1/2 rounded-full border border-white/30" style={{ background: config.skinTone }} />
+                    </div>
+                    {layerImages}
+                    <span className="absolute left-2 top-2 z-20 rounded-lg bg-black/55 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-white">
+                        {view}
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className={cn(
+                'flex h-full min-h-0 flex-col overflow-hidden',
+                fullBleed ? 'rounded-none border-0 xl:min-h-0 xl:flex-1' : 'rounded-xl border border-white/10 xl:rounded-lg',
+            )}
+            style={{ background: auraBg[config.aura] || auraBg.Neon }}
+        >
+            <div
+                className={cn(
+                    'relative flex min-h-[280px] flex-1 items-stretch justify-center',
+                    fullBleed ? 'min-h-0 p-0' : 'p-1 sm:p-3',
+                )}
+                style={{ perspective: '900px' }}
+            >
+                <div className="absolute inset-0 bg-[#05070a]" />
+                <div className={`${vignette} pointer-events-none z-[1]`} />
+
+                <div className="relative z-10 h-full min-h-[240px] w-full">
+                    <model-viewer
+                        ref={viewerRef}
+                        className="absolute inset-0 h-full w-full"
+                        src={AVATAR_GLB_URL}
+                        camera-controls
+                        touch-action="none"
+                        reveal="auto"
+                        interaction-prompt="none"
+                        interpolation-decay="120"
+                        camera-orbit={cameraOrbit}
+                        min-camera-orbit="auto 22deg 72%"
+                        max-camera-orbit="auto 175deg 340%"
+                        min-field-of-view="18deg"
+                        max-field-of-view="48deg"
+                        zoom-sensitivity="0.35"
+                        exposure="1"
+                        shadow-intensity="0.45"
+                        shadow-softness="0.85"
+                        environment-image="neutral"
+                        tone-mapping="aces"
+                        style={{
+                            touchAction: 'none',
+                            backgroundColor: '#05070a',
+                            ...({ '--poster-color': 'transparent' } as CSSProperties),
+                        }}
+                    />
+                    {outfitModelUrl ? (
+                        <model-viewer
+                            ref={outfitViewerRef}
+                            className="pointer-events-none absolute inset-0 z-[11] h-full w-full"
+                            src={outfitModelUrl}
+                            reveal="auto"
+                            interaction-prompt="none"
+                            interpolation-decay="120"
+                            camera-orbit={cameraOrbit}
+                            min-camera-orbit="auto 22deg 72%"
+                            max-camera-orbit="auto 175deg 340%"
+                            min-field-of-view="18deg"
+                            max-field-of-view="48deg"
+                            zoom-sensitivity="0.35"
+                            exposure="1"
+                            shadow-intensity="0"
+                            environment-image="neutral"
+                            tone-mapping="aces"
+                            style={{
+                                touchAction: 'none',
+                                backgroundColor: 'transparent',
+                                ...({ '--poster-color': 'transparent' } as CSSProperties),
+                            }}
+                        />
+                    ) : null}
+                </div>
+
+                <div className="absolute right-3 top-3 z-30 flex flex-col gap-2 rounded-xl border border-white/10 bg-black/45 p-2 backdrop-blur-sm">
+                    <div className="grid grid-cols-2 gap-1">
+                        <button
+                            type="button"
+                            onClick={() => stepZoom('in')}
+                            className="h-7 w-7 rounded-lg border border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
+                            title="Zoom in"
+                        >
+                            +
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => stepZoom('out')}
+                            className="h-7 w-7 rounded-lg border border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
+                            title="Zoom out"
+                        >
+                            -
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                        {(['front', 'right', 'back', 'left', 'top', 'bottom'] as CameraPreset[]).map((preset) => (
+                            <button
+                                key={preset}
+                                type="button"
+                                onClick={() => applyPreset(preset)}
+                                className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-widest transition-all ${
+                                    activePreset === preset
+                                        ? 'border-primary/60 bg-primary/20 text-primary'
+                                        : 'border-white/15 text-white/70 hover:bg-white/10 hover:text-white'
+                                }`}
+                            >
+                                {preset}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {modelFailed && (
+                    <span className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-lg border border-amber-500/30 bg-black/70 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-amber-200/90">
+                        3D model failed to load — check /public/models/BodyMaleTemplate.glb
+                    </span>
+                )}
+
+                {layerImages}
+
+                <span className="absolute left-2 top-2 z-30 rounded-lg bg-black/55 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white">
+                    {view}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function StudioSelect({ label, icon, value, options, onChange }: {
+    label: string;
+    icon: React.ReactNode;
+    value: string;
+    options: string[];
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div className="min-w-0">
+            <label className="mb-2 flex min-w-0 items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted">
+                <span className="shrink-0 text-primary/90">{icon}</span>
+                <span className="min-w-0 leading-snug">{label}</span>
+            </label>
+            <select
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                className="studio-select box-border h-11 w-full min-w-0 max-w-full cursor-pointer rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30"
+            >
+                {options.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+        </div>
+    );
+}
+
+function StudioSlider({ label, value, onChange }: {
+    label: string;
+    value: number;
+    onChange: (value: number) => void;
+}) {
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-white font-bold">{label}</span>
+                <span className="text-xs text-primary font-black">{value}</span>
+            </div>
+            <input
+                type="range"
+                min={0}
+                max={100}
+                value={value}
+                onChange={e => onChange(+e.target.value)}
+                className="w-full accent-primary"
+            />
+        </div>
+    );
+}
+
+function ColorPicker({ label, value, onChange }: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div className="min-w-0">
+            <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-text-muted">{label}</label>
+            <input
+                type="color"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                className="box-border h-11 w-full min-w-0 cursor-pointer rounded-xl border border-white/10 bg-black/30 px-1 py-1"
+            />
         </div>
     );
 }

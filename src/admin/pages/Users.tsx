@@ -293,50 +293,54 @@ export default function Users() {
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex flex-wrap gap-2 border-b border-white/5 pb-1">
-                <TabButton
-                    active={activeTab === 'all'}
-                    onClick={() => setActiveTab('all')}
-                    icon={<UsersIcon size={16} />}
-                    label="All Users"
-                />
-                <TabButton
-                    active={activeTab === 'player'}
-                    onClick={() => setActiveTab('player')}
-                    icon={<UserIcon size={16} />}
-                    label="Players"
-                />
-                <TabButton
-                    active={activeTab === 'team_manager'}
-                    onClick={() => setActiveTab('team_manager')}
-                    icon={<Shield size={16} />}
-                    label="Managers"
-                />
-                <TabButton
-                    active={activeTab === 'referee'}
-                    onClick={() => setActiveTab('referee')}
-                    icon={<Gavel size={16} />}
-                    label="Referees"
-                />
-                <TabButton
-                    active={activeTab === 'admin'}
-                    onClick={() => setActiveTab('admin')}
-                    icon={<Crown size={16} />}
-                    label="Admins"
-                />
-                <TabButton
-                    active={activeTab === 'reports'}
-                    onClick={() => setActiveTab('reports')}
-                    icon={<FileText size={16} />}
-                    label="Reports"
-                />
-                <TabButton
-                    active={activeTab === 'blocked'}
-                    onClick={() => setActiveTab('blocked')}
-                    icon={<Ban size={16} />}
-                    label="Blocked Users"
-                />
+            {/* Tabs — row 1: roles; row 2: Reports + Blocked */}
+            <div className="flex flex-col gap-2 border-b border-white/5 pb-1">
+                <div className="flex flex-wrap gap-2">
+                    <TabButton
+                        active={activeTab === 'all'}
+                        onClick={() => setActiveTab('all')}
+                        icon={<UsersIcon size={16} />}
+                        label="All Users"
+                    />
+                    <TabButton
+                        active={activeTab === 'player'}
+                        onClick={() => setActiveTab('player')}
+                        icon={<UserIcon size={16} />}
+                        label="Players"
+                    />
+                    <TabButton
+                        active={activeTab === 'team_manager'}
+                        onClick={() => setActiveTab('team_manager')}
+                        icon={<Shield size={16} />}
+                        label="Managers"
+                    />
+                    <TabButton
+                        active={activeTab === 'referee'}
+                        onClick={() => setActiveTab('referee')}
+                        icon={<Gavel size={16} />}
+                        label="Referees"
+                    />
+                    <TabButton
+                        active={activeTab === 'admin'}
+                        onClick={() => setActiveTab('admin')}
+                        icon={<Crown size={16} />}
+                        label="Admins"
+                    />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <TabButton
+                        active={activeTab === 'reports'}
+                        onClick={() => setActiveTab('reports')}
+                        icon={<FileText size={16} />}
+                        label="Reports"
+                    />
+                    <TabButton
+                        active={activeTab === 'blocked'}
+                        onClick={() => setActiveTab('blocked')}
+                        icon={<Ban size={16} />}
+                        label="Blocked Users"
+                    />
+                </div>
             </div>
 
             {/* Filters & Search */}

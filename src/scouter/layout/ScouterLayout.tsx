@@ -3,7 +3,6 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
-    Video,
     Star,
     LogOut,
     Menu,
@@ -13,6 +12,7 @@ import {
     FileText,
     Send,
     Bookmark,
+    Sparkles,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -38,9 +38,9 @@ export default function ScouterLayout() {
 
     return (
         <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-white">
-            <div className="flex flex-1 bg-[#0e0f11] rounded-[22px] overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.45)]">
+            <div className="flex flex-1 rounded-[22px] overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.45)] ring-1 ring-scout-violet/15 bg-gradient-to-br from-[#0e0f11] via-[#0b0c10] to-[#08090c]">
                 <aside className={cn(
-                    'flex flex-col shrink-0 h-full z-40 transition-all duration-300 ease-in-out border-r border-white/[0.05] bg-[#0b0c0e]',
+                    'flex flex-col shrink-0 h-full z-40 transition-all duration-300 ease-in-out border-r border-white/[0.05] bg-[#0a0b0d]',
                     isSidebarOpen ? 'w-60' : 'w-[68px]'
                 )}>
                     <div className={cn(
@@ -53,14 +53,14 @@ export default function ScouterLayout() {
                         {isSidebarOpen && (
                             <div className="overflow-hidden">
                                 <p className="text-white font-black text-sm uppercase tracking-widest leading-none">Scout</p>
-                                <p className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] leading-none mt-0.5">Hub</p>
+                                <p className="text-scout-cyan text-[10px] font-bold uppercase tracking-[0.2em] leading-none mt-0.5">Hub</p>
                             </div>
                         )}
                     </div>
 
                     <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2 space-y-3 scrollbar-none">
                         {isSidebarOpen ? (
-                            <p className="px-3 mb-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-white/20">
+                            <p className="px-3 mb-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-scout-violet/35">
                                 Workspace
                             </p>
                         ) : (
@@ -73,7 +73,17 @@ export default function ScouterLayout() {
                             <NavItem to="/scouter/reports" icon={FileText} label="Reports" isOpen={isSidebarOpen} />
                             <NavItem to="/scouter/recommendations" icon={Send} label="Recommendations" isOpen={isSidebarOpen} />
                             <NavItem to="/scouter/evaluated" icon={Star} label="My Evaluated" isOpen={isSidebarOpen} />
-                            <NavItem to="/scouter/highlights" icon={Video} label="Videos & Highlights" isOpen={isSidebarOpen} />
+                        </div>
+
+                        {isSidebarOpen ? (
+                            <p className="px-3 mt-5 mb-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-scout-amber/40">
+                                Highlights
+                            </p>
+                        ) : (
+                            <div className="mx-auto w-5 h-px bg-white/10 mt-4 mb-2" />
+                        )}
+                        <div className="space-y-0.5">
+                            <NavItem to="/scouter/highlights" icon={Sparkles} label="Highlights" isOpen={isSidebarOpen} />
                         </div>
                     </nav>
 
@@ -119,13 +129,15 @@ export default function ScouterLayout() {
                         </button>
 
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 shadow-[0_0_14px_rgba(57,255,20,0.14)]">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary/12 to-scout-violet-deep/15 border border-primary/25 shadow-[0_0_16px_rgba(0,255,0,0.1)]">
                                 <ScanLine size={14} className="text-primary" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-primary">Scouter</span>
+                                <span className="text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-primary to-scout-cyan bg-clip-text text-transparent">
+                                    Scouter
+                                </span>
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-sm font-bold text-white">{user?.nickname ?? 'Scouter User'}</span>
-                                <span className="text-[11px] text-primary font-bold">Scout Team</span>
+                                <span className="text-[11px] text-scout-cyan/90 font-bold">Scout Team</span>
                             </div>
                             <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/20 flex items-center justify-center shadow-[0_0_12px_rgba(57,255,20,0.18)]">
                                 <Binoculars className="w-4 h-4 text-primary" />
@@ -133,7 +145,7 @@ export default function ScouterLayout() {
                         </div>
                     </header>
 
-                    <main className="flex-1 overflow-auto bg-[#07080a] rounded-tl-[18px] p-6">
+                    <main className="flex-1 overflow-auto bg-gradient-to-b from-[#07080a] to-[#060708] rounded-tl-[18px] p-6">
                         <Outlet />
                     </main>
                 </div>

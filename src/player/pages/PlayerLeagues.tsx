@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import PlayerLeagueWikiPage from './PlayerLeagueWikiPage';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Trophy, Users, Globe, Calendar, Loader2,
-    User, Swords, Crown, Star, ChevronRight,
-    TrendingUp, Clock, Shield,
-    ChevronLeft, Video, Play, Eye, Layers,
-    LayoutList, GitBranch, Shuffle, Grid2X2, Lock, BookOpen, Ticket as TicketIcon,
+    User, Crown, Star, ChevronRight,
+    TrendingUp, Shield,
+    Video, Play, Layers,
+    Lock, BookOpen,
+    LayoutList, GitBranch, Shuffle, Grid2X2,
 } from 'lucide-react';
 import { leagueService, type League, type LeagueParticipant } from '../../services/leagueService';
 import { seasonService, type Season } from '../../services/seasonService';
@@ -87,9 +89,6 @@ const positionStyles = [
 ];
 const defaultPS = { border: 'border-white/[0.05]', bg: '', badge: 'bg-white/8 text-white/40', avatar: 'border-white/10 bg-white/5', pts: 'bg-primary/10 text-primary border-primary/20' };
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function PlayerLeagues() {
@@ -101,7 +100,7 @@ export default function PlayerLeagues() {
     const [standings, setStandings] = useState<LeagueParticipant[]>([]);
     const [pageLoading, setPageLoading] = useState(true);
     const [standingsLoading, setStandingsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'live' | 'standings' | 'seasons' | 'calendar'>('live');
+    const [activeTab, setActiveTab] = useState<'live' | 'standings' | 'seasons' | 'wiki'>('live');
 
     // Seasons + stages state
     const [seasons, setSeasons] = useState<Season[]>([]);
@@ -113,10 +112,6 @@ export default function PlayerLeagues() {
     const [matchesLoading, setMatchesLoading] = useState(false);
     const [seasonStandings, setSeasonStandings] = useState<StandingEntry[]>([]);
 
-    // Calendar state
-    const [calendarDate, setCalendarDate] = useState(new Date());
-    const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-    const [selectedMatch, setSelectedMatch] = useState<DisplayMatch | null>(null);
 
     useEffect(() => {
         leagueService.getAllLeagues()
@@ -139,16 +134,12 @@ export default function PlayerLeagues() {
         if (!selectedLeague) return;
         setStandingsLoading(true);
         setStandings([]);
-        setSelectedDay(null);
-        setSelectedMatch(null);
         setSeasons([]);
         setStageCache({});
         leagueService.getLeagueStandings(selectedLeague._id)
             .then(setStandings)
             .catch(console.error)
             .finally(() => setStandingsLoading(false));
-        // set calendar to league start month
-        setCalendarDate(new Date((selectedLeague as LeagueFull).startDate || Date.now()));
         // load seasons for Seasons tab
         setSeasonsLoading(true);
         seasonService.getByLeague(selectedLeague._id)
@@ -292,22 +283,6 @@ export default function PlayerLeagues() {
                                 </div>
                             </div>
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => selectedLeague && navigate(`/player/leagues/${selectedLeague._id}/hub`)}
-                                    className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-primary hover:border-primary/30 transition-colors"
-                                >
-                                    <BookOpen size={14} className="text-primary" />
-                                    Tournament wiki
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/player/events')}
-                                    className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-black transition-all"
-                                >
-                                    <TicketIcon size={14} />
-                                    Get Tickets
-                                </button>
                                 {matches.filter(m => m.status === 'LIVE').length > 0 && (
                                     <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest"
                                         style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}>
@@ -325,14 +300,14 @@ export default function PlayerLeagues() {
                             { key: 'live', label: 'Live Stream', icon: <Video size={13} /> },
                             { key: 'standings', label: 'Standings', icon: <TrendingUp size={13} /> },
                             { key: 'seasons', label: 'Seasons', icon: <Layers size={13} /> },
-                            { key: 'calendar', label: 'Calendar', icon: <Calendar size={13} /> },
+                            { key: 'wiki', label: 'Tournament Wiki', icon: <BookOpen size={13} /> },
                         ].map(tab => (
                             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200"
                                 style={{
-                                    background: activeTab === tab.key ? lc.accent : 'transparent',
+                                    background: activeTab === tab.key ? 'var(--color-primary)' : 'transparent',
                                     color: activeTab === tab.key ? '#000' : 'rgba(255,255,255,0.35)',
-                                    boxShadow: activeTab === tab.key ? `0 0 14px ${lc.accent}50` : 'none',
+                                    boxShadow: activeTab === tab.key ? '0 0 14px color-mix(in srgb, var(--color-primary) 35%, transparent)' : 'none',
                                 }}>
                                 {tab.icon}{tab.label}
                             </button>
@@ -547,97 +522,10 @@ export default function PlayerLeagues() {
                         </div>
                     )}
 
-                    {/* ── CALENDAR tab ───────────────────────────────── */}
-                    {activeTab === 'calendar' && (
-                        <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
-                            {/* Calendar grid */}
-                            <div className="flex flex-col rounded-3xl overflow-hidden min-h-0" style={{ background: '#0f0f10', border: '1px solid rgba(255,255,255,0.07)', width: 340, flexShrink: 0 }}>
-                                {/* Month nav */}
-                                <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.06] shrink-0">
-                                    <button onClick={() => setCalendarDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; })}
-                                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5 text-white/40 hover:text-white">
-                                        <ChevronLeft size={16} />
-                                    </button>
-                                    <span className="font-black text-sm uppercase tracking-widest text-white">
-                                        {MONTH_NAMES[calendarDate.getMonth()]} {calendarDate.getFullYear()}
-                                    </span>
-                                    <button onClick={() => setCalendarDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; })}
-                                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5 text-white/40 hover:text-white">
-                                        <ChevronRight size={16} />
-                                    </button>
-                                </div>
-
-                                {/* Day labels */}
-                                <div className="grid grid-cols-7 px-3 pt-3 pb-1 shrink-0">
-                                    {DAY_LABELS.map(d => (
-                                        <div key={d} className="text-center text-[9px] font-black uppercase tracking-widest py-1" style={{ color: 'rgba(255,255,255,0.2)' }}>{d}</div>
-                                    ))}
-                                </div>
-
-                                {/* Days grid */}
-                                <CalendarGrid
-                                    year={calendarDate.getFullYear()}
-                                    month={calendarDate.getMonth()}
-                                    matches={matches}
-                                    selectedDay={selectedDay}
-                                    onSelectDay={setSelectedDay}
-                                    accent={lc.accent}
-                                />
-
-                                {/* Legend */}
-                                <div className="px-5 py-4 border-t border-white/[0.05] flex items-center gap-4 shrink-0">
-                                    {[
-                                        { color: '#ef4444', label: 'Live' },
-                                        { color: lc.accent, label: 'Upcoming' },
-                                        { color: 'rgba(255,255,255,0.2)', label: 'Finished' },
-                                    ].map(l => (
-                                        <div key={l.label} className="flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full" style={{ background: l.color }} />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>{l.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Match list */}
-                            <div className="flex-1 flex flex-col rounded-3xl overflow-hidden min-h-0" style={{ background: '#0f0f10', border: '1px solid rgba(255,255,255,0.07)' }}>
-                                <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between shrink-0">
-                                    <div className="flex items-center gap-3">
-                                        <Swords size={15} style={{ color: lc.accent }} />
-                                        <span className="font-black text-sm uppercase tracking-widest text-white">
-                                            {selectedDay
-                                                ? `${selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
-                                                : 'All Matches'}
-                                        </span>
-                                    </div>
-                                    {selectedDay && (
-                                        <button className="text-[10px] font-black uppercase tracking-widest transition-colors hover:text-white" style={{ color: 'rgba(255,255,255,0.3)' }} onClick={() => setSelectedDay(null)}>
-                                            Clear
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                                    {(() => {
-                                        const shown = selectedDay
-                                            ? matches.filter(m => m.date.toDateString() === selectedDay.toDateString())
-                                            : matches;
-
-                                        if (shown.length === 0) return (
-                                            <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: 'rgba(255,255,255,0.15)' }}>
-                                                <Calendar size={36} />
-                                                <p className="text-xs font-black uppercase tracking-widest">No matches {selectedDay ? 'on this day' : 'found'}</p>
-                                            </div>
-                                        );
-
-                                        return shown.map(m => (
-                                            <MatchCard key={m.id} match={m} accent={lc.accent}
-                                                selected={selectedMatch?.id === m.id}
-                                                onClick={() => setSelectedMatch(selectedMatch?.id === m.id ? null : m)} />
-                                        ));
-                                    })()}
-                                </div>
-                            </div>
+                    {/* ── TOURNAMENT WIKI tab ────────────────────────── */}
+                    {activeTab === 'wiki' && (
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                            <PlayerLeagueWikiPage embeddedLeagueId={selectedLeague._id} />
                         </div>
                     )}
                 </div>
@@ -650,169 +538,6 @@ export default function PlayerLeagues() {
         </div>
     );
 }
-
-// ─── Calendar Grid ────────────────────────────────────────────────────────────
-
-function CalendarGrid({ year, month, matches, selectedDay, onSelectDay, accent }: {
-    year: number; month: number; matches: DisplayMatch[];
-    selectedDay: Date | null; onSelectDay: (d: Date) => void; accent: string;
-}) {
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
-
-    const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-    while (cells.length % 7 !== 0) cells.push(null);
-
-    const matchesOnDay = (day: number) => matches.filter(m =>
-        m.date.getFullYear() === year && m.date.getMonth() === month && m.date.getDate() === day
-    );
-
-    return (
-        <div className="grid grid-cols-7 gap-0.5 px-3 pb-3 flex-1">
-            {cells.map((day, idx) => {
-                if (!day) return <div key={idx} />;
-                const dayMatches = matchesOnDay(day);
-                const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
-                const isSelected = selectedDay?.getDate() === day && selectedDay?.getMonth() === month && selectedDay?.getFullYear() === year;
-                const hasLive = dayMatches.some(m => m.status === 'LIVE');
-                const hasUpcoming = dayMatches.some(m => m.status === 'UPCOMING');
-                const hasFinished = dayMatches.some(m => m.status === 'FINISHED');
-
-                return (
-                    <button key={idx} onClick={() => onSelectDay(new Date(year, month, day))}
-                        className="relative flex flex-col items-center justify-center rounded-xl transition-all duration-150 aspect-square"
-                        style={{
-                            background: isSelected ? accent : isToday ? 'rgba(255,255,255,0.07)' : 'transparent',
-                            border: isSelected ? `1px solid ${accent}` : isToday ? '1px solid rgba(255,255,255,0.12)' : '1px solid transparent',
-                        }}
-                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = isToday ? 'rgba(255,255,255,0.07)' : 'transparent'; }}
-                    >
-                        <span className="text-[11px] font-black" style={{ color: isSelected ? '#000' : isToday ? '#fff' : 'rgba(255,255,255,0.5)' }}>{day}</span>
-                        {dayMatches.length > 0 && (
-                            <div className="flex gap-0.5 mt-0.5">
-                                {hasLive && <span className="w-1 h-1 rounded-full" style={{ background: '#ef4444' }} />}
-                                {hasUpcoming && <span className="w-1 h-1 rounded-full" style={{ background: accent }} />}
-                                {hasFinished && <span className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.2)' }} />}
-                            </div>
-                        )}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
-
-// ─── Match Card ───────────────────────────────────────────────────────────────
-
-function MatchCard({ match, accent, selected, onClick }: { match: DisplayMatch; accent: string; selected: boolean; onClick: () => void }) {
-    const isLive = match.status === 'LIVE';
-    const isFinished = match.status === 'FINISHED';
-
-    return (
-        <div onClick={onClick}
-            className="rounded-2xl overflow-hidden cursor-pointer transition-all duration-200"
-            style={{
-                background: selected ? (isLive ? 'rgba(239,68,68,0.08)' : `${accent}10`) : 'rgba(255,255,255,0.02)',
-                border: selected
-                    ? `1px solid ${isLive ? 'rgba(239,68,68,0.35)' : `${accent}40`}`
-                    : '1px solid rgba(255,255,255,0.05)',
-                boxShadow: selected && isLive ? '0 0 20px rgba(239,68,68,0.1)' : 'none',
-            }}>
-            {/* Top bar */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04]">
-                <div className="flex items-center gap-2">
-                    {isLive ? (
-                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />LIVE
-                        </span>
-                    ) : isFinished ? (
-                        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>Finished</span>
-                    ) : (
-                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest" style={{ color: accent }}>
-                            <Clock size={10} />{match.date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                    )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)' }}>{match.round}</span>
-                    <span className="text-[9px] text-white/20 font-bold">{match.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                </div>
-            </div>
-
-            {/* Teams vs */}
-            <div className="px-4 py-4">
-                <div className="flex items-center justify-between gap-3">
-                    {/* Team A */}
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-black text-white">{match.teamA.slice(0, 2).toUpperCase()}</span>
-                        </div>
-                        <span className="font-black text-sm text-white truncate">{match.teamA}</span>
-                    </div>
-
-                    {/* Score / VS */}
-                    <div className="shrink-0 flex flex-col items-center">
-                        {isFinished && match.scoreA !== undefined ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-xl font-black" style={{ color: (match.scoreA ?? 0) > (match.scoreB ?? 0) ? '#00ff00' : 'rgba(255,255,255,0.6)' }}>{match.scoreA}</span>
-                                <span className="text-sm font-bold text-white/20">:</span>
-                                <span className="text-xl font-black" style={{ color: (match.scoreB ?? 0) > (match.scoreA ?? 0) ? '#00ff00' : 'rgba(255,255,255,0.6)' }}>{match.scoreB}</span>
-                            </div>
-                        ) : isLive ? (
-                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                                <span className="text-xs font-black text-red-400">LIVE</span>
-                            </div>
-                        ) : (
-                            <span className="text-xs font-black text-white/20 uppercase tracking-widest">VS</span>
-                        )}
-                    </div>
-
-                    {/* Team B */}
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
-                        <span className="font-black text-sm text-white truncate text-right">{match.teamB}</span>
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-white/10 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-black text-white">{match.teamB.slice(0, 2).toUpperCase()}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Actions (expanded) */}
-            {selected && (
-                <div className="px-4 pb-4 flex gap-2">
-                    {isLive && (
-                        <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
-                            style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.25)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.15)')}>
-                            <Video size={13} /> Watch Live
-                        </button>
-                    )}
-                    <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
-                        style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.07)' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}>
-                        <Eye size={13} /> Match Details
-                    </button>
-                    {!isFinished && !isLive && (
-                        <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
-                            style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}30` }}
-                            onMouseEnter={e => (e.currentTarget.style.background = `${accent}25`)}
-                            onMouseLeave={e => (e.currentTarget.style.background = `${accent}15`)}>
-                            <Play size={13} /> Set Reminder
-                        </button>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Stat Pill ────────────────────────────────────────────────────────────────
 
 function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
     return (

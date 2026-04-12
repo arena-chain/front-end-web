@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     Users, Trophy, Newspaper, Tv2,
-    TrendingUp, RefreshCw, Shield, Zap,
+    TrendingUp, Shield, Zap,
     Crown, Star, UserCheck, Clock,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -110,25 +110,6 @@ export default function AdminDashboard() {
 
     return (
         <div className="space-y-8 animate-fade-in-up">
-
-            {/* ── Header ─────────────────────────────────────────────────────── */}
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-                <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary/70 mb-1">Arena Chain</p>
-                    <h1 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">
-                        Dashboard <span className="text-primary">Overview</span>
-                    </h1>
-                    <p className="text-text-muted text-sm mt-1.5">Live platform snapshot — all data fetched in real time.</p>
-                </div>
-                <button
-                    onClick={load}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/60 hover:text-white text-xs font-bold uppercase tracking-widest transition-all self-start sm:self-end"
-                >
-                    <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-                    Refresh
-                </button>
-            </div>
 
             {/* ── Stat Cards ─────────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
