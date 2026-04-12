@@ -1,0 +1,41 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+    content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+    ],
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0a', // Darker background
+                surface: '#121212', // Slightly lighter for cards
+                primary: '#00ff00', // Arena Green
+                'primary-dark': '#00cc00',
+                'primary-light': '#33ff33',
+                secondary: '#1a1a1a',
+                text: '#ffffff',
+                'text-muted': '#a1a1a1',
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'], // Modern sans
+            },
+            animation: {
+                'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                'gradient': 'gradient 8s linear infinite',
+            },
+            keyframes: {
+                fadeInUp: {
+                    '0%': { opacity: '0', transform: 'translateY(20px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                gradient: {
+                    '0%': { backgroundPosition: '0% 50%' },
+                    '50%': { backgroundPosition: '100% 50%' },
+                    '100%': { backgroundPosition: '0% 50%' },
+                },
+            },
+        },
+    },
+    plugins: [],
+}
