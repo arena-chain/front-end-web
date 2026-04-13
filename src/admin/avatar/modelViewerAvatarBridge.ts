@@ -38,7 +38,16 @@ const AURA_EMISSIVE: Record<string, RGB> = {
     Gold: [0.55, 0.38, 0.08],
 };
 
-function hexToRgb01(hex: string): RGB {
+function hexToRgb01(hex: string | RGB | unknown): RGB {
+    if (Array.isArray(hex) && hex.length >= 3) {
+        const [r, g, b] = hex as number[];
+        if ([r, g, b].every((n) => typeof n === 'number' && Number.isFinite(n))) {
+            // Accept either 0..1 or 0..255
+            if (r <= 1 && g <= 1 && b <= 1) return [r, g, b];
+            return [r / 255, g / 255, b / 255];
+        }
+    }
+    if (typeof hex !== 'string') return [0.85, 0.65, 0.52];
     const h = hex.replace('#', '').trim();
     const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
     const n = Number.parseInt(full, 16);
@@ -46,7 +55,7 @@ function hexToRgb01(hex: string): RGB {
     return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
-function mixHexRgb01(a: string, b: string, t: number): RGB {
+function mixHexRgb01(a: string | RGB | unknown, b: string | RGB | unknown, t: number): RGB {
     const A = hexToRgb01(a);
     const B = hexToRgb01(b);
     const u = Math.max(0, Math.min(1, t));

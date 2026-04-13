@@ -11,6 +11,7 @@ import {
     type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { getApiBase, resolveUploadsUrl } from '../../lib/apiBase';
 import { applyAvatarDynamicConfig, applyWeaponColors, loadOutfitIntoScene, startAvatarPreviewAnimation, type WeaponColors } from '../avatar/modelViewerAvatarBridge';
 import {
     AVATAR_LAYER_PRESETS,
@@ -26,10 +27,10 @@ import {
     type Nft, type NftCollection, type NftAttribute, type NftCategory, type NftRarity,
 } from '../../services/nftAdminService';
 
-/** Base body GLBs from `public/models/` — switched with Gender (M / F) in Avatar Studio */
+/** Base body GLBs from backend uploads (fallback when no game-specific agent is selected). */
 const AVATAR_BODY_GLB = {
-    MALE: `${import.meta.env.BASE_URL}models/BodyMaleTemplate.glb`,
-    FEMALE: `${import.meta.env.BASE_URL}models/female_avatar.glb`,
+    MALE: resolveUploadsUrl('/uploads/inventory/avatar/uploads_files_2569984_BodyMaleTemplate.glb'),
+    FEMALE: resolveUploadsUrl('/uploads/inventory/avatar/female_avatar.glb'),
 } as const;
 
 function resolveAvatarBodyGlbUrl(gender: string): string {
@@ -59,6 +60,7 @@ type GameId = 'cs2' | 'valorant' | 'lol' | 'dota2';
 type GameItemId = 'agent' | 'weapon' | 'knife' | 'gloves' | 'melee' | 'champion' | 'arcana' | 'hero';
 type GameItemDef = { id: GameItemId; label: string; desc: string; icon: LucideIcon; mode: 'avatar' | 'weapon'; };
 type GameDef = { label: string; short: string; accent: string; glow: string; icon: LucideIcon; items: GameItemDef[]; };
+type AgentModelEntry = { id: string; gameId: GameId; label: string; glbPath: string };
 
 const GAME_DEFS: Record<GameId, GameDef> = {
     cs2: {
@@ -103,6 +105,28 @@ const GAME_DEFS: Record<GameId, GameDef> = {
     },
 };
 
+/** Keep definitions in code, but hide from selector for now. */
+const HIDDEN_STUDIO_GAMES: GameId[] = ['cs2', 'dota2'];
+
+const AGENT_MODEL_CATALOG: AgentModelEntry[] = [
+    {
+        id: 'valorant_omen',
+        gameId: 'valorant',
+        label: 'Omen',
+        glbPath: resolveUploadsUrl('/uploads/inventory/avatar/valorant/Omen.glb'),
+    },
+    {
+        id: 'valorant_jinx',
+        gameId: 'valorant',
+        label: 'Jinx',
+        glbPath: resolveUploadsUrl('/uploads/inventory/avatar/valorant/jinx.glb'),
+    },
+];
+
+function agentModelsForGame(gameId: GameId): AgentModelEntry[] {
+    return AGENT_MODEL_CATALOG.filter((m) => m.gameId === gameId);
+}
+
 export default function NftManager() {
     const [searchParams] = useSearchParams();
     const collectionFilter = searchParams.get('collectionId') || '';
@@ -116,13 +140,31 @@ export default function NftManager() {
     const [filterRarity, setFilterRarity] = useState<NftRarity | 'ALL'>('ALL');
     const [selectedNft, setSelectedNft] = useState<(Nft & { attributes: NftAttribute[] }) | null>(null);
     const [showCreate, setShowCreate] = useState(false);
+    const [showNewAvatarModal, setShowNewAvatarModal] = useState(false);
+    const [newAvatarGender, setNewAvatarGender] = useState<'MALE' | 'FEMALE'>('MALE');
+    const [newAvatarRequestId, setNewAvatarRequestId] = useState(0);
+    const [openUploadRequestId, setOpenUploadRequestId] = useState(0);
     const [activeView, setActiveView] = useState<'studio' | 'inventory'>(
         location.pathname.includes('nft-inventory') ? 'inventory' : 'studio'
     );
-    const [selectedGame, setSelectedGame] = useState<GameId>('cs2');
+    const [selectedGame, setSelectedGame] = useState<GameId>('valorant');
     const [selectedItemType, setSelectedItemType] = useState<GameItemId>('agent');
+    const visibleGameEntries = useMemo(
+        () =>
+            (Object.entries(GAME_DEFS) as [GameId, GameDef][])
+                .filter(([gid]) => !HIDDEN_STUDIO_GAMES.includes(gid)),
+        [],
+    );
     const studioMode: 'avatar' | 'weapon' =
         GAME_DEFS[selectedGame].items.find(i => i.id === selectedItemType)?.mode ?? 'avatar';
+
+    useEffect(() => {
+        if (HIDDEN_STUDIO_GAMES.includes(selectedGame)) {
+            const [fallbackGameId, fallbackGame] = visibleGameEntries[0] ?? ['valorant', GAME_DEFS.valorant];
+            setSelectedGame(fallbackGameId);
+            setSelectedItemType(fallbackGame.items[0].id);
+        }
+    }, [selectedGame, visibleGameEntries]);
 
     const load = async () => {
         try {
@@ -174,15 +216,63 @@ export default function NftManager() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-black text-white flex items-center gap-3">
-                        <Box size={24} className="text-primary" />
-                        NFT Avatar Studio
-                    </h1>
-                    <p className="text-text-muted text-sm mt-1">Import a base avatar, customize traits, and save as draft NFT</p>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+                {activeView === 'studio' ? (
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                        <div className="w-full sm:w-56">
+                            <label className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                Game
+                            </label>
+                            <select
+                                value={selectedGame}
+                                onChange={(e) => {
+                                    const gid = e.target.value as GameId;
+                                    const game = GAME_DEFS[gid];
+                                    setSelectedGame(gid);
+                                    setSelectedItemType(game.items[0].id);
+                                }}
+                                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-white outline-none transition-colors focus:border-primary/50"
+                            >
+                                {visibleGameEntries.map(([gid, game]) => (
+                                    <option key={gid} value={gid}>
+                                        {game.short}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="w-full sm:w-56">
+                            <label className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                Type
+                            </label>
+                            <select
+                                value={selectedItemType}
+                                onChange={(e) => setSelectedItemType(e.target.value as GameItemId)}
+                                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-white outline-none transition-colors focus:border-primary/50"
+                            >
+                                {GAME_DEFS[selectedGame].items.map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                        {item.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="w-full sm:w-56">
+                            <label className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                Upload
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setOpenUploadRequestId((v) => v + 1)}
+                                className="flex h-[42px] w-full items-center justify-center rounded-xl border border-white/10 bg-black/30 px-3 text-[11px] font-black uppercase tracking-wider text-white outline-none transition-colors hover:border-primary/50 hover:text-primary"
+                            >
+                                Upload 3D
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div />
+                )}
+                <div className="flex items-center gap-2 flex-wrap lg:justify-end">
                     <div className="bg-surface border border-white/10 rounded-xl p-1 flex items-center gap-1">
                         <button
                             onClick={() => setActiveView('studio')}
@@ -198,86 +288,30 @@ export default function NftManager() {
                         </button>
                     </div>
                     <button
-                        onClick={() => setShowCreate(true)}
+                        onClick={() => {
+                            if (activeView === 'studio') {
+                                setShowNewAvatarModal(true);
+                                return;
+                            }
+                            setShowCreate(true);
+                        }}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider transition-all"
                     >
-                        <Plus size={16} /> Create NFT
+                        <Plus size={16} /> {activeView === 'studio' ? 'Create New' : 'Create NFT'}
                     </button>
                 </div>
             </div>
 
             {activeView === 'studio' && (
                 <div className="space-y-4">
-                    {/* ── Game Selector ── */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        {(Object.entries(GAME_DEFS) as [GameId, GameDef][]).map(([gid, game]) => {
-                            const isActive = selectedGame === gid;
-                            const GameIcon = game.icon;
-                            return (
-                                <button
-                                    key={gid}
-                                    type="button"
-                                    onClick={() => { setSelectedGame(gid); setSelectedItemType(game.items[0].id); }}
-                                    style={isActive ? {
-                                        borderColor: 'rgba(0,255,136,0.55)',
-                                        boxShadow: '0 0 18px rgba(0,255,136,0.22), 0 0 6px rgba(0,255,136,0.12), inset 0 1px 0 rgba(0,255,136,0.08)',
-                                        background: 'linear-gradient(135deg, rgba(0,255,136,0.07) 0%, transparent 55%)',
-                                    } : {}}
-                                    className={cn(
-                                        'group relative flex items-center gap-3 rounded-xl border px-4 py-2.5 transition-all duration-200',
-                                        isActive ? 'bg-black/50' : 'border-white/8 bg-black/20 hover:border-white/20 hover:bg-black/30',
-                                    )}
-                                >
-                                    <div className={cn('shrink-0 transition-colors duration-200', isActive ? 'text-primary' : 'text-text-muted group-hover:text-white')}>
-                                        <GameIcon size={18} strokeWidth={1.5} />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className={cn('text-[11px] font-black uppercase tracking-[0.12em]', isActive ? 'text-primary' : 'text-white')}>
-                                            {game.short}
-                                        </p>
-                                        <p className="text-[9px] text-text-muted">{game.label}</p>
-                                    </div>
-                                    {isActive && (
-                                        <span className="absolute right-2 top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[7px] font-black text-black">✓</span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* ── Item Type Selector ── */}
-                    <div className="flex items-stretch gap-2 rounded-2xl border border-white/10 bg-black/20 p-2">
-                        {GAME_DEFS[selectedGame].items.map(item => {
-                            const isActive = selectedItemType === item.id;
-                            const ItemIcon = item.icon;
-                            return (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    onClick={() => setSelectedItemType(item.id)}
-                                    style={isActive ? {
-                                        borderColor: 'rgba(0,255,136,0.45)',
-                                        backgroundColor: 'rgba(0,255,136,0.07)',
-                                        color: '#00ff88',
-                                        boxShadow: '0 0 12px rgba(0,255,136,0.15), inset 0 1px 0 rgba(0,255,136,0.06)',
-                                    } : {}}
-                                    className={cn(
-                                        'flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 transition-all duration-150',
-                                        isActive ? '' : 'border-transparent text-text-muted hover:bg-white/5 hover:text-white',
-                                    )}
-                                >
-                                    <ItemIcon size={13} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
-                                    <span className="hidden text-[8px] opacity-50 sm:block">{item.desc}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-
                     {/* ── Studio ── */}
                     <Studio
                         selectedGame={selectedGame}
                         studioMode={studioMode}
+                        selectedItemType={selectedItemType}
+                        newAvatarGender={newAvatarGender}
+                        newAvatarRequestId={newAvatarRequestId}
+                        openUploadRequestId={openUploadRequestId}
                         onDraftCreated={(nft) => {
                             setActiveView('inventory');
                             load();
@@ -404,6 +438,48 @@ export default function NftManager() {
                     onCreated={(nft) => { setShowCreate(false); load(); viewDetail(nft); }}
                 />
             )}
+
+            {showNewAvatarModal && (
+                <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/70 px-4 pt-24 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl border border-primary/20 bg-[#0f1115] p-4 shadow-[0_0_40px_rgba(0,255,136,0.2)]">
+                        <div className="mb-3 flex items-center justify-between">
+                            <p className="text-xs font-black uppercase tracking-widest text-white">Create new avatar</p>
+                            <button
+                                type="button"
+                                onClick={() => setShowNewAvatarModal(false)}
+                                className="rounded-md border border-white/10 p-1 text-white/60 transition-colors hover:text-white"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                        <p className="mb-3 text-[11px] text-white/50">Choose a base body for a fresh project.</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setNewAvatarGender('MALE');
+                                    setNewAvatarRequestId((v) => v + 1);
+                                    setShowNewAvatarModal(false);
+                                }}
+                                className="rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-black uppercase tracking-widest text-black"
+                            >
+                                Male
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setNewAvatarGender('FEMALE');
+                                    setNewAvatarRequestId((v) => v + 1);
+                                    setShowNewAvatarModal(false);
+                                }}
+                                className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-widest text-white/80 transition-colors hover:border-white/20 hover:text-white"
+                            >
+                                Female
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -519,10 +595,14 @@ const CAMERA_PRESET_ORBIT: Record<CameraPreset, string> = {
     bottom: '0deg 172deg 210%',
 };
 
-function Studio({ onDraftCreated, studioMode, selectedGame }: {
+function Studio({ onDraftCreated, studioMode, selectedGame, selectedItemType, newAvatarGender, newAvatarRequestId, openUploadRequestId }: {
     onDraftCreated: (nft: Nft) => void;
     studioMode: 'avatar' | 'weapon';
     selectedGame: GameId;
+    selectedItemType: GameItemId;
+    newAvatarGender: 'MALE' | 'FEMALE';
+    newAvatarRequestId: number;
+    openUploadRequestId: number;
 }) {
     /** User-added weapons per game (session only). */
     const [weaponCatalogExtras, setWeaponCatalogExtras] = useState<Partial<Record<GameId, WeaponEntry[]>>>({});
@@ -550,7 +630,18 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
         { id: 'foregrip',  label: 'Foregrip',        active: false },
         { id: 'stockless', label: 'Stockless Stock', active: false },
     ]);
+    const [agentCatalogExtras, setAgentCatalogExtras] = useState<Partial<Record<GameId, AgentModelEntry[]>>>({});
+    const localAgentCatalog = useMemo(
+        () => [...agentModelsForGame(selectedGame), ...(agentCatalogExtras[selectedGame] ?? [])],
+        [selectedGame, agentCatalogExtras],
+    );
+    const [selectedAgentId, setSelectedAgentId] = useState<string>(() => agentModelsForGame('valorant')[0]?.id ?? '');
+    const [modelName, setModelName] = useState('');
+    const [modelFile, setModelFile] = useState<File | null>(null);
+    const [uploadingModel, setUploadingModel] = useState(false);
+    const [showUploadModal, setShowUploadModal] = useState(false);
     const [studioConfigCollapsed, setStudioConfigCollapsed] = useState(false);
+    const proConfigRailCollapsed = false;
     const [studioNavId, setStudioNavId] = useState<StudioNavId>('body');
     const [layerPresetSlot, setLayerPresetSlot] = useState<AvatarLayerKey>('accessory');
     const [saving, setSaving] = useState(false);
@@ -596,8 +687,12 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
         const list = [...weaponsForGame(selectedGame), ...(weaponCatalogExtras[selectedGame] ?? [])];
         setSelectedWeaponId((prev) => (list.some((w) => w.id === prev) ? prev : list[0]?.id ?? ''));
     }, [selectedGame, weaponCatalogExtras]);
+    useEffect(() => {
+        const list = agentModelsForGame(selectedGame);
+        setSelectedAgentId((prev) => (list.some((m) => m.id === prev) ? prev : list[0]?.id ?? ''));
+    }, [selectedGame, agentCatalogExtras]);
 
-    const resetStudio = () => {
+    const resetStudio = (gender: 'MALE' | 'FEMALE' = 'MALE') => {
         setLayers({
             base: { file: null, preview: null },
             hair: { file: null, preview: null },
@@ -606,7 +701,7 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
             accessory: { file: null, preview: null },
         });
         setConfig({
-            gender: 'MALE',
+            gender,
             view: 'front',
             bodyType: 'Athletic',
             skinTone: '#ffffff',
@@ -632,7 +727,9 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
             focus: 88,
         });
         setWeaponCatalogExtras({});
+        setAgentCatalogExtras({});
         setSelectedWeaponId(weaponsForGame(selectedGame)[0]?.id ?? '');
+        setSelectedAgentId(agentModelsForGame(selectedGame)[0]?.id ?? '');
         setWeaponColors({ primary: '#ffffff', glow: '#00ff88', metalness: 0.7, roughness: 0.3 });
         setWeaponNav('materials');
         setShowAddWeapon(false);
@@ -647,6 +744,16 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
             { id: 'stockless', label: 'Stockless Stock', active: false },
         ]);
     };
+
+    useEffect(() => {
+        if (newAvatarRequestId < 1) return;
+        resetStudio(newAvatarGender);
+    }, [newAvatarGender, newAvatarRequestId]);
+
+    useEffect(() => {
+        if (openUploadRequestId < 1) return;
+        setShowUploadModal(true);
+    }, [openUploadRequestId]);
 
     const score = Math.round((config.power + config.agility + config.focus) / 3);
     const rarity: NftRarity =
@@ -728,6 +835,72 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
     };
 
     const selectedWeapon = localWeaponCatalog.find(w => w.id === selectedWeaponId) ?? localWeaponCatalog[0];
+    const selectedAgentModel = localAgentCatalog.find((m) => m.id === selectedAgentId) ?? localAgentCatalog[0];
+
+    const uploadModelFromStudio = async () => {
+        if (!modelFile) return;
+        if (!modelName.trim()) {
+            alert('Please give the model a name first.');
+            return;
+        }
+        try {
+            setUploadingModel(true);
+            const fd = new FormData();
+            fd.append('file', modelFile);
+            fd.append('name', modelName.trim());
+            fd.append('gameId', selectedGame);
+            fd.append('mode', studioMode);
+            fd.append('itemType', selectedItemType);
+
+            const res = await fetch(`${getApiBase()}/game-assets/upload-model`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+                body: fd,
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(err || 'Upload failed');
+            }
+            const data = await res.json() as { urlPath: string; name: string };
+            const glbPath = resolveUploadsUrl(data.urlPath);
+            const id = `custom_${Date.now()}`;
+
+            if (studioMode === 'weapon') {
+                const entry: WeaponEntry = {
+                    id,
+                    label: modelName.trim(),
+                    type: selectedItemType.toUpperCase(),
+                    glbPath,
+                    gameId: selectedGame,
+                };
+                setWeaponCatalogExtras((prev) => ({
+                    ...prev,
+                    [selectedGame]: [...(prev[selectedGame] ?? []), entry],
+                }));
+                setSelectedWeaponId(id);
+            } else {
+                const entry: AgentModelEntry = {
+                    id,
+                    gameId: selectedGame,
+                    label: modelName.trim(),
+                    glbPath,
+                };
+                setAgentCatalogExtras((prev) => ({
+                    ...prev,
+                    [selectedGame]: [...(prev[selectedGame] ?? []), entry],
+                }));
+                setSelectedAgentId(id);
+            }
+            setModelName('');
+            setModelFile(null);
+            setShowUploadModal(false);
+            alert('Model uploaded and added to studio.');
+        } catch (e: unknown) {
+            alert((e as Error)?.message || 'Upload failed');
+        } finally {
+            setUploadingModel(false);
+        }
+    };
 
     // Apply weapon colors live whenever they change
     useEffect(() => {
@@ -746,14 +919,15 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                             : 'COMMON';
 
     return (
+        <>
         <div className="flex flex-col gap-5 xl:h-[calc(100vh-9rem)] xl:flex-row xl:gap-0 xl:overflow-hidden xl:rounded-2xl xl:border xl:border-white/10 xl:bg-[#0d0f12]">
             <aside
                 className={cn(
                     'shrink-0 overflow-x-hidden border border-white/10 bg-[#111214] transition-[width,opacity] duration-300 ease-out',
                     'rounded-2xl xl:rounded-none xl:border-y-0 xl:border-l-0',
                     studioConfigCollapsed
-                        ? 'xl:pointer-events-none xl:w-0 xl:border-r-0 xl:opacity-0'
-                        : 'xl:w-[min(100%,30rem)] 2xl:w-[min(36rem,95vw)] xl:border-r xl:border-white/10 xl:opacity-100',
+                        ? 'pointer-events-none w-0 border-r-0 opacity-0'
+                        : 'w-[min(100%,30rem)] 2xl:w-[min(36rem,95vw)] border-r border-white/10 opacity-100',
                 )}
             >
                 <div className="flex h-full max-h-[65vh] min-h-0 flex-col overflow-hidden p-4 sm:p-5 xl:max-h-none xl:h-full xl:w-full">
@@ -764,52 +938,52 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                     ? <><Wand2 size={15} className="shrink-0 text-primary" /><span className="min-w-0 leading-tight">Character creator</span></>
                                     : <><Swords size={15} className="shrink-0 text-primary" /><span className="min-w-0 leading-tight">Weapon studio</span></>}
                             </h2>
-                            <button
-                                type="button"
-                                onClick={resetStudio}
-                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/20 hover:text-white"
-                            >
-                                <RotateCcw size={12} /> Reset
-                            </button>
-                        </div>
-
-                        {studioMode === 'avatar' && (
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setConfig(prev => ({ ...prev, gender: 'MALE' }))}
-                                className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'MALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
-                            >
-                                Male
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setConfig(prev => ({ ...prev, gender: 'FEMALE' }))}
-                                className={`min-h-11 rounded-xl px-2 py-2.5 text-xs font-black uppercase tracking-widest border transition-all ${config.gender === 'FEMALE' ? 'bg-primary text-black border-primary' : 'text-text-muted border-white/10 hover:text-white'}`}
-                            >
-                                Female
-                            </button>
-                        </div>
-                        )}
-                        {studioMode === 'avatar' && (<>
-                        <p className="text-[9px] leading-snug text-text-muted/80">
-                            Choix du corps 3D dans l'aperçu : modèle homme (<span className="text-white/50">BodyMaleTemplate</span>) ou femme (
-                            <span className="text-white/50">female_avatar</span>).
-                        </p>
-
-                        <div className="grid grid-cols-3 gap-2">
-                            {(['front', 'side', 'back'] as AvatarView[]).map(view => (
+                            <div className="flex items-center gap-2">
                                 <button
-                                    key={view}
                                     type="button"
-                                    onClick={() => setConfig(prev => ({ ...prev, view }))}
-                                    className={`flex min-h-12 items-center justify-center rounded-xl px-1 py-2 text-center text-[9px] font-black uppercase leading-tight tracking-wider border transition-all sm:text-[10px] sm:tracking-widest ${config.view === view ? 'bg-white/15 text-white border-white/20' : 'text-text-muted border-white/10 hover:text-white'}`}
+                                    onClick={resetStudio}
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted transition-all hover:border-white/20 hover:text-white"
                                 >
-                                    {view} view
+                                    <RotateCcw size={12} /> Reset
                                 </button>
-                            ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setStudioConfigCollapsed(true)}
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white/70 transition-all hover:border-primary/40 hover:text-primary"
+                                >
+                                    <ChevronLeft size={12} /> Close
+                                </button>
+                            </div>
                         </div>
-                        </>)}
+
+                        {studioMode === 'avatar' && localAgentCatalog.length > 0 && (
+                            <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                    {GAME_DEFS[selectedGame].short} agent model
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {localAgentCatalog.map((agent) => {
+                                        const active = selectedAgentId === agent.id;
+                                        return (
+                                            <button
+                                                key={agent.id}
+                                                type="button"
+                                                onClick={() => setSelectedAgentId(agent.id)}
+                                                className={cn(
+                                                    'rounded-xl border px-2 py-2 text-[10px] font-black uppercase tracking-widest transition-all',
+                                                    active
+                                                        ? 'border-primary bg-primary/15 text-primary'
+                                                        : 'border-white/10 text-white/60 hover:border-white/20 hover:text-white',
+                                                )}
+                                            >
+                                                {agent.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                        
                     </div>
 
                     {studioMode === 'weapon' && (
@@ -898,7 +1072,6 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                                             camera-orbit="45deg 75deg 120%"
                                                             interaction-prompt="none"
                                                             style={{ width: '100%', height: '100%', backgroundColor: 'transparent', pointerEvents: 'none' } as CSSProperties}
-                                                            {...({ '--poster-color': 'transparent' } as object)}
                                                         />
                                                         {active && <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] font-black text-black">✓</span>}
                                                         {w.id.startsWith('custom_') && (
@@ -1015,12 +1188,15 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                     {studioMode === 'avatar' && <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-white/5 pt-4">
                         <div className="flex min-h-0 flex-1 gap-2">
                             <nav
-                                className="w-[6.5rem] shrink-0 overflow-y-auto overflow-x-hidden pr-1 sm:w-[7.25rem]"
+                                className={cn(
+                                    'shrink-0 overflow-y-auto overflow-x-hidden pr-1 transition-all duration-200',
+                                    proConfigRailCollapsed ? 'w-[3.5rem]' : 'w-[7.4rem]',
+                                )}
                                 aria-label="Avatar studio sections"
                             >
                                 {studioNavGroups().map(group => (
-                                    <div key={group.title || group.items.map(i => i.id).join('-')} className="mb-3 last:mb-0">
-                                        {group.title ? (
+                                    <div key={group.title || group.items.map(i => i.id).join('-')} className="mb-2 last:mb-0">
+                                        {!proConfigRailCollapsed && group.title ? (
                                             <p className="mb-1.5 px-1 text-[9px] font-black uppercase tracking-widest text-text-muted/80">
                                                 {group.title}
                                             </p>
@@ -1034,11 +1210,15 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                                         key={item.id}
                                                         type="button"
                                                         onClick={() => setStudioNavId(item.id)}
+                                                        title={item.label}
                                                         className={cn(
-                                                            'flex w-full items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-1 text-left transition-colors',
+                                                            'flex w-full items-center rounded-lg transition-colors',
+                                                            proConfigRailCollapsed
+                                                                ? 'justify-center px-1.5 py-1.5'
+                                                                : 'gap-1.5 py-1.5 pl-1.5 pr-1 text-left',
                                                             active
-                                                                ? 'border-l-2 border-primary bg-primary/12 text-white'
-                                                                : 'border-l-2 border-transparent text-text-muted hover:bg-white/[0.04] hover:text-white/90',
+                                                                ? 'border border-primary/45 bg-primary/12 text-white'
+                                                                : 'border border-transparent text-text-muted hover:bg-white/[0.04] hover:text-white/90',
                                                         )}
                                                     >
                                                         <span
@@ -1051,14 +1231,13 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                                         >
                                                             <Icon size={13} strokeWidth={2} />
                                                         </span>
-                                                        <span className="min-w-0 flex-1">
-                                                            <span className="line-clamp-2 text-[8px] font-bold uppercase leading-tight tracking-wide sm:text-[9px]">
-                                                                {item.label}
+                                                        {!proConfigRailCollapsed && (
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="line-clamp-2 text-[8px] font-bold uppercase leading-tight tracking-wide sm:text-[9px]">
+                                                                    {item.label}
+                                                                </span>
                                                             </span>
-                                                        </span>
-                                                        <span className="shrink-0 tabular-nums text-[8px] font-semibold text-white/35 sm:text-[9px]">
-                                                            {item.count}
-                                                        </span>
+                                                        )}
                                                     </button>
                                                 );
                                             })}
@@ -1067,7 +1246,10 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                 ))}
                             </nav>
 
-                            <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden border-l border-white/10 pl-3">
+                            <div className={cn(
+                                'min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden border-l border-white/10 pl-3',
+                                proConfigRailCollapsed && 'pl-2',
+                            )}>
                                 {studioNavId === 'body' && (
                                     <div className="space-y-4">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Body & mesh</p>
@@ -1105,7 +1287,6 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                                                             backgroundColor: 'transparent',
                                                                             pointerEvents: 'none',
                                                                         } as CSSProperties}
-                                                                        {...({ '--poster-color': 'transparent' } as object)}
                                                                     />
                                                                     {active && (
                                                                         <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] font-black text-black">✓</span>
@@ -1259,26 +1440,28 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
             </aside>
 
             <div className="relative flex min-h-[520px] flex-1 min-w-0 flex-col border border-white/10 bg-[#05070a] rounded-2xl xl:min-h-0 xl:rounded-none xl:border-0">
-                <button
-                    type="button"
-                    aria-expanded={!studioConfigCollapsed}
-                    aria-label={studioConfigCollapsed ? 'Show character settings' : 'Hide settings — full-width preview'}
-                    onClick={() => setStudioConfigCollapsed((c) => !c)}
-                    className="absolute left-0 top-1/2 z-40 flex h-24 w-8 -translate-y-1/2 items-center justify-center rounded-r-lg border border-l-0 border-white/20 bg-black/90 text-white/90 shadow-[6px_0_28px_rgba(0,0,0,0.55)] transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                    {studioConfigCollapsed ? <ChevronRight size={18} strokeWidth={2.5} /> : <ChevronLeft size={18} strokeWidth={2.5} />}
-                </button>
+                {studioConfigCollapsed && (
+                    <button
+                        type="button"
+                        aria-expanded={!studioConfigCollapsed}
+                        aria-label="Show character settings"
+                        onClick={() => setStudioConfigCollapsed(false)}
+                        className="absolute left-3 top-3 z-40 inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-black/80 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary shadow-[0_0_20px_rgba(0,255,136,0.2)] transition-colors hover:bg-black"
+                    >
+                        <ChevronRight size={12} /> Open creator
+                    </button>
+                )}
 
                 <div
                     className={cn(
                         'flex min-h-0 flex-1 flex-col gap-3 p-3 pl-4 sm:pl-5 xl:h-full',
-                        studioConfigCollapsed && 'xl:gap-2 xl:p-0',
+                        studioConfigCollapsed && 'gap-2 p-0',
                     )}
                 >
                     <div
                         className={cn(
                             'flex shrink-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between',
-                            studioConfigCollapsed && 'xl:absolute xl:left-10 xl:right-0 xl:top-0 xl:z-30 xl:flex-row xl:items-center xl:justify-between xl:bg-gradient-to-b xl:from-black/70 xl:to-transparent xl:px-4 xl:py-3 xl:pt-4',
+                            studioConfigCollapsed && 'absolute left-10 right-0 top-0 z-30 flex-row items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-4 py-3 pt-4',
                         )}
                     >
                         <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Live preview</p>
@@ -1294,6 +1477,7 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                 config={config}
                                 layers={layers}
                                 fullBleed={studioConfigCollapsed}
+                                baseBodySrc={selectedAgentModel?.glbPath || resolveAvatarBodyGlbUrl(config.gender)}
                                 outfitModelUrl={resolveOutfitModelUrl(config.outfitModelId)}
                             />
                         ) : (
@@ -1322,8 +1506,8 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                                             width: '100%',
                                             height: '100%',
                                             backgroundColor: '#05070a',
+                                            ['--poster-color' as string]: 'transparent',
                                         } as CSSProperties}
-                                        {...({ '--poster-color': 'transparent' } as object)}
                                     />
                                 )}
                                 <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-xl border border-white/10 bg-black/70 px-3 py-1.5 backdrop-blur-md">
@@ -1333,7 +1517,7 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                         )}
                     </div>
 
-                    <div className={cn('grid shrink-0 grid-cols-2 gap-2', studioConfigCollapsed && 'xl:px-4 xl:pb-2')}>
+                    <div className={cn('grid shrink-0 grid-cols-2 gap-2', studioConfigCollapsed && 'px-4 pb-2')}>
                         {studioMode === 'avatar' ? (<>
                             <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Generated Name</p>
@@ -1360,7 +1544,7 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                         disabled={saving}
                         className={cn(
                             'inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-black uppercase tracking-wider text-black transition-all hover:bg-primary/90 disabled:opacity-50',
-                            studioConfigCollapsed && 'xl:mx-4 xl:mb-4',
+                            studioConfigCollapsed && 'mx-4 mb-4',
                         )}
                     >
                         {saving ? <Loader2 size={16} className="animate-spin" /> : studioMode === 'avatar' ? <Save size={16} /> : <Swords size={16} />}
@@ -1369,10 +1553,60 @@ function Studio({ onDraftCreated, studioMode, selectedGame }: {
                 </div>
             </div>
         </div>
+        {showUploadModal && (
+            <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/70 px-4 pt-20 backdrop-blur-sm">
+                <div className="w-full max-w-xl rounded-2xl border border-primary/20 bg-[#0f1115] p-4 shadow-[0_0_40px_rgba(0,255,136,0.2)]">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                            Upload 3D model (.glb/.gltf)
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => !uploadingModel && setShowUploadModal(false)}
+                            className="rounded-md border border-white/10 p-1 text-white/60 transition-colors hover:text-white"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <p className="mt-1 text-[10px] text-white/40">
+                        Game: <span className="text-white/70">{GAME_DEFS[selectedGame].short}</span> · Type:{' '}
+                        <span className="text-white/70">{selectedItemType}</span>
+                    </p>
+                    {modelFile && (
+                        <p className="mt-2 truncate rounded-md border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
+                            {modelFile.name}
+                        </p>
+                    )}
+                    <div className="mt-3 space-y-2">
+                        <input
+                            placeholder="Model name (e.g. Jinx, Reaver Vandal)"
+                            value={modelName}
+                            onChange={(e) => setModelName(e.target.value)}
+                            className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[11px] text-white outline-none placeholder-white/20 focus:border-primary/50"
+                        />
+                        <input
+                            type="file"
+                            accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+                            onChange={(e) => setModelFile(e.target.files?.[0] || null)}
+                            className="w-full rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-[11px] text-white file:mr-2 file:rounded file:border-0 file:bg-primary file:px-2 file:py-1 file:text-[10px] file:font-bold file:text-black"
+                        />
+                        <button
+                            type="button"
+                            disabled={!modelFile || !modelName.trim() || uploadingModel}
+                            onClick={() => void uploadModelFromStudio()}
+                            className="w-full rounded-lg bg-primary px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-black transition-all hover:bg-primary/90 disabled:opacity-40"
+                        >
+                            {uploadingModel ? 'Uploading...' : 'Upload & add to selector'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
 
-function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = false, outfitModelUrl = null }: {
+function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = false, outfitModelUrl = null, baseBodySrc }: {
     view: AvatarView;
     config: {
         gender: string;
@@ -1392,6 +1626,8 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
     fullBleed?: boolean;
     /** Second glTF layer (clothing), same camera as body */
     outfitModelUrl?: string | null;
+    /** Optional game-specific base GLB (e.g. Valorant agent Omen). */
+    baseBodySrc?: string;
 }) {
     const viewerRef = useRef<HTMLElement | null>(null);
     const outfitModelUrlRef = useRef<string | null>(outfitModelUrl ?? null);
@@ -1431,7 +1667,7 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
     };
     const bodyScale = config.bodyType === 'Heroic' ? 1.06 : config.bodyType === 'Lean' ? 0.94 : 1;
     const viewTransform = view === 'side' ? 'rotateY(24deg)' : view === 'back' ? 'rotateY(180deg)' : 'none';
-    const baseBodySrc = resolveAvatarBodyGlbUrl(config.gender);
+    const resolvedBodySrc = baseBodySrc || resolveAvatarBodyGlbUrl(config.gender);
     useEffect(() => {
         const nextOrbit = AVATAR_CAMERA_ORBIT[view];
         applyOrbitToViewer(nextOrbit, true, 'auto');
@@ -1632,10 +1868,10 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
 
                 <div className="relative z-10 h-full min-h-[240px] w-full">
                     <model-viewer
-                        key={baseBodySrc}
+                        key={resolvedBodySrc}
                         ref={viewerRef}
                         className="absolute inset-0 h-full w-full"
-                        src={baseBodySrc}
+                    src={resolvedBodySrc}
                         camera-controls
                         autoplay
                         touch-action="none"
@@ -1657,7 +1893,7 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
                         style={{
                             touchAction: 'none',
                             backgroundColor: '#05070a',
-                            ...({ '--poster-color': 'transparent' } as CSSProperties),
+                            ['--poster-color' as string]: 'transparent',
                         }}
                     />
                     {/* Outfit is injected into the body scene via loadOutfitIntoScene — no second model-viewer needed */}
@@ -1718,7 +1954,7 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
 
                 {modelFailed && (
                     <span className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-lg border border-amber-500/30 bg-black/70 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-amber-200/90">
-                        3D model failed to load — check /public/models/BodyMaleTemplate.glb or female_avatar.glb
+                        3D model failed to load — check {resolvedBodySrc}
                     </span>
                 )}
 

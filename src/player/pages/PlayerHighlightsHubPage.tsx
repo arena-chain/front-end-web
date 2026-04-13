@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, useCallback, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Sparkles, ChevronLeft, ChevronRight, Play, Film } from 'lucide-react';
+import { Sparkles, ChevronLeft, ChevronRight, Play, Film, Trash2 } from 'lucide-react';
 import { videoService } from '../../services/video.service';
 import { highlightService, type HighlightRecord } from '../../services/highlight.service';
 import { Badge, Button, Modal, Textarea } from '../../components/ui/core';
-import { HighlightVisibilityToggle } from '../../components/highlights/HighlightVisibilityToggle';
+import { HighlightVisibilitySwitch } from '../../components/highlights/HighlightVisibilitySwitch';
 import { HighlightEngagement } from '../../components/highlights/HighlightEngagement';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -266,74 +266,122 @@ export default function PlayerHighlightsHubPage() {
                 title={selectedHighlight?.title ?? 'Highlight'}
             >
                 {selectedHighlight && (
-                    <div className="p-5 space-y-4">
-                        <video
-                            key={selectedHighlight._id}
-                            src={resolveBackendAssetUrl(selectedHighlight.clipUrl)}
-                            className="w-full max-h-[65vh] rounded-xl bg-black"
-                            controls
-                            playsInline
-                            autoPlay
-                        />
-                        <HighlightVisibilityToggle
-                            value={selectedHighlight.visibility === 'public' ? 'public' : 'private'}
-                            onChange={async (v) => {
-                                const id = selectedHighlight._id;
-                                setSavingHighlightVisibilityId(id);
-                                try {
-                                    await highlightService.updateVisibility(id, v);
-                                    toast.success(
-                                        v === 'public'
-                                            ? 'Clip public — visible par tous'
-                                            : 'Clip privé — visible par vous seulement',
-                                    );
-                                    setSelectedHighlight({ ...selectedHighlight, visibility: v });
-                                    void loadMyHighlights();
-                                } catch (error) {
-                                    toast.error(
-                                        error instanceof Error ? error.message : 'Mise à jour impossible',
-                                    );
-                                } finally {
-                                    setSavingHighlightVisibilityId(null);
-                                }
-                            }}
-                            isLoading={savingHighlightVisibilityId === selectedHighlight._id}
-                        />
-                        <HighlightEngagement highlightId={selectedHighlight._id} />
-                        <form onSubmit={(e) => void saveHighlightDescription(e)} className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                                Description du clip
-                            </label>
-                            <Textarea
-                                rows={3}
-                                value={highlightDescDraft}
-                                onChange={(e) => setHighlightDescDraft(e.target.value)}
-                                placeholder="Décrivez ce moment…"
-                                className="bg-white/5 border-white/10 text-sm"
-                            />
-                            <Button
-                                type="submit"
-                                size="sm"
-                                isLoading={savingHighlightDetails}
-                                className="font-black uppercase text-[10px]"
-                            >
-                                Enregistrer la description
-                            </Button>
-                        </form>
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="text-red-400 border-red-500/30 hover:bg-red-500/10 font-black uppercase text-[10px]"
-                                onClick={() => void deleteSelectedHighlight()}
-                                disabled={Boolean(deletingHighlightId)}
-                                isLoading={deletingHighlightId === selectedHighlight._id}
-                            >
-                                Supprimer le clip
-                            </Button>
+                    <div className="p-4 md:p-5 h-[min(84vh,780px)] flex flex-col gap-3">
+                        <div className="min-h-0 flex-1 grid gap-4 md:gap-5 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)]">
+                            <div className="min-h-0 flex flex-col">
+                                <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+                                    <video
+                                        key={selectedHighlight._id}
+                                        src={resolveBackendAssetUrl(selectedHighlight.clipUrl)}
+                                        className="h-full w-full min-h-[200px] object-contain md:min-h-0"
+                                        controls
+                                        playsInline
+                                        autoPlay
+                                    />
+                                </div>
+                            </div>
+                            <div className="min-h-0 flex flex-col gap-3 md:max-w-none">
+                                <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.05] to-transparent p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 space-y-0.5">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/90">
+                                                Visibilité
+                                            </p>
+                                            <p className="text-xs text-white/50 leading-snug">
+                                                {selectedHighlight.visibility === 'public'
+                                                    ? 'Visible dans le fil des highlights.'
+                                                    : 'Visible uniquement par vous.'}
+                                            </p>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            <HighlightVisibilitySwitch
+                                                value={
+                                                    selectedHighlight.visibility === 'public' ? 'public' : 'private'
+                                                }
+                                                onChange={async (v) => {
+                                                    const id = selectedHighlight._id;
+                                                    setSavingHighlightVisibilityId(id);
+                                                    try {
+                                                        await highlightService.updateVisibility(id, v);
+                                                        toast.success(
+                                                            v === 'public'
+                                                                ? 'Clip public — visible par tous'
+                                                                : 'Clip privé — visible par vous seulement',
+                                                        );
+                                                        setSelectedHighlight({ ...selectedHighlight, visibility: v });
+                                                        void loadMyHighlights();
+                                                    } catch (error) {
+                                                        toast.error(
+                                                            error instanceof Error
+                                                                ? error.message
+                                                                : 'Mise à jour impossible',
+                                                        );
+                                                    } finally {
+                                                        setSavingHighlightVisibilityId(null);
+                                                    }
+                                                }}
+                                                isLoading={savingHighlightVisibilityId === selectedHighlight._id}
+                                            />
+                                            <button
+                                                type="button"
+                                                aria-label="Supprimer le clip"
+                                                title="Supprimer le clip"
+                                                onClick={() => void deleteSelectedHighlight()}
+                                                disabled={Boolean(deletingHighlightId)}
+                                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 text-white/40 transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+                                            >
+                                                <Trash2 size={15} strokeWidth={2} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {savingHighlightVisibilityId === selectedHighlight._id ? (
+                                        <p className="mt-2 text-[9px] font-bold uppercase tracking-wider text-primary/80">
+                                            Enregistrement…
+                                        </p>
+                                    ) : null}
+                                </div>
+
+                                <form
+                                    onSubmit={(e) => void saveHighlightDescription(e)}
+                                    className="rounded-2xl border border-white/[0.08] bg-[#0c0e11]/90 p-4 space-y-3"
+                                >
+                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/35">
+                                        Description
+                                    </label>
+                                    <Textarea
+                                        rows={2}
+                                        value={highlightDescDraft}
+                                        onChange={(e) => setHighlightDescDraft(e.target.value)}
+                                        placeholder="Décrivez ce moment…"
+                                        className="resize-none border-white/[0.08] bg-black/40 text-sm text-white/90 placeholder:text-white/25 focus-visible:border-primary/35"
+                                    />
+                                    <div className="flex justify-end">
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            isLoading={savingHighlightDetails}
+                                            className="rounded-lg px-4 font-black uppercase tracking-wider text-[10px]"
+                                        >
+                                            Enregistrer
+                                        </Button>
+                                    </div>
+                                </form>
+
+                                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#080a0d]/95 p-3 shadow-inner">
+                                    <p className="mb-2 shrink-0 text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
+                                        Discussion
+                                    </p>
+                                    <div className="min-h-0 flex-1 overflow-hidden">
+                                        <HighlightEngagement
+                                            highlightId={selectedHighlight._id}
+                                            layout="embedded"
+                                            className="h-full"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 justify-between text-sm pt-2 border-t border-white/5">
+                        <div className="shrink-0 flex flex-wrap items-center gap-3 justify-between border-t border-white/5 pt-3 text-sm">
                             {selectedHighlight.sourceVideoTitle ? (
                                 <span className="text-white/50">
                                     Vidéo source :{' '}

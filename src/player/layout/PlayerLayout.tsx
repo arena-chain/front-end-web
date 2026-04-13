@@ -27,7 +27,6 @@ import {
     Clapperboard,
     Film,
     Sparkles,
-    Package,
     X,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -54,7 +53,6 @@ const PRIMARY_NAV_LINKS: { to: string; label: string; icon: LucideIcon }[] = [
     { to: '/player/matches', label: 'Match History', icon: History },
     { to: '/player/leagues', label: 'Leagues', icon: Award },
     { to: '/player/channel', label: 'Studio & clips', icon: Clapperboard },
-    { to: '/player/inventory', label: 'Inventory', icon: Package },
     { to: '/player/my-videos', label: 'My videos', icon: Film },
     { to: '/player/highlights', label: 'Highlights', icon: Sparkles },
 ];
@@ -462,9 +460,6 @@ function usePlayerNavActive(to: string): boolean {
     }
     if (to === '/player/my-videos') {
         return pathname === '/player/my-videos';
-    }
-    if (to === '/player/inventory') {
-        return pathname === '/player/inventory';
     }
     return pathname === to || pathname.startsWith(`${to}/`);
 }

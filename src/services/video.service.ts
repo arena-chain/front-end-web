@@ -8,6 +8,16 @@ const auth = () => {
     return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 };
 
+function mapUploadError(error: unknown): Error {
+    if (axios.isAxiosError(error) && error.response?.status === 413) {
+        return new Error(
+            'Le fichier est trop volumineux pour le serveur (HTTP 413). Réduisez la taille/qualité de la vidéo ou augmentez la limite côté backend.',
+        );
+    }
+    if (error instanceof Error) return error;
+    return new Error('Échec de l’upload');
+}
+
 export interface VideoRecord {
     _id: string;
     title: string;
@@ -74,15 +84,19 @@ export const videoService = {
         if (body.duration != null) fd.append('duration', String(body.duration));
         if (body.highlightsVisibility) fd.append('highlightsVisibility', body.highlightsVisibility);
         if (body.channelVisibility) fd.append('channelVisibility', body.channelVisibility);
-        const res = await axios.post(`${API}/upload`, fd, auth());
-        const data = res.data as VideoUploadResult | VideoRecord;
-        if (data && typeof data === 'object' && 'video' in data && data.video) {
-            return {
-                video: data.video as VideoRecord,
-                highlightJobId: (data as VideoUploadResult).highlightJobId ?? null,
-            };
+        try {
+            const res = await axios.post(`${API}/upload`, fd, auth());
+            const data = res.data as VideoUploadResult | VideoRecord;
+            if (data && typeof data === 'object' && 'video' in data && data.video) {
+                return {
+                    video: data.video as VideoRecord,
+                    highlightJobId: (data as VideoUploadResult).highlightJobId ?? null,
+                };
+            }
+            return { video: data as VideoRecord, highlightJobId: null };
+        } catch (error) {
+            throw mapUploadError(error);
         }
-        return { video: data as VideoRecord, highlightJobId: null };
     },
 
     update: async (

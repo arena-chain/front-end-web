@@ -8,6 +8,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { cn } from '../../lib/utils';
 
+const DEFAULT_MAX_UPLOAD_MB = 2048;
+const maxUploadMb = Number(import.meta.env.VITE_MAX_VIDEO_UPLOAD_MB ?? DEFAULT_MAX_UPLOAD_MB);
+
 function channelVisLabel(v: VideoRecord): 'public' | 'private' {
     return v.channelVisibility === 'public' ? 'public' : 'private';
 }
@@ -83,6 +86,12 @@ export function MyVideosManager() {
         }
         if (!uploadForm.file || !uploadForm.title.trim()) {
             toast.error('Titre et fichier vidéo requis.');
+            return;
+        }
+        if (Number.isFinite(maxUploadMb) && uploadForm.file.size > maxUploadMb * 1024 * 1024) {
+            toast.error(
+                `Fichier trop volumineux (${(uploadForm.file.size / 1024 / 1024).toFixed(1)} Mo). Limite front actuelle: ${maxUploadMb} Mo.`,
+            );
             return;
         }
         setUploading(true);
@@ -190,6 +199,9 @@ export function MyVideosManager() {
                     }
                     className="w-full text-sm text-white/70 file:mr-4 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary"
                 />
+                <p className="mt-1 text-[11px] text-white/40">
+                    Taille max recommandée: {maxUploadMb} Mo (configurable via `VITE_MAX_VIDEO_UPLOAD_MB`).
+                </p>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-2">

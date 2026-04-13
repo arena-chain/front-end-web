@@ -7,21 +7,26 @@ type Props = {
     onChange: (v: HighlightVisibilityValue) => void;
     disabled?: boolean;
     isLoading?: boolean;
+    compact?: boolean;
 };
 
 /**
  * Segmented control — Privé (default) vs Public (discovery feed). No skew: keeps borders crisp.
  */
-export function HighlightVisibilityToggle({ value, onChange, disabled, isLoading }: Props) {
+export function HighlightVisibilityToggle({ value, onChange, disabled, isLoading, compact = false }: Props) {
     return (
-        <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/35">
-                Visibilité du clip
-            </p>
+        <div className={compact ? 'space-y-1.5' : 'space-y-2'}>
+            {!compact ? (
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/35">
+                    Visibilité du clip
+                </p>
+            ) : null}
             <div
                 role="radiogroup"
                 aria-label="Visibilité du clip"
-                className="flex w-full rounded-xl border border-white/10 bg-[#080a0d] p-1 gap-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                className={`flex w-full rounded-xl border border-white/10 bg-[#080a0d] gap-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${
+                    compact ? 'p-0.5' : 'p-1'
+                }`}
             >
                 {(['private', 'public'] as const).map((opt) => {
                     const selected = value === opt;
@@ -36,7 +41,8 @@ export function HighlightVisibilityToggle({ value, onChange, disabled, isLoading
                                 if (!selected) onChange(opt);
                             }}
                             className={cn(
-                                'flex-1 min-w-0 rounded-lg py-2.5 px-3 text-center transition-all duration-200',
+                                'flex-1 min-w-0 rounded-lg text-center transition-all duration-200',
+                                compact ? 'py-1.5 px-2' : 'py-2.5 px-3',
                                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0e11]',
                                 selected
                                     ? opt === 'public'
@@ -55,19 +61,21 @@ export function HighlightVisibilityToggle({ value, onChange, disabled, isLoading
             {isLoading ? (
                 <p className="text-[10px] font-bold uppercase tracking-wider text-primary/90">Enregistrement…</p>
             ) : null}
-            <p className="text-[11px] text-white/45 leading-relaxed max-w-sm">
-                {value === 'private' ? (
-                    <>
-                        <span className="text-white/60 font-semibold">Privé</span> — seul vous voyez ce clip sur votre
-                        channel (réglage par défaut).
-                    </>
-                ) : (
-                    <>
-                        <span className="text-primary font-semibold">Public</span> — tout le monde peut le voir dans le
-                        fil des highlights.
-                    </>
-                )}
-            </p>
+            {!compact ? (
+                <p className="text-[11px] text-white/45 leading-relaxed max-w-sm">
+                    {value === 'private' ? (
+                        <>
+                            <span className="text-white/60 font-semibold">Privé</span> — seul vous voyez ce clip sur votre
+                            channel (réglage par défaut).
+                        </>
+                    ) : (
+                        <>
+                            <span className="text-primary font-semibold">Public</span> — tout le monde peut le voir dans le
+                            fil des highlights.
+                        </>
+                    )}
+                </p>
+            ) : null}
         </div>
     );
 }

@@ -393,12 +393,12 @@ function MediaEngagement({ kind, entityId, className = '', layout = 'standard' }
         <div
             className={`${embedded ? 'space-y-2 border-t-0 pt-0 flex flex-col flex-1 min-h-0' : 'space-y-3 border-t border-white/10 pt-3'} ${className}`}
         >
-            <div className={`flex flex-wrap items-center gap-2 ${embedded ? '' : 'sm:gap-3'} shrink-0`}>
+            <div className={`flex flex-wrap items-center gap-1.5 ${embedded ? '' : 'sm:gap-3'} shrink-0`}>
                 <button
                     type="button"
                     onClick={() => void toggleMediaLike()}
                     disabled={likeBusy}
-                    className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition-colors ${
                         engagement?.likedByMe
                             ? 'bg-primary/20 text-primary'
                             : 'bg-white/5 text-white/70 hover:bg-white/10'
@@ -413,7 +413,7 @@ function MediaEngagement({ kind, entityId, className = '', layout = 'standard' }
                         onClick={() => void toggleSave()}
                         disabled={saveBusy}
                         title="Saved highlights"
-                        className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition-colors ${
                             engagement?.savedByMe
                                 ? 'bg-amber-500/20 text-amber-300'
                                 : 'bg-white/5 text-white/70 hover:bg-white/10'
@@ -423,7 +423,7 @@ function MediaEngagement({ kind, entityId, className = '', layout = 'standard' }
                         {engagement?.saveCount != null && engagement.saveCount > 0 ? engagement.saveCount : 'Sauver'}
                     </button>
                 )}
-                <span className="inline-flex items-center gap-1.5 text-xs text-white/50">
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-white/45">
                     <MessageCircle size={16} />
                     {nComments} commentaire{nComments !== 1 ? 's' : ''}
                 </span>
@@ -435,21 +435,26 @@ function MediaEngagement({ kind, entityId, className = '', layout = 'standard' }
             </div>
 
             {user?.id ? (
-                <form onSubmit={(e) => void submitTopComment(e)} className="space-y-2 shrink-0">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                        Écrire un commentaire
+                <form
+                    onSubmit={(e) => void submitTopComment(e)}
+                    className={`shrink-0 ${embedded ? 'space-y-1.5' : 'space-y-2'}`}
+                >
+                    <label className="text-[9px] font-black uppercase tracking-[0.18em] text-white/35">
+                        Commentaire
                     </label>
                     <Textarea
-                        rows={2}
+                        rows={embedded ? 2 : 2}
                         value={commentBody}
                         onChange={(e) => setCommentBody(e.target.value)}
                         placeholder={commentPlaceholder}
-                        className="bg-white/5 border-white/10 text-sm"
+                        className={`resize-none text-sm ${embedded ? 'border-white/[0.08] bg-black/35 text-white/90 placeholder:text-white/25' : 'bg-white/5 border-white/10'}`}
                         maxLength={2000}
                     />
-                    <Button type="submit" size="sm" disabled={!commentBody.trim()} isLoading={commentBusy}>
-                        Publier
-                    </Button>
+                    <div className={embedded ? 'flex justify-end' : ''}>
+                        <Button type="submit" size="sm" disabled={!commentBody.trim()} isLoading={commentBusy}>
+                            Publier
+                        </Button>
+                    </div>
                 </form>
             ) : null}
 

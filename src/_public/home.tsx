@@ -8,7 +8,7 @@ import homeCover from '../assets/home_cover.jpg';
 import valorantCover from '../assets/valorant_cover.jpg';
 import lolCover from '../assets/lol.jpg';
 import riotLogo from '../assets/riot-games-logo.svg';
-import steamLogo from '../assets/steam.png';
+
 import { NewsSection } from './components/NewsSection';
 import { HomeTournaments } from './components/HomeTournaments';
 
@@ -330,62 +330,22 @@ function StatCard({ n, suffix, label, icon, prefix = '' }: { n: number; suffix: 
 // ─── Partners data ────────────────────────────────────────────────────────────
 
 interface GamePartner  { title: string; image: string; type: 'cover' | 'logo'; glow: string; category: string; }
-interface BrandPartner { title: string; logo: string; color: string; bg: string; category: string; }
-
-// Simple Icons CDN — returns colored SVG: https://cdn.simpleicons.org/{slug}/{hex}
-const si = (slug: string, hex: string) => `https://cdn.simpleicons.org/${slug}/${hex}`;
 
 const GAME_PARTNERS: GamePartner[] = [
-    { title: 'Riot Games',        image: riotLogo,      type: 'logo',  glow: 'rgba(211,41,54,0.6)',   category: 'Publisher' },
-    { title: 'Valorant',          image: valorantCover, type: 'cover', glow: 'rgba(255,70,85,0.55)',  category: 'FPS'       },
-    { title: 'League of Legends', image: lolCover,      type: 'cover', glow: 'rgba(180,145,0,0.55)',  category: 'MOBA'      },
-    { title: 'Steam',             image: steamLogo,     type: 'logo',  glow: 'rgba(100,180,255,0.5)', category: 'Platform'  },
-    { title: 'Epic Games',        image: si('epicgames','ffffff'),    type: 'logo', glow: 'rgba(255,255,255,0.35)', category: 'Platform'  },
-    { title: 'EA Sports',         image: si('ea','ff4747'),           type: 'logo', glow: 'rgba(255,71,71,0.5)',   category: 'Publisher' },
-    { title: 'Ubisoft',           image: si('ubisoft','ffffff'),      type: 'logo', glow: 'rgba(255,255,255,0.3)', category: 'Publisher' },
-    { title: 'Blizzard',          image: si('battledotnet','148eff'), type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
-    { title: 'Discord',           image: si('discord','5865f2'),      type: 'logo', glow: 'rgba(88,101,242,0.6)',  category: 'Community' },
+    { title: 'Riot Games',        image: riotLogo,      type: 'logo',  glow: 'rgba(211,41,54,0.6)',  category: 'Publisher' },
+    { title: 'Valorant',          image: valorantCover, type: 'cover', glow: 'rgba(255,70,85,0.55)', category: 'FPS'       },
+    { title: 'League of Legends', image: lolCover,      type: 'cover', glow: 'rgba(180,145,0,0.55)', category: 'MOBA'      },
     // duplicates for seamless loop
-    { title: 'Riot Games',        image: riotLogo,      type: 'logo',  glow: 'rgba(211,41,54,0.6)',   category: 'Publisher' },
-    { title: 'Valorant',          image: valorantCover, type: 'cover', glow: 'rgba(255,70,85,0.55)',  category: 'FPS'       },
-    { title: 'League of Legends', image: lolCover,      type: 'cover', glow: 'rgba(180,145,0,0.55)',  category: 'MOBA'      },
-    { title: 'Steam',             image: steamLogo,     type: 'logo',  glow: 'rgba(100,180,255,0.5)', category: 'Platform'  },
-    { title: 'Epic Games',        image: si('epicgames','ffffff'),    type: 'logo', glow: 'rgba(255,255,255,0.35)', category: 'Platform'  },
-    { title: 'EA Sports',         image: si('ea','ff4747'),           type: 'logo', glow: 'rgba(255,71,71,0.5)',   category: 'Publisher' },
-    { title: 'Ubisoft',           image: si('ubisoft','ffffff'),      type: 'logo', glow: 'rgba(255,255,255,0.3)', category: 'Publisher' },
-    { title: 'Blizzard',          image: si('battledotnet','148eff'), type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
-    { title: 'Discord',           image: si('discord','5865f2'),      type: 'logo', glow: 'rgba(88,101,242,0.6)',  category: 'Community' },
+    { title: 'Riot Games',        image: riotLogo,      type: 'logo',  glow: 'rgba(211,41,54,0.6)',  category: 'Publisher' },
+    { title: 'Valorant',          image: valorantCover, type: 'cover', glow: 'rgba(255,70,85,0.55)', category: 'FPS'       },
+    { title: 'League of Legends', image: lolCover,      type: 'cover', glow: 'rgba(180,145,0,0.55)', category: 'MOBA'      },
 ];
 
-const BRAND_PARTNERS: BrandPartner[] = [
-    { title: 'Alienware',   logo: si('alienware','00baff'),   color: '#00baff', bg: 'rgba(0,186,255,0.07)',  category: 'Gaming PCs'    },
-    { title: 'ASUS ROG',    logo: si('asus','cc0000'),        color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Hardware'      },
-    { title: 'Razer',       logo: si('razer','44d62c'),       color: '#44d62c', bg: 'rgba(68,214,44,0.07)',  category: 'Peripherals'   },
-    { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
-    { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
-    { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'HyperX',        logo: si('hyperx','e20813'),     color: '#e20813', bg: 'rgba(226,8,19,0.07)',   category: 'Peripherals'   },
-    { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
-    { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
-    { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
-    // duplicates
-    { title: 'Alienware',   logo: si('alienware','00baff'),   color: '#00baff', bg: 'rgba(0,186,255,0.07)',  category: 'Gaming PCs'    },
-    { title: 'ASUS ROG',    logo: si('asus','cc0000'),        color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Hardware'      },
-    { title: 'Razer',       logo: si('razer','44d62c'),       color: '#44d62c', bg: 'rgba(68,214,44,0.07)',  category: 'Peripherals'   },
-    { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
-    { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
-    { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'HyperX',        logo: si('hyperx','e20813'),     color: '#e20813', bg: 'rgba(226,8,19,0.07)',   category: 'Peripherals'   },
-    { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
-    { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
-    { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
-];
 
 // ─── Partners carousel ────────────────────────────────────────────────────────
 
 function PartnersCarousel() {
-    const [pausedTop, setPausedTop]       = useState(false);
-    const [pausedBottom, setPausedBottom] = useState(false);
+    const [pausedTop, setPausedTop] = useState(false);
 
     return (
         <section className="relative py-24 overflow-hidden" style={{ background: '#060606' }}>
@@ -406,7 +366,7 @@ function PartnersCarousel() {
                     Trusted by <span style={{ color: '#00ff00' }}>Industry Leaders</span>
                 </h2>
                 <p className="mt-3 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                    Publishers, platforms and hardware brands powering the Arena Chain ecosystem.
+                    Official game publishers powering the Arena Chain ecosystem.
                 </p>
             </div>
 
@@ -429,24 +389,6 @@ function PartnersCarousel() {
                 </div>
             </div>
 
-            {/* ── Row 2: Hardware brands — scrolls RIGHT ── */}
-            <div className="relative">
-                <div
-                    className="flex gap-4 px-5"
-                    onMouseEnter={() => setPausedBottom(true)}
-                    onMouseLeave={() => setPausedBottom(false)}
-                    style={{
-                        width: 'max-content',
-                        animationName: 'mc-right',
-                        animationDuration: '30s',
-                        animationTimingFunction: 'linear',
-                        animationIterationCount: 'infinite',
-                        animationPlayState: pausedBottom ? 'paused' : 'running',
-                    }}
-                >
-                    {BRAND_PARTNERS.map((p, i) => <BrandCard key={i} {...p} />)}
-                </div>
-            </div>
 
             <style>{`
                 @keyframes mc-left  { from { transform: translateX(0); }    to { transform: translateX(-50%); } }
@@ -517,72 +459,6 @@ function GameCard({ title, image, type, glow, category }: GamePartner) {
     );
 }
 
-// ─── Brand / hardware card (redesigned) ──────────────────────────────────────
-function BrandCard({ title, logo, color, bg, category }: BrandPartner) {
-    const [hovered, setHovered] = useState(false);
-    const [imgOk, setImgOk]     = useState(true);
-
-    return (
-        <div
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-            className="relative flex flex-col items-center justify-center rounded-2xl shrink-0 cursor-pointer select-none overflow-hidden"
-            style={{
-                width: 190, height: 130,
-                background: hovered ? bg : 'rgba(255,255,255,0.025)',
-                border: `1px solid ${hovered ? color + '60' : 'rgba(255,255,255,0.08)'}`,
-                boxShadow: hovered ? `0 8px 32px ${color}25, 0 0 0 1px ${color}20` : 'none',
-                transform: hovered ? 'translateY(-7px) scale(1.04)' : 'translateY(0) scale(1)',
-                transition: 'all 0.35s cubic-bezier(0.23,1,0.32,1)',
-            }}>
-
-            {/* Top color bar */}
-            <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl transition-opacity duration-300"
-                style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)`, opacity: hovered ? 1 : 0 }} />
-
-            {/* Radial glow bg */}
-            <div className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-                style={{ background: `radial-gradient(ellipse at 50% 30%, ${color}14 0%, transparent 65%)`, opacity: hovered ? 1 : 0 }} />
-
-            {/* Logo */}
-            <div className="relative z-10 flex items-center justify-center mb-3"
-                style={{ width: 56, height: 56 }}>
-                {imgOk
-                    ? <img
-                        src={logo} alt={title}
-                        className="object-contain w-full h-full"
-                        style={{
-                            opacity: hovered ? 1 : 0.5,
-                            filter: hovered ? `drop-shadow(0 0 10px ${color}cc)` : 'grayscale(0.3)',
-                            transition: 'all 0.3s ease',
-                        }}
-                        onError={() => setImgOk(false)}
-                      />
-                    : <span className="text-2xl font-black" style={{ color }}>{title.charAt(0)}</span>
-                }
-            </div>
-
-            {/* Text */}
-            <p className="relative z-10 text-[11px] font-black uppercase tracking-widest leading-none transition-colors duration-300"
-                style={{ color: hovered ? color : 'rgba(255,255,255,0.55)' }}>
-                {title}
-            </p>
-            <p className="relative z-10 text-[8px] font-bold uppercase tracking-[0.2em] mt-1 transition-colors duration-300"
-                style={{ color: hovered ? `${color}80` : 'rgba(255,255,255,0.2)' }}>
-                {category}
-            </p>
-
-            {/* Bottom bar sweep */}
-            <div className="absolute bottom-0 left-0 h-0.5 rounded-full"
-                style={{
-                    width: hovered ? '100%' : '0%',
-                    background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
-                    boxShadow: hovered ? `0 0 8px ${color}` : 'none',
-                    transition: 'width 0.45s ease',
-                }} />
-        </div>
-    );
-}
 
 // ─── Mobile App Section ───────────────────────────────────────────────────────
 
