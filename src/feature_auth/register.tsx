@@ -164,56 +164,59 @@ export default function Register() {
     );
 
     return (
-        <div className="min-h-screen min-h-dvh bg-zinc-950 flex flex-col md:grid md:grid-cols-[minmax(0,55%)_minmax(0,45%)] md:grid-rows-1">
-            {/* Valorant agents (valorant-api.com) — left 55% on desktop */}
-            <section className="relative order-2 md:order-1 min-h-[200px] sm:min-h-[280px] md:min-h-screen min-w-0">
-                <AuthValorantBackdrop
-                    fallbackSrc={registerValorantFallback}
-                    overlayStrength={0.38}
-                    layout="showcase"
-                    showcaseFormOn="right"
-                    hideBrandPlate
-                    rotateIntervalMs={REGISTER_SLIDE_INTERVAL_MS}
-                    crossfadeSeconds={REGISTER_CROSSFADE_SECONDS}
-                    zoomSeconds={REGISTER_ZOOM_SECONDS}
-                />
-                <span className="sr-only">Valorant agent artwork</span>
-            </section>
+        <div className="min-h-screen min-h-dvh bg-[#09090b] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+            {/* ── Framed card ── */}
+            <div className="w-full max-w-6xl rounded-3xl overflow-hidden border border-white/[0.08] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] grid md:grid-cols-[minmax(0,45%)_minmax(0,55%)]">
 
-            {/* Form column — right on desktop */}
-            <section className="order-1 md:order-2 relative z-20 flex flex-col justify-center px-5 sm:px-8 lg:px-10 py-10 md:py-12 overflow-y-auto max-h-[100dvh] border-t border-white/[0.06] md:border-t-0 md:border-l md:border-white/[0.06] bg-gradient-to-b from-zinc-950 via-[#0a0a0a] to-zinc-950">
-                <div className="w-full max-w-none">
-                <Link to="/" className="inline-flex items-center gap-2 group w-fit mb-7 md:mb-10">
+                {/* Left — Valorant backdrop */}
+                <div className="relative hidden md:block">
+                    <AuthValorantBackdrop
+                        fallbackSrc={registerValorantFallback}
+                        overlayStrength={0.38}
+                        layout="showcase"
+                        showcaseFormOn="right"
+                        hideBrandPlate
+                        rotateIntervalMs={REGISTER_SLIDE_INTERVAL_MS}
+                        crossfadeSeconds={REGISTER_CROSSFADE_SECONDS}
+                        zoomSeconds={REGISTER_ZOOM_SECONDS}
+                    />
+                    <span className="sr-only">Valorant agent artwork</span>
+                    <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-r from-transparent to-[#111113]" />
+                </div>
+
+                {/* Right — Form */}
+                <section className="relative z-10 flex flex-col justify-center px-6 sm:px-10 lg:px-12 py-10 bg-[#111113] overflow-y-auto max-h-[90vh] md:max-h-none">
+                <Link to="/" className="inline-flex items-center gap-2 group w-fit mb-7">
                     <ArrowLeft className="w-4 h-4 text-zinc-500 group-hover:text-primary transition-colors" />
                     <span className="text-zinc-500 text-sm group-hover:text-zinc-300 transition-colors">Back to Home</span>
                 </Link>
 
-                <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6 mb-7">
-                    <div className="w-14 h-14 sm:w-[4.5rem] sm:h-[4.5rem] rounded-2xl flex items-center justify-center bg-primary/10 border border-primary/30 shadow-[0_0_32px_rgba(0,255,0,0.1)] shrink-0">
-                        <Gamepad2 className="w-7 h-7 sm:w-9 sm:h-9 text-primary" />
+                <div className="flex items-center gap-4 mb-7">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary/10 border border-primary/30 shadow-[0_0_24px_rgba(0,255,0,0.1)] shrink-0">
+                        <Gamepad2 className="w-6 h-6 text-primary" />
                     </div>
-                    <div className="min-w-0">
-                        <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-black uppercase tracking-tight text-white leading-[1.05]">
+                    <div>
+                        <h1 className="text-3xl font-black uppercase tracking-tight text-white leading-tight">
                             Join the <span className="text-primary">Arena</span>
                         </h1>
-                        <p className="text-zinc-500 text-sm mt-2.5 max-w-md leading-relaxed">
+                        <p className="text-zinc-500 text-sm mt-1 leading-relaxed">
                             Pick a role and sign up — or use Google or Steam in one click.
                         </p>
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 mb-7">
+                <div className="flex flex-col sm:flex-row gap-3 mb-6">
                     <div className="flex-1 min-w-0">{googleBtn}</div>
                     <div className="flex-1 min-w-0">{steamBtn}</div>
                 </div>
 
-                <div className="flex items-center gap-4 mb-7">
+                <div className="flex items-center gap-4 mb-6">
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
                     <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em] whitespace-nowrap">Or email</span>
                     <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
                 </div>
 
-                <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/25 backdrop-blur-xl p-5 sm:p-7 lg:p-8 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] w-full">
+                <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 sm:p-6 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)] w-full">
                 <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-3">Account type</p>
                 <div className="flex w-full rounded-xl border border-white/[0.1] bg-black/20 p-1 gap-1 mb-8">
                     <RoleSegment selected={isPlayer} onClick={() => setSelectedRole('player')} icon={<User className="w-4 h-4 shrink-0" />} label="Player" />
@@ -337,12 +340,12 @@ export default function Register() {
                 </form>
                 </div>
 
-                <p className="text-zinc-500 text-sm mt-8 pb-2">
+                <p className="text-zinc-500 text-sm mt-6">
                     Already have an account?{' '}
                     <Link to="/login" className="text-primary font-semibold hover:underline underline-offset-2">Log in</Link>
                 </p>
-                </div>
-            </section>
+                </section>
+            </div>
         </div>
     );
 }

@@ -115,42 +115,44 @@ export default function Login() {
     );
 
     return (
-        <div className="min-h-screen min-h-dvh bg-zinc-950 flex flex-col md:grid md:grid-cols-[minmax(0,45%)_minmax(0,55%)] md:grid-rows-1 overflow-hidden">
-            {/* Form — left 45% */}
-            <section className="relative z-20 flex flex-col justify-center px-5 sm:px-8 lg:px-10 py-10 md:py-12 overflow-y-auto max-h-[100dvh] md:border-r md:border-white/[0.06] bg-gradient-to-b from-zinc-950 via-[#0a0a0a] to-zinc-950">
-                <div className="w-full max-w-none">
-                    <Link to="/" className="inline-flex items-center gap-2 group w-fit mb-7 md:mb-10">
+        <div className="min-h-screen min-h-dvh bg-[#09090b] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+            {/* ── Framed card ── */}
+            <div className="w-full max-w-6xl rounded-3xl overflow-hidden border border-white/[0.08] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] grid md:grid-cols-[minmax(0,56%)_minmax(0,44%)]">
+
+                {/* Left — Form */}
+                <section className="relative z-10 flex flex-col justify-center px-6 sm:px-10 lg:px-12 py-10 bg-[#111113]">
+                    <Link to="/" className="inline-flex items-center gap-2 group w-fit mb-8">
                         <ArrowLeft className="w-4 h-4 text-zinc-500 group-hover:text-primary transition-colors" />
                         <span className="text-zinc-500 text-sm group-hover:text-zinc-300 transition-colors">Back to Home</span>
                     </Link>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6 mb-7">
-                        <div className="w-14 h-14 sm:w-[4.5rem] sm:h-[4.5rem] rounded-2xl flex items-center justify-center bg-primary/10 border border-primary/30 shadow-[0_0_32px_rgba(0,255,0,0.1)] shrink-0">
-                            <Gamepad2 className="w-7 h-7 sm:w-9 sm:h-9 text-primary" />
+                    <div className="flex items-center gap-4 mb-7">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary/10 border border-primary/30 shadow-[0_0_24px_rgba(0,255,0,0.1)] shrink-0">
+                            <Gamepad2 className="w-6 h-6 text-primary" />
                         </div>
-                        <div className="min-w-0">
-                            <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-black uppercase tracking-tight text-white leading-[1.05]">
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-tight text-white leading-tight">
                                 Welcome <span className="text-primary">Back</span>
                             </h1>
-                            <p className="text-zinc-500 text-sm mt-2.5 max-w-md leading-relaxed">
+                            <p className="text-zinc-500 text-sm mt-1 leading-relaxed">
                                 Sign in with Google or Steam — or use your email below.
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 mb-7">
+                    <div className="flex flex-col sm:flex-row gap-3 mb-6">
                         <div className="flex-1 min-w-0">{googleBtn}</div>
                         <div className="flex-1 min-w-0">{steamBtn}</div>
                     </div>
 
-                    <div className="flex items-center gap-4 mb-7">
+                    <div className="flex items-center gap-4 mb-6">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
                         <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em] whitespace-nowrap">Or email</span>
                         <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
                     </div>
 
-                    <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/25 backdrop-blur-xl p-5 sm:p-7 lg:p-8 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] w-full">
-                        <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-3">Sign in</p>
+                    <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 sm:p-6 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]">
+                        <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-4">Sign in</p>
 
                         {error && (
                             <div className="mb-5 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-2">
@@ -173,7 +175,7 @@ export default function Login() {
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center gap-2 ml-1">
                                     <label className="text-xs font-bold uppercase tracking-wider text-text-muted">Password</label>
-                                    <Link to="/forgot-password" className="text-[10px] sm:text-xs font-semibold text-primary hover:underline underline-offset-2 shrink-0">
+                                    <Link to="/forgot-password" className="text-xs font-semibold text-primary hover:underline underline-offset-2 shrink-0">
                                         Forgot password?
                                     </Link>
                                 </div>
@@ -201,19 +203,20 @@ export default function Login() {
                         </form>
                     </div>
 
-                    <p className="text-zinc-500 text-sm mt-8 pb-2">
+                    <p className="text-zinc-500 text-sm mt-6">
                         Don&apos;t have an account?{' '}
                         <Link to="/register" className="text-primary font-semibold hover:underline underline-offset-2">
                             Register now
                         </Link>
                     </p>
-                </div>
-            </section>
+                </section>
 
-            {/* LoL splash (Data Dragon) — right 55% */}
-            <section className="relative min-h-[200px] sm:min-h-[280px] md:min-h-screen min-w-0 border-t border-white/[0.06] md:border-t-0">
-                <AuthLeagueBackdrop fallbackSrc={lolLoginFallback} objectFocus="right" />
-            </section>
+                {/* Right — LoL splash image */}
+                <div className="relative hidden md:block">
+                    <AuthLeagueBackdrop fallbackSrc={lolLoginFallback} objectFocus="right" />
+                    <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-l from-transparent to-[#111113]" />
+                </div>
+            </div>
         </div>
     );
 }
