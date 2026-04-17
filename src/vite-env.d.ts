@@ -1,0 +1,41 @@
+/// <reference types="vite/client" />
+import type * as React from 'react';
+
+type ModelViewerProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+    src?: string;
+    alt?: string;
+    poster?: string;
+    'camera-controls'?: boolean;
+    'auto-rotate'?: boolean;
+    'rotation-per-second'?: string;
+    reveal?: string;
+    'interaction-prompt'?: string;
+    'camera-orbit'?: string;
+    'min-camera-orbit'?: string;
+    'max-camera-orbit'?: string;
+    'min-field-of-view'?: string;
+    'max-field-of-view'?: string;
+    'zoom-sensitivity'?: string;
+    'touch-action'?: string;
+    'interpolation-decay'?: string;
+    exposure?: string;
+    'shadow-intensity'?: string;
+    'shadow-softness'?: string;
+    'environment-image'?: string;
+    'tone-mapping'?: string;
+};
+
+declare global {
+    namespace React {
+        namespace JSX {
+            interface IntrinsicElements {
+                'model-viewer': ModelViewerProps;
+            }
+        }
+    }
+}
+
+declare module '*.glb' {
+    const src: string;
+    export default src;
+}

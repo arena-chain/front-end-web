@@ -1,0 +1,65 @@
+
+> arena-chain@0.0.0 build
+> tsc -b && vite build
+
+src/_public/components/TypewriterText.tsx(2,1): error TS6133: 'cn' is declared but its value is never read.
+src/_public/pages/NewsPage.tsx(3,39): error TS6133: 'X' is declared but its value is never read.
+src/_public/pages/NewsPage.tsx(3,57): error TS6133: 'Filter' is declared but its value is never read.
+src/_public/pages/TournamentDetailsPage.tsx(11,1): error TS6133: 'ApiTournament' is declared but its value is never read.
+src/_public/pages/TournamentDetailsPage.tsx(35,12): error TS6133: 'isApiData' is declared but its value is never read.
+src/admin/pages/Games.tsx(275,33): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/admin/pages/league-hub/AdminSeasonWorkspace.tsx(1200,70): error TS2304: Cannot find name 'Shield'.
+src/admin/pages/league-hub/AdminSeasonWorkspace.tsx(1205,70): error TS2304: Cannot find name 'Shield'.
+src/admin/pages/league-hub/CheckInsPage.tsx(6,25): error TS1484: 'League' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/CheckInsPage.tsx(7,25): error TS1484: 'Season' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/CheckInsPage.tsx(8,26): error TS1484: 'CheckIn' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/CheckInsPage.tsx(8,35): error TS1484: 'CheckInStatus' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/DisputesPage.tsx(4,18): error TS6133: 'Clock' is declared but its value is never read.
+src/admin/pages/league-hub/DisputesPage.tsx(6,25): error TS1484: 'League' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/DisputesPage.tsx(7,25): error TS1484: 'Season' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/DisputesPage.tsx(9,26): error TS1484: 'MatchDispute' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/DisputesPage.tsx(9,40): error TS1484: 'DisputeStatus' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/DisputesPage.tsx(9,55): error TS1484: 'DisputeReason' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/DisputesPage.tsx(21,7): error TS6133: 'REASONS' is declared but its value is never read.
+src/admin/pages/league-hub/RostersPage.tsx(3,40): error TS6133: 'UserMinus' is declared but its value is never read.
+src/admin/pages/league-hub/RostersPage.tsx(6,25): error TS1484: 'League' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/RostersPage.tsx(7,25): error TS1484: 'Season' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/RostersPage.tsx(8,31): error TS1484: 'SeasonRoster' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/league-hub/RostersPage.tsx(8,45): error TS1484: 'RosterPlayer' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/admin/pages/NftManager.tsx(12,42): error TS2307: Cannot find module '../avatar/modelViewerAvatarBridge' or its corresponding type declarations.
+src/admin/pages/NftManager.tsx(13,61): error TS2307: Cannot find module '../avatar/outfitCatalog' or its corresponding type declarations.
+src/admin/pages/NftManager.tsx(581,51): error TS7006: Parameter 'o' implicitly has an 'any' type.
+src/App.tsx(11,34): error TS2307: Cannot find module './feature_auth/AuthTransitionLayout' or its corresponding type declarations.
+src/scouter/pages/ScouterDashboard.tsx(27,89): error TS2307: Cannot find module '../lib/scouterHighlightUtils' or its corresponding type declarations.
+src/scouter/pages/ScouterDashboard.tsx(29,45): error TS2307: Cannot find module '../components/ScouterHighlightDetailModal' or its corresponding type declarations.
+src/scouter/pages/ScouterDashboard.tsx(383,65): error TS2345: Argument of type '(p: { _id?: string; userId?: { _id?: string; nickname?: string; }; }, i: number) => JSX.Element' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => Element'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type '{ _id?: string | undefined; userId?: { _id?: string | undefined; nickname?: string | undefined; } | undefined; }'.
+src/scouter/pages/ScouterHighlights.tsx(5,89): error TS2307: Cannot find module '../lib/scouterHighlightUtils' or its corresponding type declarations.
+src/scouter/pages/ScouterHighlights.tsx(7,45): error TS2307: Cannot find module '../components/ScouterHighlightDetailModal' or its corresponding type declarations.
+src/scouter/pages/ScouterPlayerProfile.tsx(40,91): error TS2307: Cannot find module '../lib/scouterHighlightUtils' or its corresponding type declarations.
+src/scouter/pages/ScouterPlayerProfile.tsx(42,45): error TS2307: Cannot find module '../components/ScouterHighlightDetailModal' or its corresponding type declarations.
+src/scouter/pages/ScouterPlayers.tsx(123,54): error TS2345: Argument of type '(p: Record<string, unknown>, i: number) => LeaderboardEntry' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => LeaderboardEntry'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+src/scouter/pages/ScouterPlayers.tsx(144,62): error TS2345: Argument of type '(p: Record<string, unknown>, i: number) => LeaderboardEntry' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => LeaderboardEntry'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+src/scouter/pages/ScouterPlayers.tsx(159,62): error TS2345: Argument of type '(p: Record<string, unknown>, i: number) => LeaderboardEntry' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => LeaderboardEntry'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+src/scouter/pages/ScouterRecommendations.tsx(3,27): error TS6133: 'User' is declared but its value is never read.
+src/services/scoutingService.ts(9,13): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/services/scoutingService.ts(17,13): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/services/scoutingService.ts(23,13): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/services/scoutingService.ts(29,13): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/university/pages/GoLivePage.tsx(12,71): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/university/pages/GoLivePage.tsx(527,20): error TS6133: 'deleteCurrentStream' is declared but its value is never read.
+src/university/pages/WatchChannelPage.tsx(39,12): error TS6133: 'loading' is declared but its value is never read.
+src/university/pages/WatchChannelPage.tsx(662,47): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
