@@ -32,6 +32,7 @@ import {
 import { cn } from '../../lib/utils';
 import PlayerAmbientBackground from '../components/PlayerAmbientBackground';
 import PlayerEnergyStreakOverlay from '../components/PlayerEnergyStreakOverlay';
+import PlayerGameTokenBalance from '../components/PlayerGameTokenBalance';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
 import { useAuth } from '../../contexts/AuthContext';
 // ─── Top nav links (shown in the horizontal top bar) ─────────────────────────
@@ -247,6 +248,7 @@ export default function PlayerLayout() {
                                     className="w-full bg-white/5 border border-white/5 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-primary/40 transition-colors"
                                 />
                             </div>
+                            <PlayerGameTokenBalance className="hidden sm:flex" />
                             <button className="relative p-2 rounded-xl hover:bg-white/5 text-text-muted hover:text-white transition-colors">
                                 <Bell size={18} />
                                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
