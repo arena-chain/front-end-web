@@ -120,7 +120,7 @@ export default function ScouterPlayers() {
                     return scoutingService.filterPlayers({ gameId: selectedGameId }).then((filtered) => {
                         const list = Array.isArray(filtered) ? filtered : [];
                         if (list.length > 0) {
-                            const entries = list.map((p: Record<string, unknown>, i: number) => profileToEntry(p, i)).sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
+                            const entries = list.map((p, i) => profileToEntry(p as Record<string, unknown>, i)).sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
                             setLeaderboard(mergeWithRolePlayers(entries, rolePlayers));
                             setDataSource('filter');
                             return;
@@ -141,7 +141,7 @@ export default function ScouterPlayers() {
                             return scoutingService.filterPlayers({ gameId: selectedGameId }).then((filtered) => {
                                 const list = Array.isArray(filtered) ? filtered : [];
                                 if (list.length > 0) {
-                                    const entries = list.map((p: Record<string, unknown>, i: number) => profileToEntry(p, i)).sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
+                                    const entries = list.map((p, i) => profileToEntry(p as Record<string, unknown>, i)).sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
                                     setLeaderboard(mergeWithRolePlayers(entries, rolePlayers));
                                     setDataSource('filter');
                                 } else {
@@ -156,7 +156,7 @@ export default function ScouterPlayers() {
                             .then((filtered) => {
                                 const list = Array.isArray(filtered) ? filtered : [];
                                 if (list.length > 0) {
-                                    const entries = list.map((p: Record<string, unknown>, i: number) => profileToEntry(p, i)).sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
+                                    const entries = list.map((p, i) => profileToEntry(p as Record<string, unknown>, i)).sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
                                     setLeaderboard(mergeWithRolePlayers(entries, rolePlayers));
                                     setDataSource('filter');
                                 } else {

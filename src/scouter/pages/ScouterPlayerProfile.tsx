@@ -90,8 +90,15 @@ export default function ScouterPlayerProfile() {
     const [prospectSaving, setProspectSaving] = useState(false);
     const [recommendSubmitting, setRecommendSubmitting] = useState(false);
     const [reportForm, setReportForm] = useState({ rating: 85, strengths: '', weaknesses: '', notes: '', recommendedRole: '' });
-    const [prospectForm, setProspectForm] = useState({ prospectLevel: ProspectLevel.UNKNOWN, priority: ProspectPriority.MEDIUM });
-    const [recommendForm, setRecommendForm] = useState({ organizationId: '', recommendationLevel: RecommendationLevel.STRONGLY_RECOMMEND, message: '' });
+    const [prospectForm, setProspectForm] = useState<{
+        prospectLevel: (typeof ProspectLevel)[keyof typeof ProspectLevel];
+        priority: (typeof ProspectPriority)[keyof typeof ProspectPriority];
+    }>({ prospectLevel: ProspectLevel.UNKNOWN, priority: ProspectPriority.MEDIUM });
+    const [recommendForm, setRecommendForm] = useState<{
+        organizationId: string;
+        recommendationLevel: (typeof RecommendationLevel)[keyof typeof RecommendationLevel];
+        message: string;
+    }>({ organizationId: '', recommendationLevel: RecommendationLevel.STRONGLY_RECOMMEND, message: '' });
     const [inWatchlist, setInWatchlist] = useState(false);
     const [watchlistLoading, setWatchlistLoading] = useState(false);
     const [watchlistUpdating, setWatchlistUpdating] = useState(false);

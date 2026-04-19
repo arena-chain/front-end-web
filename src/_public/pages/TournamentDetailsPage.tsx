@@ -8,8 +8,6 @@ import { MOCK_TOURNAMENTS } from '../data/tournamentData';
 import tournamentService from '../../services/tournamentService';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { placeholderImage } from '../../lib/placeholderImage';
-import type { Tournament as ApiTournament } from '../../models/tournament';
-
 // Helper to bridge types if needed, though we'll try to use API type primarily
 interface TournamentDisplay {
     _id: string; // API uses _id, Mock uses id (we'll coerce mock id to string)
@@ -32,7 +30,6 @@ export default function TournamentDetailsPage() {
     const navigate = useNavigate();
     const [tournament, setTournament] = useState<TournamentDisplay | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isApiData, setIsApiData] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -67,7 +64,6 @@ export default function TournamentDetailsPage() {
             };
 
             setTournament(mappedData);
-            setIsApiData(true);
         } catch (error) {
             console.log('API fetch failed, falling back to mock data', error);
 
@@ -89,7 +85,6 @@ export default function TournamentDetailsPage() {
                     bracket: found.bracket,
                     checkAuth: false
                 });
-                setIsApiData(false);
             } else {
                 setTournament(null);
             }

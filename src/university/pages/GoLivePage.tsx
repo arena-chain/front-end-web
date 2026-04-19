@@ -9,7 +9,7 @@ import { streamService, type StreamRecord } from '../../services/stream.service'
 import type { Socket } from 'socket.io-client';
 import { getStreamCategory, sortLiveStreams, type LiveSortMode } from '../../lib/streamBrowse';
 import { cn } from '../../lib/utils';
-import { Link2, Monitor, Radio, Sparkles, Tv, Check, Calendar, Clock, ChevronDown } from 'lucide-react';
+import { Link2, Monitor, Radio, Sparkles, Tv, Check, Calendar, Clock } from 'lucide-react';
 
 const PREDEFINED_TAGS = [
     'Gaming', 'Live', 'Competitive', 'Chill', 'Education',
@@ -519,27 +519,6 @@ export default function GoLivePage() {
             toast.success('Stream ended');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to end stream');
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    async function deleteCurrentStream() {
-        if (!currentStream) {
-            toast.error('No stream to delete');
-            return;
-        }
-
-        setSaving(true);
-        try {
-            await stopRealtimeBroadcast(false);
-            await streamService.deleteStream(currentStream._id);
-            setStreams((previous) => previous.filter((item) => item._id !== currentStream._id));
-            setSelectedStreamId(null);
-            setForm(emptyForm);
-            toast.success('Stream deleted');
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to delete stream');
         } finally {
             setSaving(false);
         }

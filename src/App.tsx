@@ -38,6 +38,8 @@ import BookingHistory from './player/pages/BookingHistory';
 import TicketDetails from './player/pages/TicketDetails';
 import TicketBooking from './player/pages/TicketBooking';
 import MyTickets from './player/pages/MyTickets';
+import EventBrowsing from './player/pages/EventBrowsing';
+import EventDetails from './player/pages/EventDetails';
 import PlayerSubscription from './player/pages/PlayerSubscription';
 import PlayerPayment from './player/pages/PlayerPayment';
 import PlayerRankings from './player/pages/PlayerRankings';
@@ -120,6 +122,7 @@ function App() {
           <Route path="/news" element={<NewsPage />} />
           <Route path="/news/:id" element={<NewsArticlePage />} />
           <Route path="/download" element={<DownloadPage />} />
+          <Route path="/ticket/:id" element={<TicketDetails />} />
           <Route path="/tournaments/:id" element={<TournamentDetailsPage />} />
           <Route path="/leagues" element={<LeaguesPage />} />
           <Route path="/leagues/:id" element={<LeaguesPage />} />
@@ -199,6 +202,8 @@ function App() {
             <Route path="leagues/:id/hub" element={<PlayerLeagueWikiPage />} />
             <Route path="leagues/:id" element={<PlayerLeagues />} />
             <Route path="rankings" element={<PlayerRankings />} />
+            <Route path="events" element={<EventBrowsing />} />
+            <Route path="events/:id" element={<EventDetails />} />
             <Route path="marketplace" element={<PlayerMarketplace />} />
             <Route path="news" element={<PlayerNews />} />
             <Route path="news/:id" element={<NewsArticlePage />} />

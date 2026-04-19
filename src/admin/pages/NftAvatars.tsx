@@ -3,9 +3,14 @@ import {
     Gem, Plus, Trash2, X, UserPlus, Search,
     Sparkles, Crown, Star, Diamond,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { nftService } from '../../services/nftService';
 import type { NftAvatar, NftRarity, CreateNftDto } from '../../services/nftService';
 import { UserService } from '../../services/userService';
+import tournamentService from '../../services/tournamentService';
+import ticketService from '../../services/ticketService';
+import type { Tournament } from '../../models/tournament';
+import { toast } from 'sonner';
 
 const RARITY_STYLES: Record<NftRarity, { bg: string; border: string; text: string; glow: string; badge: string }> = {
     COMMON:    { bg: 'bg-zinc-500/10', border: 'border-zinc-500/30', text: 'text-zinc-400', glow: '', badge: 'bg-zinc-500/20 text-zinc-400' },
@@ -31,6 +36,7 @@ const DEMO_NFTS: NftAvatar[] = [
 ];
 
 export default function NftAvatars() {
+    const navigate = useNavigate();
     const [nfts, setNfts] = useState<NftAvatar[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
@@ -211,7 +217,21 @@ export default function NftAvatars() {
             )}
 
             {/* Create Modal */}
-            {showCreate && <CreateNftModal onClose={() => setShowCreate(false)} onCreated={(nft) => { setNfts(prev => [nft, ...prev]); setShowCreate(false); }} />}
+            {showCreate && (
+                <CreateNftModal
+                    onClose={() => setShowCreate(false)}
+                    onCreated={(nft) => {
+                        setNfts(prev => [nft, ...prev]);
+                        setShowCreate(false);
+                    }}
+                    onTicketCreated={(tournamentId) => {
+                        setShowCreate(false);
+                        navigate('/admin/tickets', {
+                            state: { selectedTournamentId: tournamentId, openEditor: true, refreshNow: true },
+                        });
+                    }}
+                />
+            )}
 
             {/* Assign Modal */}
             {showAssign && <AssignNftModal nft={showAssign} onClose={() => setShowAssign(null)} onAssigned={(updated) => { setNfts(prev => prev.map(n => n._id === updated._id ? updated : n)); setShowAssign(null); }} />}
@@ -221,45 +241,206 @@ export default function NftAvatars() {
 
 // ─── Create NFT Modal ────────────────────────────────────────────────────────
 
-function CreateNftModal({ onClose, onCreated }: { onClose: () => void; onCreated: (nft: NftAvatar) => void }) {
+function CreateNftModal({
+    onClose,
+    onCreated,
+    onTicketCreated,
+}: {
+    onClose: () => void;
+    onCreated: (nft: NftAvatar) => void;
+    onTicketCreated: (tournamentId: string) => void;
+}) {
+    const [creationMode, setCreationMode] = useState<'avatar' | 'ticket'>('avatar');
     const [form, setForm] = useState<CreateNftDto>({
         name: '', image: '', description: '', rarity: 'COMMON', price: 100,
     });
     const [saving, setSaving] = useState(false);
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
+    const [selectedTournamentId, setSelectedTournamentId] = useState('');
+    const [ticketName, setTicketName] = useState('VIP NFT');
+    const [ticketPrice, setTicketPrice] = useState(100);
+    const [vipCapacity, setVipCapacity] = useState(100);
+    const [mintQuantity, setMintQuantity] = useState(1);
+    const [loadingTournaments, setLoadingTournaments] = useState(false);
+    const [submitError, setSubmitError] = useState<string>('');
+
+    useEffect(() => {
+        const loadTournaments = async () => {
+            try {
+                setLoadingTournaments(true);
+                const data = await tournamentService.fetchTournaments();
+                setTournaments(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error('Failed to load tournaments for VIP ticket creation', error);
+                setTournaments([]);
+            } finally {
+                setLoadingTournaments(false);
+            }
+        };
+        void loadTournaments();
+    }, []);
 
     const handleSubmit = async () => {
-        if (!form.name || !form.image) return;
+        setSubmitError('');
+        if (creationMode === 'avatar' && (!form.name || !form.image)) return;
+        if (creationMode === 'ticket' && (!selectedTournamentId || !ticketName || vipCapacity <= 0 || mintQuantity <= 0)) return;
         try {
             setSaving(true);
-            const nft = await nftService.create(form);
-            onCreated(nft);
+            if (creationMode === 'avatar') {
+                const nft = await nftService.create(form);
+                onCreated(nft);
+                return;
+            }
+
+            if (creationMode === 'ticket') {
+                const tournament = await tournamentService.fetchTournamentById(selectedTournamentId);
+                const existing = Array.isArray((tournament as any)?.ticketTypes)
+                    ? (tournament as any).ticketTypes
+                    : [];
+
+                const vipName = ticketName.slice(0, 64);
+                const normalizedExisting = existing
+                    .map((ticket: any) => ({
+                        name: String(ticket?.name ?? ticket?.type ?? ticket?.ticketType ?? ticket?.label ?? '').trim(),
+                        price: Number(ticket?.price ?? ticket?.amount ?? ticket?.cost ?? 0) || 0,
+                        capacity: Number(ticket?.capacity ?? ticket?.maxCapacity ?? ticket?.quantity ?? ticket?.stock ?? 0) || 0,
+                        bundles: Array.isArray(ticket?.bundles) ? ticket.bundles : [],
+                    }))
+                    .filter((ticket: any) => ticket.name)
+                    .map((ticket: any) => ({
+                        name: ticket.name,
+                        price: ticket.price,
+                        capacity: ticket.capacity,
+                        bundles: ticket.bundles,
+                    }));
+                const filtered = normalizedExisting.filter((ticket: any) => ticket?.name !== vipName);
+                const nextTicketTypes = [
+                    ...filtered,
+                    {
+                        name: vipName,
+                        price: Number(ticketPrice) || 0,
+                        capacity: Number(vipCapacity) || 0,
+                        bundles: [],
+                    },
+                ];
+                await ticketService.addTicketTypesToTournament(selectedTournamentId, nextTicketTypes);
+                const afterSaveTournament = await tournamentService.fetchTournamentById(selectedTournamentId);
+                const savedTypes = Array.isArray((afterSaveTournament as any)?.ticketTypes)
+                    ? (afterSaveTournament as any).ticketTypes
+                    : [];
+                const hasSavedTicket = savedTypes.some((ticket: any) => {
+                    const normalizedName = String(ticket?.name ?? ticket?.type ?? ticket?.ticketType ?? ticket?.label ?? '').trim();
+                    return normalizedName === vipName;
+                });
+                if (!hasSavedTicket) {
+                    throw new Error(`Ticket "${vipName}" was not persisted by backend. Open Admin Tickets and save manually.`);
+                }
+                const mintedTickets = await ticketService.createNftTicketForCurrentUser(
+                    selectedTournamentId,
+                    vipName,
+                    mintQuantity
+                );
+                const mintedCount = Array.isArray(mintedTickets) ? mintedTickets.length : 0;
+                const mintedTicket = mintedCount > 0 ? mintedTickets[0] : null;
+                const mintedTicketNumber = mintedTicket && typeof mintedTicket.ticketNumber === 'string'
+                    ? mintedTicket.ticketNumber
+                    : null;
+                toast.success(
+                    mintedTicketNumber && mintedCount === 1
+                        ? `NFT ticket minted: ${mintedTicketNumber}`
+                        : mintedCount > 0
+                            ? `Minted ${mintedCount} NFT ticket(s) for "${vipName}".`
+                            : `Ticket type "${vipName}" saved and mint request sent.`
+                );
+                onTicketCreated(selectedTournamentId);
+                return;
+            }
         } catch (e) {
             console.error('Create failed', e);
+            const message = e instanceof Error ? e.message : 'Failed to create ticket.';
+            setSubmitError(message);
         } finally {
             setSaving(false);
         }
     };
 
     const previewSrc = form.image || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${form.name || 'preview'}`;
+    const selectedTournament = tournaments.find((t) => t._id === selectedTournamentId);
+    const estimatedRevenue = (Number(ticketPrice) || 0) * (Number(vipCapacity) || 0);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
             <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between">
                     <h2 className="text-white font-black uppercase tracking-widest flex items-center gap-2">
-                        <Gem size={18} className="text-violet-400" /> Create NFT Avatar
+                        <Gem size={18} className="text-violet-400" /> {creationMode === 'avatar' ? 'Create NFT Avatar' : 'Create VIP Ticket With NFT'}
                     </h2>
                     <button onClick={onClose} className="text-text-muted hover:text-white transition-colors"><X size={20} /></button>
                 </div>
 
                 {/* Preview */}
-                <div className="flex justify-center">
-                    <div className="w-32 h-32 rounded-2xl bg-black/40 border border-white/10 p-4 flex items-center justify-center">
-                        <img src={previewSrc} alt="Preview" className="w-full h-full object-contain" />
+                {creationMode === 'avatar' ? (
+                    <div className="flex justify-center">
+                        <div className="w-32 h-32 rounded-2xl bg-black/40 border border-white/10 p-4 flex items-center justify-center">
+                            <img src={previewSrc} alt="Preview" className="w-full h-full object-contain" />
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="rounded-2xl border border-lime-400/20 bg-gradient-to-br from-lime-400/10 via-black/40 to-violet-500/10 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">ticket_asset://vip_nft</p>
+                                <h3 className="text-white font-black text-xl tracking-tight mt-1">{ticketName || 'VIP NFT Ticket'}</h3>
+                                <p className="text-[11px] text-white/50 mt-1">{selectedTournament?.name || 'Select a tournament'}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] uppercase tracking-widest text-white/40">Potential Revenue</p>
+                                <p className="text-lime-300 font-black text-lg">${estimatedRevenue.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-4">
+                            <div className="rounded-xl bg-black/40 border border-white/10 p-2.5">
+                                <p className="text-[9px] uppercase tracking-widest text-white/40">Tier</p>
+                                <p className="text-white font-bold text-sm">VIP</p>
+                            </div>
+                            <div className="rounded-xl bg-black/40 border border-white/10 p-2.5">
+                                <p className="text-[9px] uppercase tracking-widest text-white/40">Capacity</p>
+                                <p className="text-white font-bold text-sm">{vipCapacity}</p>
+                            </div>
+                            <div className="rounded-xl bg-black/40 border border-white/10 p-2.5">
+                                <p className="text-[9px] uppercase tracking-widest text-white/40">Price</p>
+                                <p className="text-white font-bold text-sm">${ticketPrice}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setCreationMode('avatar')}
+                            className={`py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${creationMode === 'avatar'
+                                ? 'bg-primary/15 border-primary/40 text-primary'
+                                : 'bg-black/30 border-white/10 text-text-muted hover:text-white'
+                                }`}
+                        >
+                            Create Avatar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setCreationMode('ticket')}
+                            className={`py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${creationMode === 'ticket'
+                                ? 'bg-primary/15 border-primary/40 text-primary'
+                                : 'bg-black/30 border-white/10 text-text-muted hover:text-white'
+                                }`}
+                        >
+                            Create VIP Ticket
+                        </button>
+                    </div>
+
+                    {creationMode === 'avatar' ? (
+                        <>
                     <div>
                         <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Name</label>
                         <input
@@ -324,16 +505,100 @@ function CreateNftModal({ onClose, onCreated }: { onClose: () => void; onCreated
                             className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
                         />
                     </div>
+                        </>
+                    ) : (
+                        <div className="border border-lime-400/20 rounded-2xl p-4 bg-black/40 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">VIP Ticket Configuration</p>
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">Admin Secure Node</span>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Tournament</label>
+                                <select
+                                    value={selectedTournamentId}
+                                    onChange={(e) => setSelectedTournamentId(e.target.value)}
+                                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-lime-400/50 outline-none"
+                                >
+                                    <option value="">Select tournament...</option>
+                                    {tournaments.map((t) => (
+                                        <option key={t._id} value={t._id}>{t.name}</option>
+                                    ))}
+                                </select>
+                                {loadingTournaments && (
+                                    <p className="text-[10px] text-text-muted mt-1">Loading tournaments...</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Ticket Name</label>
+                                <input
+                                    type="text"
+                                    value={ticketName}
+                                    onChange={(e) => setTicketName(e.target.value)}
+                                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-lime-400/50 outline-none"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">VIP Capacity</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        value={vipCapacity}
+                                        onChange={(e) => setVipCapacity(Number(e.target.value) || 0)}
+                                        className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-lime-400/50 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">VIP Price</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={ticketPrice}
+                                        onChange={e => setTicketPrice(+e.target.value)}
+                                        className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-lime-400/50 outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">NFT Tickets To Mint</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={1000}
+                                    value={mintQuantity}
+                                    onChange={e => setMintQuantity(Math.max(1, Number(e.target.value) || 1))}
+                                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-lime-400/50 outline-none"
+                                />
+                                <p className="text-[10px] text-text-muted mt-1">
+                                    Number of real NFT tickets minted now (separate from capacity).
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
+                {submitError && (
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                        {submitError}
+                    </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                     <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white text-sm font-bold transition-all">Cancel</button>
                     <button
                         onClick={handleSubmit}
-                        disabled={saving || !form.name}
-                        className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        disabled={
+                            saving
+                            || (creationMode === 'avatar' && !form.name)
+                            || (creationMode === 'ticket' && (!selectedTournamentId || !ticketName || vipCapacity <= 0 || mintQuantity <= 0))
+                        }
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider disabled:opacity-50 transition-all flex items-center justify-center gap-2 ${
+                            creationMode === 'ticket'
+                                ? 'bg-lime-400 hover:bg-lime-300 text-black'
+                                : 'bg-primary hover:bg-primary/90 text-black'
+                        }`}
                     >
-                        {saving ? 'Creating…' : <><Plus size={14} /> Create</>}
+                        {saving ? 'Creating…' : <><Plus size={14} /> {creationMode === 'avatar' ? 'Create Avatar' : 'Create Ticket'}</>}
                     </button>
                 </div>
             </div>

@@ -40,7 +40,7 @@ const TOP_NAV_LINKS = [
     { to: '/player/go-live', label: 'Go Live', icon: <Radio size={16} /> },
     { to: '/player/all-lives', label: 'Lives', icon: <Users size={16} /> },
     { to: '/player/marketplace', label: 'Marketplace', icon: <Store size={16} /> },
-    { to: '/player/market', label: 'Get Tickets', icon: <DollarSign size={16} /> },
+    { to: '/player/events', label: 'Get Tickets', icon: <Ticket size={16} /> },
     { to: '/player/rankings', label: 'Rankings', icon: <Crown size={16} /> },
     { to: '/player/news', label: 'News', icon: <Newspaper size={16} /> },
 ];

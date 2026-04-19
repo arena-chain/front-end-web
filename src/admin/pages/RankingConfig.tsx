@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { 
-    BarChart3, RefreshCw, Save, Trophy, 
-    ArrowUpCircle, ArrowDownCircle, Settings2, 
-    AlertTriangle, Layers, Palette, ShieldCheck, 
-    ChevronDown, Edit3, Check, X 
+import {
+    RefreshCw, Save,
+    ArrowUpCircle, ArrowDownCircle, Settings2,
+    AlertTriangle, Layers, ShieldCheck,
+    Edit3, Check, X,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { adminRankService, type RankGeneralConfig, type RankTierConfig } from '../../services/adminRankService';

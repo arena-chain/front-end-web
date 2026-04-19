@@ -8,7 +8,7 @@
 import { $scene } from '@google/model-viewer/lib/model-viewer-base.js';
 import type { ModelScene } from '@google/model-viewer/lib/three-components/ModelScene.js';
 import type { RGB } from '@google/model-viewer/lib/three-components/gltf-instance/gltf-2.0.js';
-import type { Mesh, Object3D } from 'three';
+import type { Material, Mesh, Object3D } from 'three';
 
 export type AvatarDynamicUiConfig = {
     skinTone: string;
@@ -84,7 +84,7 @@ function isMeshObject(obj: Object3D): obj is Mesh {
 
 function isHeadMaterialMesh(mesh: Mesh): boolean {
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    return mats.some(m => m && 'name' in m && (m as { name?: string }).name === 'head');
+    return mats.some((m: Material) => m && 'name' in m && (m as { name?: string }).name === 'head');
 }
 
 /**
@@ -124,7 +124,7 @@ export async function applyAvatarDynamicConfig(el: HTMLElement, cfg: AvatarDynam
     if (!scene?.target) return;
 
     const highPoly = useHighPolyBody(cfg.bodyType);
-    scene.target.traverse(obj => {
+    scene.target.traverse((obj: Object3D) => {
         if (obj.name === 'Body_low') obj.visible = !highPoly;
         if (obj.name === 'Body_high') obj.visible = highPoly;
     });
@@ -139,7 +139,7 @@ export async function applyAvatarDynamicConfig(el: HTMLElement, cfg: AvatarDynam
         root.scale.setScalar(uniform);
     }
 
-    scene.target.traverse(obj => {
+    scene.target.traverse((obj: Object3D) => {
         if (isMeshObject(obj) && isHeadMaterialMesh(obj)) {
             obj.scale.setScalar(headScalar);
         }

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, Building2, User, Calendar, ArrowRight } from 'lucide-react';
+import { Send, Building2, Calendar, ArrowRight } from 'lucide-react';
 import {
     scoutingService,
     type PlayerRecommendation,
-    RecommendationStatus,
+    type RecommendationStatus,
 } from '../../services/scoutingService';
 
 const fmtDate = (d: string) =>

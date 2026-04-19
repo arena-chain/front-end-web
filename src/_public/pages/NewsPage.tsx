@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/core';
-import { Calendar, Clock, ArrowRight, X, Globe, Search, Filter } from 'lucide-react';
+import { Calendar, Clock, ArrowRight, Globe, Search } from 'lucide-react';
 import { TopNavbar } from '../common/top_navbar';
 import { BottomNavbar } from '../common/bottom_navbar';
 import { newsService } from '../../services/newsService';

@@ -17,3 +17,8 @@ export function resolveBackendAssetUrl(path: string): string {
     const p = path.startsWith('/') ? path : `/${path}`;
     return `${origin}${p}`;
 }
+
+/** Alchemy RPC URL for Polygon Mainnet. */
+export function getBlockchainRpcUrl(): string {
+    return 'https://polygon-mainnet.g.alchemy.com/v2/Cne8sVjZYbsdhnBZxn4e-';
+}

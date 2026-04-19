@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, Trophy, Zap, ChevronRight, Target } from 'lucide-react';
 import { LevelService, type LevelProgression } from '../../services/levelService';
-import { cn } from '../../lib/utils';
 
 export default function LevelCard() {
     const [progression, setProgression] = useState<LevelProgression | null>(null);

@@ -4,7 +4,6 @@ import { Input } from '../../components/ui/core';
 import type { Tournament } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_TOURNAMENTS } from '../../_public/data/tournamentData';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { placeholderImage } from '../../lib/placeholderImage';
 
@@ -23,28 +22,15 @@ export default function PlayerTicketMarket() {
         setLoading(true);
         try {
             const data = await tournamentService.fetchTournaments();
-
-            // Enrich with mock data for missing ticket types if needed 
-            // (Same logic as before but now strictly for the market page)
-            const enrichedData = data.map(t => {
-                if (!t.ticketTypes || t.ticketTypes.length === 0) {
-                    const mock = MOCK_TOURNAMENTS.find(m =>
-                        m.title.toLowerCase() === t.name.toLowerCase() ||
-                        t.name.toLowerCase().includes(m.title.toLowerCase())
-                    );
-
-                    if (mock && mock.ticketTypes) {
-                        return {
-                            ...t,
-                            ticketTypes: mock.ticketTypes,
-                        };
-                    }
-                }
-                return t;
-            });
-
-            // Filter ONLY tournaments that are OPEN_REGISTRATION
-            setTournaments(enrichedData.filter(t => t.status === 'OPEN_REGISTRATION'));
+            // Show only tournaments with real admin-configured ticket types
+            setTournaments(
+                data.filter(
+                    (t) =>
+                        t.status === 'OPEN_REGISTRATION' &&
+                        Array.isArray(t.ticketTypes) &&
+                        t.ticketTypes.length > 0
+                )
+            );
         } catch (error) {
             console.error('Failed to fetch tournaments:', error);
         } finally {
@@ -53,9 +39,15 @@ export default function PlayerTicketMarket() {
     };
 
     const filteredTournaments = tournaments.filter((tournament) => {
+        const gameTitle = typeof tournament.gameId === 'object' && tournament.gameId?.title
+            ? tournament.gameId.title
+            : '';
+        const gameId = typeof tournament.gameId === 'object' && tournament.gameId?._id
+            ? tournament.gameId._id
+            : '';
         const matchesSearch = tournament.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            tournament.gameId.title.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesGame = gameFilter === 'all' || tournament.gameId._id === gameFilter;
+            gameTitle.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesGame = gameFilter === 'all' || gameId === gameFilter;
         return matchesSearch && matchesGame;
     });
 

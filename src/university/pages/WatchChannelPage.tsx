@@ -36,7 +36,7 @@ export default function WatchChannelPage() {
     const [chatInput, setChatInput] = useState('');
     const [reactionCounts, setReactionCounts] = useState<ReactionSummary>({});
     const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [publicUploads, setPublicUploads] = useState<VideoRecord[]>([]);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [remotePlaybackBlocked, setRemotePlaybackBlocked] = useState(false);
@@ -659,7 +659,7 @@ export default function WatchChannelPage() {
                                     {message.senderNickname}
                                 </span>
                                 <span className="text-[9px] font-bold text-white/10 uppercase tracking-widest shrink-0">
-                                    {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(message.createdAt ?? 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
                             <p className="text-[13px] text-white/60 font-medium leading-relaxed bg-[#16181d]/30 p-2 rounded-xl border border-transparent group-hover/msg:border-white/5 transition-all">

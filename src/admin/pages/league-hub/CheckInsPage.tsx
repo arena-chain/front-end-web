@@ -3,9 +3,9 @@ import {
     ClockAlert, Plus, X, Check, AlertCircle, RefreshCw,
     CheckCircle2, XCircle, Clock, Ban,
 } from 'lucide-react';
-import { leagueService, League } from '../../../services/leagueService';
-import { seasonService, Season } from '../../../services/seasonService';
-import { checkInService, CheckIn, CheckInStatus } from '../../../services/checkInService';
+import { leagueService, type League } from '../../../services/leagueService';
+import { seasonService, type Season } from '../../../services/seasonService';
+import { checkInService, type CheckIn, type CheckInStatus } from '../../../services/checkInService';
 
 interface Toast { msg: string; ok: boolean }
 

@@ -5,7 +5,7 @@ import {
     ArrowLeft, BookOpen, DollarSign, Users, Layers, Flag,
     PlayCircle, GitBranch, CheckCircle, Plus,
     Trash2, RefreshCw, ChevronDown, ChevronUp, Crown, Image as ImageIcon,
-    AlertTriangle, TrendingUp, Edit2, Check, X, Info, Settings2,
+    AlertTriangle, TrendingUp, Edit2, Check, X, Info, Settings2, Shield,
 } from 'lucide-react';
 import { leagueService } from '../../../services/leagueService';
 import { seasonService, type Season } from '../../../services/seasonService';
