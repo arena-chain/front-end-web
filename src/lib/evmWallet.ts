@@ -15,7 +15,7 @@ export async function ensureChain(ethereum: { request: EthRequest }, chainId: nu
     const hex = `0x${chainId.toString(16)}`;
     try {
         await ethereum.request({
-            method: 'wallet_switchEthereumChain',
+            method: 'wallet_switchEthereumChain',   
             params: [{ chainId: hex }],
         });
         return;
