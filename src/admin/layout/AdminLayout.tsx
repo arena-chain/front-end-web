@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Trophy, Settings, LogOut, Menu,
     MessageSquare, Gamepad2, Ticket, Handshake,
-    Zap, Newspaper, ShieldCheck, Archive, Wand2,
+    Zap, Newspaper, ShieldCheck, Archive, Wand2, Coins,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -31,6 +31,10 @@ const NAV_GROUPS = [
             { to: '/admin/partnerships', icon: Handshake,   label: 'Partnerships' },
             { to: '/admin/channels',     icon: MessageSquare, label: 'Channels' },
         ],
+    },
+    {
+        label: 'Economy',
+        items: [{ to: '/admin/currency-offers', icon: Coins, label: 'Currency offers' }],
     },
     {
         label: 'NFT Studio',

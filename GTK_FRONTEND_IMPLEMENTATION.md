@@ -1,13 +1,13 @@
 # GTK (GameToken) — frontend implementation
 
-This guide wires your UI to the backend so a logged-in user can see **how much GTK** they hold. Auth stays **JWT**; the chain address is stored on the server after the user links a wallet.
+This guide wires your UI to the backend so a logged-in user can see **how much GTK/VEX** they hold. Auth stays **JWT**. Each player gets an **in-app wallet**: the API stores an EVM address on the user’s **inventory** document (created automatically on first `GET …/me` by default). There is **no MetaMask linking** in the main player flow.
 
 ## Prerequisites
 
 1. Backend running with:
    - `GAME_TOKEN_CONTRACT_ADDRESS` = deployed `GameToken` address  
    - `RPC_URL` **or** `ALCHEMY_API_KEY` + `ALCHEMY_NETWORK` (same chain as the contract)
-2. For **local Anvil**: keep `anvil` running, use `RPC_URL=http://127.0.0.1:8545`, chain id **31337** (from `GET .../config`).
+2. For **local Anvil**: keep `anvil` running, use `RPC_URL=http://127.0.0.1:8545`, chain id **31337** (from `GET …/config`).
 
 ## API base
 
@@ -16,7 +16,6 @@ All routes below are under your API origin, e.g. `http://localhost:3000`, with g
 | Method | Path | Auth |
 |--------|------|------|
 | `GET` | `/api/currency/game-token/config` | None |
-| `PATCH` | `/api/inventory/wallet/:walletAddress` | Bearer JWT |
 | `GET` | `/api/currency/game-token/me` | Bearer JWT |
 
 Headers for protected routes:
@@ -25,6 +24,11 @@ Headers for protected routes:
 Authorization: Bearer <access_token>
 Content-Type: application/json
 ```
+
+Optional env on the API:
+
+- **`GTK_AUTO_PROVISION_APP_WALLET`** — default `true`: first authenticated `GET /currency/game-token/me` creates a random `walletAddress` on inventory if missing.
+- **`GTK_CUSTODIAL_INSECURE_STORE`** — `true` only on trusted dev: also stores `metadata.custodialPrivateKey` (never enable in production).
 
 ---
 
@@ -46,75 +50,36 @@ Example response:
 }
 ```
 
-Use **`symbol`** / **`decimals`** in the UI. Use **`chainId`** to configure MetaMask (or your wallet connector): add or switch to a network whose chain id matches (e.g. Anvil: `http://127.0.0.1:8545`, chain id `31337`).
+Use **`symbol`** / **`decimals`** in the UI. Use **`chainId`** if you ever need to match the chain the contract lives on (e.g. Anvil **31337**).
 
 If this returns **503**, the server is missing GTK env vars — fix `.env` before building UI states that depend on balance.
 
 ---
 
-## Step 2 — Ensure the user’s wallet matches that chain
-
-1. Request `ethereum` from the browser (`window.ethereum` / MetaMask).
-2. Call `wallet_switchEthereumChain` or `wallet_addEthereumChain` with `chainId: '0x' + config.chainId.toString(16)` (e.g. `0x7a69` for 31337).
-3. For **Anvil**, add a custom network:
-   - RPC URL: `http://127.0.0.1:8545`
-   - Chain ID: `31337`
-   - Currency symbol: `ETH` (native gas on local chain)
-
----
-
-## Step 3 — Link wallet address to the logged-in account
-
-After the user is logged in (you already have a JWT) and MetaMask exposes an address:
-
-**`PATCH /api/inventory/wallet/<address>`**
-
-Replace `<address>` with the checksummed `0x` from `eth_accounts` / `eth_requestAccounts` (no body required).
-
-Example (fetch):
-
-```javascript
-const API = 'http://localhost:3000/api';
-const token = localStorage.getItem('access_token'); // however you store JWT
-const address = (await window.ethereum.request({ method: 'eth_requestAccounts' }))[0];
-
-const res = await fetch(`${API}/inventory/wallet/${address}`, {
-  method: 'PATCH',
-  headers: { Authorization: `Bearer ${token}` },
-});
-if (!res.ok) throw new Error(await res.text());
-```
-
-The backend validates the address and stores it on the user’s **inventory** document.
-
----
-
-## Step 4 — Show balance (“what he got”)
+## Step 2 — Show balance (“what they have”)
 
 **`GET /api/currency/game-token/me`**
 
-Example when wallet is **not** linked yet:
+Creates the in-app **`walletAddress`** on first call when auto-provision is enabled, then returns the on-chain **ERC-20 balance** for that address (server reads RPC).
+
+Example when no wallet could be created yet (e.g. auto-provision disabled):
 
 ```json
 {
   "linked": false,
   "walletAddress": null,
-  "balanceRaw": null,
-  "balanceFormatted": null,
-  "symbol": null,
-  "decimals": null,
-  "hint": "Link a wallet with PATCH /api/inventory/wallet/{yourChecksummedAddress}"
+  "balanceFormatted": "0.0",
+  "hint": "Enable GTK_AUTO_PROVISION_APP_WALLET (default) so the API can create your in-app wallet address."
 }
 ```
 
-Show a **“Link wallet”** CTA → run Step 3, then refetch `/me`.
-
-Example when linked:
+Example when provisioned and balance read OK:
 
 ```json
 {
   "linked": true,
   "walletAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "appManagedWallet": true,
   "balanceRaw": "1000000000000000000000000",
   "balanceFormatted": "1000000.0",
   "symbol": "GTK",
@@ -123,7 +88,7 @@ Example when linked:
 }
 ```
 
-Display **`balanceFormatted`** + **`symbol`** (e.g. `1000000.0 GTK`). Optionally show a shortened **`walletAddress`**.
+Display **`balanceFormatted`** + display symbol from your branding helpers. You may show a shortened **`walletAddress`** as read-only (“Arena wallet”).
 
 Example (fetch):
 
@@ -133,8 +98,8 @@ const res = await fetch(`${API}/currency/game-token/me`, {
 });
 const data = await res.json();
 
-if (!data.linked) {
-  // show "Connect & link wallet" → PATCH inventory wallet, then retry
+if (!data.walletAddress) {
+  // show misconfiguration / retry
 } else {
   // show `${data.balanceFormatted} ${data.symbol}`
 }
@@ -145,31 +110,22 @@ if (!data.linked) {
 ## Suggested UI flow
 
 1. User opens “Currency” / “Wallet” screen.
-2. `GET .../config` → if 503, show maintenance / misconfiguration message.
-3. Prompt wallet connection + correct **`chainId`**.
-4. If user has JWT → `PATCH .../inventory/wallet/{address}`.
-5. `GET .../me` → render balance or errors.
+2. `GET …/config` → if 503, show maintenance / misconfiguration message.
+3. With JWT → `GET …/me` → render balance (and optional short address). No wallet extension required for this flow.
 
-Refresh balance after transfers (user action or polling every N seconds if you need live-ish updates).
+Refresh balance after purchases or polling if you need live-ish updates.
 
 ---
 
 ## Anvil / local testing tips
 
-- Default deployer **`0xf39F…`** holds the initial GTK mint; import that test key in MetaMask only on **local** dev, never for mainnet.
-- To show GTK for **another** address, **transfer** GTK to that address on Anvil, then link that address in Step 3.
-- Contract address may change if you redeploy; update `GAME_TOKEN_CONTRACT_ADDRESS` and use the new address from `game-token/broadcast/.../run-latest.json`.
-
----
-
-## Optional: read balance only in the browser
-
-You can also call `balanceOf` with **ethers.js** / **viem** using `contractAddress` from `config` and the connected wallet, without hitting `/me`. The backend route is still useful for a **single source of truth**, server-driven UI, and when the client should not bundle RPC keys.
+- The server’s minter wallet (**`WALLET_PRIVATE_KEY`**) mints GTK to player addresses returned by `/me`.
+- To fund a player’s in-app address, use test credit / simulated purchase endpoints or mint from your deployer on Anvil.
+- Contract address may change if you redeploy; update `GAME_TOKEN_CONTRACT_ADDRESS`.
 
 ---
 
 ## Security reminders
 
-- Never send seed phrases or private keys to your API.
-- Only **`PATCH`** the **public** `0x` address.
-- `GET .../config` is public by design (contract addresses are already public on-chain).
+- Do **not** log or expose custodial private keys from the API.
+- `GET …/config` is public by design (contract addresses are already public on-chain).

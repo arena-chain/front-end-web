@@ -16,6 +16,7 @@
     "@videojs/react": "^10.0.0-beta.15",
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
+    "ethers": "^6.16.0",
     "framer-motion": "^12.33.0",
     "lucide-react": "^0.563.0",
     "qrcode.react": "^4.2.0",

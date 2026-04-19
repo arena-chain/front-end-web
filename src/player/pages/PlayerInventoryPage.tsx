@@ -15,6 +15,7 @@ import {
     Layers,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import CurrencyPackStorefront from '../components/CurrencyPackStorefront';
 import {
     nftInventoryApi,
     nftTemplateImage,
@@ -277,6 +278,10 @@ export default function PlayerInventoryPage() {
                     Back to channel studio
                 </Link>
             </div>
+
+            <section className="rounded-3xl border border-sky-500/25 bg-gradient-to-br from-sky-950/50 via-[#0c0e11]/90 to-[#0a0b0e] p-5 shadow-[0_0_40px_rgba(14,165,233,0.08)]">
+                <CurrencyPackStorefront />
+            </section>
 
             <div className="flex flex-wrap gap-2">
                 {tabs.map((t) => (

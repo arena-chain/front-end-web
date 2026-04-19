@@ -1,6 +1,12 @@
 /// <reference types="vite/client" />
 import type * as React from 'react';
 
+interface ImportMetaEnv {
+    /** Optional UI override if backend `/config` has not been redeployed yet */
+    readonly VITE_GAME_TOKEN_DISPLAY_SYMBOL?: string;
+    readonly VITE_GAME_TOKEN_DISPLAY_NAME?: string;
+}
+
 type ModelViewerProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
     src?: string;
     alt?: string;

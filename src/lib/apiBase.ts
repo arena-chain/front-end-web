@@ -1,12 +1,19 @@
 /** Global NestJS prefix is `api` (see backend main.ts). */
 export function getApiBase(): string {
-    const raw = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const raw =
+        import.meta.env.VITE_API_URL ||
+        (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api');
     return raw.replace(/\/$/, '');
 }
 
 /** Origin for paths outside `/api` (e.g. `/uploads` from ServeStaticModule). */
 export function getBackendOrigin(): string {
     const base = getApiBase();
+    if (base === '/api' || base === '') {
+        if (import.meta.env.DEV && typeof window !== 'undefined') {
+            return window.location.origin;
+        }
+    }
     return base.endsWith('/api') ? base.slice(0, -4) : base;
 }
 

@@ -11,9 +11,23 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), pluginRewriteAll()],
     assetsInclude: ['**/*.glb'],
+    /**
+     * Omit the `development` export condition so Lit / @lit/reactive-element resolve to
+     * production bundles — removes "Lit is in dev mode" spam from @google/model-viewer in `vite dev`.
+     */
+    resolve: {
+      conditions: ['import', 'module', 'browser', 'default'],
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        // Keep Lit on production entry when pre-bundling model-viewer for the dev server.
+        conditions: ['import', 'module', 'browser', 'default'],
+      },
+    },
     server: {
       proxy: {
-        // Same-origin in dev so <model-viewer> can load GLBs (avoids cross-origin fetch issues)
+        // Same-origin `/api` in dev (see `getApiBase()`); avoids CORS and matches production path shape.
+        '/api': { target: apiOrigin, changeOrigin: true },
         '/inventory-files': { target: apiOrigin, changeOrigin: true },
         '/uploads': { target: apiOrigin, changeOrigin: true },
       },

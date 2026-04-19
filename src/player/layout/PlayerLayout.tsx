@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
     History,
-    Settings,
     LogOut,
     User,
     Gamepad2,
@@ -27,9 +26,10 @@ import {
     Clapperboard,
     Film,
     Sparkles,
-    X,
+    Wallet,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { getApiBase } from '../../lib/apiBase';
 import PlayerAmbientBackground from '../components/PlayerAmbientBackground';
 import PlayerEnergyStreakOverlay from '../components/PlayerEnergyStreakOverlay';
 import PlayerGameTokenBalance from '../components/PlayerGameTokenBalance';
@@ -60,7 +60,6 @@ const PRIMARY_NAV_LINKS: { to: string; label: string; icon: LucideIcon }[] = [
 
 const PRIMARY_NAV_BOTTOM: { to: string; label: string; icon: LucideIcon }[] = [
     { to: '/player/profile', label: 'Profil', icon: User },
-    { to: '/player/settings', label: 'Réglages', icon: Settings },
 ];
 
 interface PlayerProfileData {
@@ -87,22 +86,32 @@ export default function PlayerLayout() {
             return false;
         }
     });
-    /** Full primary rail (labels) vs compact icon-only */
-    const [primaryNavExpanded, setPrimaryNavExpanded] = useState(() => {
-        try {
-            return localStorage.getItem('player_primary_nav_expanded') !== '0';
-        } catch {
-            return true;
-        }
-    });
 
-    useEffect(() => {
-        try {
-            localStorage.setItem('player_primary_nav_expanded', primaryNavExpanded ? '1' : '0');
-        } catch {
-            /* ignore */
+    /** Primary rail: icon-only by default; expands while pointer hovers header logo strip or rail. */
+    const [primaryNavExpanded, setPrimaryNavExpanded] = useState(false);
+    const primaryNavLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearPrimaryNavLeaveTimer = useCallback(() => {
+        if (primaryNavLeaveTimer.current != null) {
+            clearTimeout(primaryNavLeaveTimer.current);
+            primaryNavLeaveTimer.current = null;
         }
-    }, [primaryNavExpanded]);
+    }, []);
+
+    const onPrimaryRailEnter = useCallback(() => {
+        clearPrimaryNavLeaveTimer();
+        setPrimaryNavExpanded(true);
+    }, [clearPrimaryNavLeaveTimer]);
+
+    const onPrimaryRailLeave = useCallback(() => {
+        clearPrimaryNavLeaveTimer();
+        primaryNavLeaveTimer.current = window.setTimeout(() => {
+            setPrimaryNavExpanded(false);
+            primaryNavLeaveTimer.current = null;
+        }, 280);
+    }, [clearPrimaryNavLeaveTimer]);
+
+    useEffect(() => () => clearPrimaryNavLeaveTimer(), [clearPrimaryNavLeaveTimer]);
 
     useEffect(() => {
         try {
@@ -116,7 +125,7 @@ export default function PlayerLayout() {
         const fetchProfile = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const API_URL = getApiBase();
                 const res = await axios.get(`${API_URL}/auth/profile`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -164,59 +173,30 @@ export default function PlayerLayout() {
                             'h-full flex shrink-0 border-r border-white/5 transition-[width] duration-300 ease-out',
                             primaryNavWidthClass,
                         )}
+                        onMouseEnter={onPrimaryRailEnter}
+                        onMouseLeave={onPrimaryRailLeave}
                     >
                         <div
                             className={cn(
-                                'flex h-full w-full flex-row items-center justify-center',
-                                primaryNavExpanded ? 'gap-2 px-2 sm:px-3' : 'gap-1 px-1',
+                                'flex h-full w-full flex-row items-center',
+                                primaryNavExpanded ? 'justify-start gap-2 px-2 sm:px-3' : 'justify-center gap-1 px-1',
                             )}
                         >
                             <NavLink to="/player/dashboard" className="shrink-0">
                                 <div
                                     className={cn(
                                         'flex items-center justify-center rounded-xl bg-primary font-black text-black shadow-[0_0_20px_rgba(0,255,136,0.3)] transition-all hover:scale-105',
-                                        primaryNavExpanded
-                                            ? 'h-10 w-10 text-lg'
-                                            : 'h-9 w-9 text-base',
+                                        primaryNavExpanded ? 'h-10 w-10 text-lg' : 'h-9 w-9 text-base',
                                     )}
                                 >
                                     A
                                 </div>
                             </NavLink>
-                            {primaryNavExpanded ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setPrimaryNavExpanded(false)}
-                                    title="Réduire le menu"
-                                    aria-label="Réduire le menu"
-                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/50 transition-colors hover:border-primary/35 hover:bg-white/5 hover:text-primary"
-                                >
-                                    <X size={14} strokeWidth={2.5} />
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => setPrimaryNavExpanded(true)}
-                                    title="Agrandir le menu"
-                                    aria-label="Agrandir le menu"
-                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-primary/30 text-primary transition-colors hover:bg-primary/15"
-                                >
-                                    <ChevronRight size={12} strokeWidth={2.5} />
-                                </button>
-                            )}
                         </div>
                     </div>
                     {/* Nav links + right controls */}
                     <div className="flex flex-1 items-center justify-between px-8">
                         <div className="flex items-center gap-6">
-                            {isSidebarCollapsed && (
-                                <button
-                                    onClick={() => setIsSidebarCollapsed(false)}
-                                    className="w-9 h-9 rounded-xl border border-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-all"
-                                >
-                                    <ChevronRight size={18} />
-                                </button>
-                            )}
                             <nav className="flex items-center gap-2">
                                 {TOP_NAV_LINKS.map(link => (
                                     <NavLink
@@ -283,14 +263,16 @@ export default function PlayerLayout() {
                                                 <p className="text-[10px] text-white/40 font-bold tracking-wider mt-0.5 uppercase">player.one@arena.com</p>
                                             </div>
                                             <div className="p-2">
-                                                {[
-                                                    { to: '/player/profile', label: 'Mon Profil', icon: User },
-                                                    { to: '/player/settings', label: 'Paramètres', icon: Settings },
-                                                ].map(item => (
-                                                    <button key={item.to} onClick={() => { navigate(item.to); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all">
-                                                        <item.icon size={15} className="opacity-40" /> {item.label}
-                                                    </button>
-                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        navigate('/player/profile');
+                                                        setIsProfileOpen(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                                                >
+                                                    <User size={15} className="opacity-40" /> Mon Profil
+                                                </button>
                                             </div>
                                             <div className="p-2 border-t border-white/5">
                                                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-400 hover:bg-red-400/10 rounded-xl transition-all">
@@ -314,6 +296,8 @@ export default function PlayerLayout() {
                         'relative flex flex-col shrink-0 h-full z-40 bg-[#060708] border-r border-white/[0.06] transition-[width] duration-300 ease-out overflow-hidden shadow-[inset_-1px_0_0_rgba(0,255,136,0.04)]',
                         primaryNavWidthClass,
                     )}
+                    onMouseEnter={onPrimaryRailEnter}
+                    onMouseLeave={onPrimaryRailLeave}
                 >
                     <nav className="flex flex-col gap-0.5 py-3 shrink-0">
                         {PRIMARY_NAV_LINKS.map((link) => (
@@ -327,6 +311,34 @@ export default function PlayerLayout() {
                         {PRIMARY_NAV_BOTTOM.map((link) => (
                             <PrimaryNavItem key={link.to} {...link} expanded={primaryNavExpanded} />
                         ))}
+                        <NavLink
+                            to="/player/wallet"
+                            title="Portefeuille & historique"
+                            aria-label="Portefeuille Vex"
+                            className={({ isActive }) =>
+                                cn(
+                                    'relative flex items-center overflow-hidden rounded-xl transition-all duration-200',
+                                    primaryNavExpanded ? 'gap-3 px-3 py-2.5 mx-2' : 'mx-auto h-11 w-11 justify-center',
+                                    isActive
+                                        ? 'border border-primary/25 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-primary shadow-[0_0_20px_rgba(0,255,136,0.14)]'
+                                        : 'border border-transparent text-white/40 hover:bg-white/[0.06] hover:text-white',
+                                )
+                            }
+                        >
+                            {({ isActive }) => (
+                                <>
+                                    {isActive && (
+                                        <span className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_12px_rgba(0,255,136,0.7)]" />
+                                    )}
+                                    <Wallet size={22} className="relative z-[1] shrink-0" strokeWidth={isActive ? 2.25 : 2} />
+                                    {primaryNavExpanded && (
+                                        <span className="relative z-[1] truncate text-[11px] font-black uppercase tracking-wider">
+                                            Portefeuille
+                                        </span>
+                                    )}
+                                </>
+                            )}
+                        </NavLink>
                         <div className={cn('my-1 border-t border-white/[0.06]', primaryNavExpanded ? 'mx-3' : 'mx-auto w-6')} />
                         <button
                             type="button"
@@ -417,12 +429,18 @@ export default function PlayerLayout() {
                         title={isSidebarCollapsed ? 'Afficher chaînes & suivis' : 'Masquer le panneau'}
                         aria-expanded={!isSidebarCollapsed}
                         className={cn(
-                            'absolute z-[60] flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#0a0c0f] bg-primary text-black shadow-[0_0_20px_rgba(0,255,136,0.45)] transition-transform duration-200 hover:scale-110 active:scale-95',
+                            'absolute z-[60] flex h-8 w-8 items-center rounded-full border-2 border-[#0a0c0f] bg-primary text-black shadow-[0_0_20px_rgba(0,255,136,0.45)] transition-transform duration-200 hover:scale-110 active:scale-95',
                             'top-[5.25rem]',
-                            isSidebarCollapsed ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2',
+                            isSidebarCollapsed
+                                ? 'left-0 -translate-x-1/2 justify-end pr-1'
+                                : 'right-0 translate-x-1/2 justify-center',
                         )}
                     >
-                        {isSidebarCollapsed ? <ChevronRight size={15} strokeWidth={2.5} /> : <ChevronLeft size={15} strokeWidth={2.5} />}
+                        {isSidebarCollapsed ? (
+                            <ChevronRight size={15} strokeWidth={2.5} className="shrink-0" />
+                        ) : (
+                            <ChevronLeft size={15} strokeWidth={2.5} className="shrink-0" />
+                        )}
                     </button>
                 </div>
 

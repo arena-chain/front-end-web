@@ -40,6 +40,7 @@ import TicketBooking from './player/pages/TicketBooking';
 import MyTickets from './player/pages/MyTickets';
 import PlayerSubscription from './player/pages/PlayerSubscription';
 import PlayerPayment from './player/pages/PlayerPayment';
+import PlayerWalletPage from './player/pages/PlayerWalletPage';
 import PlayerRankings from './player/pages/PlayerRankings';
 import PlayerNews from './player/pages/PlayerNews';
 import NewsArticlePage from './_public/pages/NewsArticlePage';
@@ -87,6 +88,7 @@ import Reservations from './admin/pages/Reservations';
 import AdminTickets from './admin/pages/Tickets';
 import Partnerships from './admin/pages/Partnerships';
 import TeamManagerRequests from './admin/pages/TeamManagerRequests';
+import CurrencyOffers from './admin/pages/CurrencyOffers';
 
 // League Hub (legacy — kept for fallback)
 import LeagueHubLayout from './admin/pages/league-hub/LeagueHubLayout';
@@ -140,6 +142,7 @@ function App() {
           <Route path="news" element={<AdminNews />} />
           <Route path="users" element={<Users />} />
           <Route path="team-manager-requests" element={<TeamManagerRequests />} />
+          <Route path="currency-offers" element={<CurrencyOffers />} />
           <Route path="tournaments" element={<Tournaments />} />
           <Route path="tournaments/:id" element={<TournamentDetails />} />
           <Route path="tickets" element={<AdminTickets />} />
@@ -210,6 +213,7 @@ function App() {
             <Route path="go-live" element={<GoLivePage />} />
             <Route path="all-lives" element={<AllLivesPage />} />
             <Route path="profile" element={<PlayerProfile />} />
+            <Route path="wallet" element={<PlayerWalletPage />} />
             <Route path="subscription" element={<PlayerSubscription />} />
             <Route path="payment" element={<PlayerPayment />} />
           </Route>
