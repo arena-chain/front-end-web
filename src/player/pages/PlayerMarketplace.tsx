@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
-    Store, Gem, ShoppingCart, Tag, X, Search, Heart,
-    Sparkles, Crown, Star, Diamond, ArrowUpDown,
-    ChevronLeft, ChevronRight, Clock, Package,
+    Gem, ShoppingCart, Tag, X, Search, Heart,
+    Sparkles, Crown, Star, Diamond, Package, Zap,
 } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import type { NftAvatar, NftRarity } from '../../services/nftService';
 import {
     nftInventoryApi,
@@ -15,18 +16,12 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const RARITY_STYLES: Record<NftRarity, { bg: string; border: string; text: string; glow: string; badge: string; gradient: string }> = {
-    COMMON:    { bg: 'bg-zinc-500/10', border: 'border-zinc-500/20', text: 'text-zinc-400', glow: '', badge: 'bg-zinc-500/20 text-zinc-400', gradient: 'from-zinc-600/20 to-zinc-800/20' },
-    RARE:      { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', glow: 'shadow-[0_0_20px_rgba(59,130,246,0.15)]', badge: 'bg-blue-500/20 text-blue-400', gradient: 'from-blue-600/20 to-blue-900/20' },
-    EPIC:      { bg: 'bg-violet-500/10', border: 'border-violet-500/20', text: 'text-violet-400', glow: 'shadow-[0_0_20px_rgba(139,92,246,0.2)]', badge: 'bg-violet-500/20 text-violet-400', gradient: 'from-violet-600/20 to-violet-900/20' },
-    LEGENDARY: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400', glow: 'shadow-[0_0_25px_rgba(245,158,11,0.25)]', badge: 'bg-amber-500/20 text-amber-400', gradient: 'from-amber-500/20 to-orange-900/20' },
-};
-
-const RARITY_ICON: Record<NftRarity, React.ReactNode> = {
-    COMMON: <Star size={12} />,
-    RARE: <Sparkles size={12} />,
-    EPIC: <Crown size={12} />,
-    LEGENDARY: <Diamond size={12} />,
+/** Inline styles + gradients for motion cards (accent / glow). */
+const RARITY_THEMES: Record<NftRarity, { accent: string; glow: string; gradient: string }> = {
+    COMMON: { accent: '#a1a1aa', glow: 'rgba(161,161,170,0.28)', gradient: 'from-zinc-600/20 to-zinc-800/20' },
+    RARE: { accent: '#60a5fa', glow: 'rgba(59,130,246,0.28)', gradient: 'from-blue-600/20 to-blue-900/20' },
+    EPIC: { accent: '#a78bfa', glow: 'rgba(139,92,246,0.3)', gradient: 'from-violet-600/20 to-violet-900/20' },
+    LEGENDARY: { accent: '#fbbf24', glow: 'rgba(245,158,11,0.32)', gradient: 'from-amber-500/20 to-orange-900/20' },
 };
 
 function uiRarity(r?: string): NftRarity {
@@ -244,8 +239,6 @@ export default function PlayerMarketplace() {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
                         <div className="flex items-center gap-2 overflow-x-auto">
                             {CATEGORIES.map(cat => (
@@ -263,7 +256,6 @@ export default function PlayerMarketplace() {
                                 </button>
                             ))}
                         </div>
-                    </div>
 
                     {/* Auction High-Fidelity Section */}
                     {tab === 'marketplace' && filterRarity === 'ALL' && !search && (
@@ -438,11 +430,30 @@ function ProtocolNftCard({ nft, index, onBuy }: { nft: NftAvatar; index: number;
                         {nft.rarity}
                     </div>
                 </div>
-                <button className="absolute top-4 right-4 z-20 text-white/10 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100">
+                <button type="button" className="absolute top-4 right-4 z-20 text-white/10 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100">
                     <Heart size={16} />
                 </button>
             </div>
-        </div>
+            <div className="flex flex-1 flex-col justify-between gap-4 bg-[#0a0a0a] px-5 py-4">
+                <div className="min-h-0">
+                    <h3 className="text-lg font-black uppercase leading-tight tracking-tight text-white line-clamp-2">{nft.name}</h3>
+                    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-white/35">{nft.rarity}</p>
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-black text-white">{nft.listPrice ?? nft.price}</span>
+                        <Gem size={14} className="text-[#00ff87]" />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onBuy}
+                        className="shrink-0 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white transition-all hover:border-[#00ff87]/40 hover:bg-[#00ff87] hover:text-black"
+                    >
+                        Acquire
+                    </button>
+                </div>
+            </div>
+        </motion.div>
     );
 }
 
@@ -458,6 +469,7 @@ function ListForSaleModal({ nft, onClose, onListed }: { nft: NftAvatar; onClose:
             setSaving(true);
             const updated = await nftInventoryApi.listItemForSale(nft._id, listPrice, 'USD');
             onListed(mapNftItemToCard(updated));
+            onClose();
         } catch (e) {
             console.error('List failed', e);
         } finally {
@@ -465,35 +477,47 @@ function ListForSaleModal({ nft, onClose, onListed }: { nft: NftAvatar; onClose:
         }
     };
 
-    const rs = RARITY_STYLES[nft.rarity];
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+            <div className="bg-zinc-950 border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
                 <div className="flex items-center justify-between">
                     <h2 className="text-white font-black uppercase tracking-widest flex items-center gap-2">
                         <Tag size={18} className="text-blue-400" /> List for Sale
                     </h2>
-                    <button onClick={onClose} className="text-text-muted hover:text-white transition-colors"><X size={20} /></button>
+                    <button type="button" onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
                 </div>
 
-                <div className="pt-6 border-t border-white/[0.03] flex items-center justify-between">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40">
+                    List price (credits)
+                    <input
+                        type="number"
+                        min={1}
+                        value={listPrice}
+                        onChange={(e) => setListPrice(Number(e.target.value) || 1)}
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white font-bold outline-none focus:border-primary/40"
+                    />
+                </label>
+
+                <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between gap-3">
                     <div>
-                        <span className="text-[8px] text-white/20 uppercase font-black tracking-widest block mb-0.5 italic">Protocol Valuation</span>
+                        <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block mb-0.5">Floor reference</span>
                         <div className="flex items-center gap-1.5">
-                            <span className="text-2xl font-black italic tracking-tighter text-white">{nft.listPrice ?? nft.price}</span>
+                            <span className="text-xl font-black text-white">{nft.listPrice ?? nft.price}</span>
                             <Gem size={12} className="text-[#00ff87]" />
                         </div>
                     </div>
-                    
-                    <button 
-                        onClick={onBuy}
-                        className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center transition-all duration-300 group-hover:bg-[#00ff87] active:scale-95"
+                    <button
+                        type="button"
+                        onClick={() => void handleList()}
+                        disabled={saving}
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] transition-all hover:border-[#00ff87]/50 hover:bg-[#00ff87] disabled:opacity-50"
                     >
-                        <ShoppingCart size={16} className="text-white group-hover:text-black transition-colors" />
+                        <ShoppingCart size={16} className="text-white hover:text-black" />
                     </button>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 }
