@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import {
     ArrowLeft,
@@ -40,6 +40,8 @@ import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { highlightCreatorLabel, highlightCreatorUserId, rankHighlightsByEngagement } from '../lib/scouterHighlightUtils';
 import { MediaEngagementStrip } from '../../components/highlights/MediaEngagementStrip';
 import { ScouterHighlightDetailModal } from '../components/ScouterHighlightDetailModal';
+import { UserService, type User } from '../../services/userService';
+import { fetchPublicTeams, type TeamListItem } from '../../services/teamsPublic.service';
 
 /** Minimal profile when API returns 404 so scouter can still use reports/prospect/recommendations */
 function minimalProfile(playerUserId: string): ScoutedPlayerProfile {
@@ -51,6 +53,73 @@ function minimalProfile(playerUserId: string): ScoutedPlayerProfile {
         region: '—',
         isPro: false,
     };
+}
+
+/** Avatar URL path from populated user, nested `user`, or profile root (backend shapes vary). */
+function pickAvatarPath(profile: ScoutedPlayerProfile): string | undefined {
+    const uid = profile.userId;
+    if (typeof uid === 'object' && uid !== null) {
+        const a = (uid as { avatar?: string }).avatar;
+        if (a?.trim()) return a.trim();
+    }
+    const nestedUser = (profile as { user?: { avatar?: string } }).user?.avatar;
+    if (nestedUser?.trim()) return nestedUser.trim();
+    const top = (profile as { avatar?: string }).avatar;
+    if (top?.trim()) return top.trim();
+    return undefined;
+}
+
+function pickCountry(profile: ScoutedPlayerProfile): string | undefined {
+    const uid = profile.userId;
+    if (typeof uid === 'object' && uid !== null) {
+        const c = (uid as { country?: string }).country;
+        if (c?.trim()) return c.trim();
+    }
+    const top = (profile as { country?: string }).country;
+    if (top?.trim()) return top.trim();
+    return undefined;
+}
+
+function firstNonEmptyString(...vals: unknown[]): string {
+    for (const v of vals) {
+        if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return '';
+}
+
+/** Display name from whatever shape the scouter profile API returns. */
+function pickDisplayName(profile: ScoutedPlayerProfile | null): string {
+    if (!profile) return '';
+    const uid = profile.userId;
+    if (typeof uid === 'object' && uid !== null) {
+        const o = uid as Record<string, unknown>;
+        const n = firstNonEmptyString(o.nickname, o.username, o.userName, o.displayName, o.name);
+        if (n) return n;
+    }
+    const user = (profile as { user?: Record<string, unknown> }).user;
+    if (user && typeof user === 'object') {
+        const n = firstNonEmptyString(user.nickname, user.username, user.userName, user.displayName, user.name);
+        if (n) return n;
+    }
+    const top = profile as Record<string, unknown>;
+    const n = firstNonEmptyString(top.nickname, top.username, top.displayName);
+    if (n) return n;
+    const playerNested = top.player as Record<string, unknown> | undefined;
+    if (playerNested && typeof playerNested === 'object') {
+        const nestedUser = playerNested.user as Record<string, unknown> | undefined;
+        if (nestedUser) {
+            const n2 = firstNonEmptyString(nestedUser.nickname, nestedUser.username);
+            if (n2) return n2;
+        }
+        const n3 = firstNonEmptyString(playerNested.nickname);
+        if (n3) return n3;
+    }
+    return '';
+}
+
+function isWeakDisplayName(n: string): boolean {
+    const t = n.trim();
+    return !t || t === 'Player' || t === 'Unknown Player';
 }
 
 const fmtDate = (d: string) =>
@@ -79,7 +148,6 @@ export default function ScouterPlayerProfile() {
     const [team, setTeam] = useState<LeaderboardEntry['team']>(undefined);
     const [stats, setStats] = useState<{ killsPerRound: number; deathPerRound: number; winRate: number; headshotPct: number } | null>(null);
     const [loading, setLoading] = useState(true);
-    const [adding, setAdding] = useState(false);
     const [isDemo, setIsDemo] = useState(false);
     const [reports, setReports] = useState<ScoutingReport[]>([]);
     const [prospect, setProspect] = useState<PlayerProspectStatus | null>(null);
@@ -92,10 +160,16 @@ export default function ScouterPlayerProfile() {
     const [reportForm, setReportForm] = useState({ rating: 85, strengths: '', weaknesses: '', notes: '', recommendedRole: '' });
     const [prospectForm, setProspectForm] = useState({ prospectLevel: ProspectLevel.UNKNOWN, priority: ProspectPriority.MEDIUM });
     const [recommendForm, setRecommendForm] = useState({ organizationId: '', recommendationLevel: RecommendationLevel.STRONGLY_RECOMMEND, message: '' });
+    const [recommendTeams, setRecommendTeams] = useState<TeamListItem[]>([]);
+    const [recommendTeamsLoading, setRecommendTeamsLoading] = useState(false);
+    const [recommendTeamsError, setRecommendTeamsError] = useState<string | null>(null);
     const [inWatchlist, setInWatchlist] = useState(false);
     const [watchlistLoading, setWatchlistLoading] = useState(false);
     const [watchlistUpdating, setWatchlistUpdating] = useState(false);
     const [profileFromApi, setProfileFromApi] = useState(true);
+    const [avatarImgError, setAvatarImgError] = useState(false);
+    /** When GET profile omits populated user, match this user id from /users list (same source as Players page). */
+    const [accountUser, setAccountUser] = useState<User | null>(null);
 
     // Fetch profile + matches from API; fallback to demo or minimal so page stays usable
     useEffect(() => {
@@ -151,6 +225,38 @@ export default function ScouterPlayerProfile() {
         scoutingService.getProspectByPlayer(playerUserId).then(setProspect).catch(() => setProspect(null));
         scoutingService.listRecommendationsByPlayer(playerUserId).then(setRecommendations).catch(() => setRecommendations([]));
     }, [playerUserId]);
+
+    // Teams for "Recommend to team" (public list; `organizationId` on scouting API matches team `_id` in this app)
+    useEffect(() => {
+        if (!recommendModalOpen) return;
+        let cancelled = false;
+        setRecommendTeamsLoading(true);
+        setRecommendTeamsError(null);
+        fetchPublicTeams()
+            .then((list) => {
+                if (cancelled) return;
+                setRecommendTeams(list);
+                setRecommendForm((f) => {
+                    const cur = f.organizationId.trim();
+                    const stillValid = cur && list.some((t) => t._id === cur);
+                    return {
+                        ...f,
+                        organizationId: stillValid ? cur : list[0]?._id ?? '',
+                    };
+                });
+            })
+            .catch((e: unknown) => {
+                if (cancelled) return;
+                setRecommendTeams([]);
+                setRecommendTeamsError(e instanceof Error ? e.message : 'Could not load teams');
+            })
+            .finally(() => {
+                if (!cancelled) setRecommendTeamsLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [recommendModalOpen]);
 
     // Player uploaded videos (from /video)
     useEffect(() => {
@@ -236,6 +342,90 @@ export default function ScouterPlayerProfile() {
         }
     }, [prospect]);
 
+    const name = useMemo(() => {
+        if (!profile) return 'Player';
+        const fromAccount = accountUser?.nickname?.trim();
+        if (fromAccount) return fromAccount;
+        const fromProfile = pickDisplayName(profile);
+        if (fromProfile && !isWeakDisplayName(fromProfile)) return fromProfile;
+        const uid = profile.userId;
+        const emailFromUser =
+            typeof uid === 'object' && uid !== null
+                ? firstNonEmptyString((uid as { email?: string }).email)
+                : '';
+        if (emailFromUser.includes('@')) {
+            const local = emailFromUser.split('@')[0]?.trim();
+            if (local && !isWeakDisplayName(local)) return local;
+        }
+        const emailTop = firstNonEmptyString((profile as { email?: string }).email);
+        if (emailTop.includes('@')) {
+            const local = emailTop.split('@')[0]?.trim();
+            if (local && !isWeakDisplayName(local)) return local;
+        }
+        if (fromProfile) return fromProfile;
+        return 'Player';
+    }, [profile, accountUser]);
+
+    const email = useMemo(() => {
+        if (!profile) return undefined;
+        const fromUser =
+            typeof profile.userId === 'object' && profile.userId !== null && 'email' in profile.userId
+                ? firstNonEmptyString((profile.userId as { email?: string }).email)
+                : '';
+        if (fromUser) return fromUser;
+        const top = firstNonEmptyString((profile as { email?: string }).email);
+        if (top) return top;
+        return accountUser?.email;
+    }, [profile, accountUser]);
+
+    const avatarPath = useMemo(() => {
+        const fromProfile = profile ? pickAvatarPath(profile) ?? '' : '';
+        if (fromProfile) return fromProfile;
+        return accountUser?.avatar?.trim() ?? '';
+    }, [profile, accountUser]);
+    const avatarUrl = useMemo(() => (avatarPath ? resolveBackendAssetUrl(avatarPath) : ''), [avatarPath]);
+    const country = useMemo(() => {
+        const c = profile ? pickCountry(profile) : undefined;
+        if (c) return c;
+        return accountUser?.country?.trim() || accountUser?.region?.trim();
+    }, [profile, accountUser]);
+
+    const locationLabel = useMemo(() => {
+        if (!profile) return '—';
+        const c = (country ?? '').trim();
+        const r = (profile.region ?? '').trim();
+        if (c && r && c.toLowerCase() !== r.toLowerCase()) return `${c} · ${r}`;
+        return c || r || '—';
+    }, [profile, country]);
+
+    useEffect(() => {
+        setAvatarImgError(false);
+    }, [playerUserId, avatarPath]);
+
+    useEffect(() => {
+        if (!playerUserId || loading) {
+            setAccountUser(null);
+            return;
+        }
+        const fromApi = pickDisplayName(profile);
+        if (fromApi && !isWeakDisplayName(fromApi)) {
+            setAccountUser(null);
+            return;
+        }
+        let cancelled = false;
+        UserService.getAllUsers()
+            .then((users) => {
+                if (cancelled) return;
+                setAccountUser(users.find((u) => u._id === playerUserId) ?? null);
+            })
+            .catch(() => {
+                if (!cancelled) setAccountUser(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [playerUserId, profile, loading]);
+
     const getScouterId = () => {
         try {
             const raw = localStorage.getItem('user');
@@ -244,17 +434,6 @@ export default function ScouterPlayerProfile() {
         } catch {
             return null;
         }
-    };
-
-    const handleAddToEvaluated = () => {
-        const scouterId = getScouterId();
-        if (!scouterId || !profile?._id) return;
-        setAdding(true);
-        scouterService
-            .addToEvaluated(scouterId, profile._id)
-            .then(() => {})
-            .catch(() => {})
-            .finally(() => setAdding(false));
     };
 
     const handleAddToWatchlist = () => {
@@ -361,15 +540,6 @@ export default function ScouterPlayerProfile() {
         );
     }
 
-    const name =
-        typeof profile.userId === 'object' && profile.userId !== null && 'nickname' in profile.userId
-            ? (profile.userId as { nickname: string }).nickname
-            : (profile as { nickname?: string }).nickname ?? 'Player';
-    const email =
-        typeof profile.userId === 'object' && profile.userId !== null && 'email' in profile.userId
-            ? (profile.userId as { email: string }).email
-            : undefined;
-
     return (
         <div className="space-y-8 animate-fade-in-up">
             <Link
@@ -382,9 +552,20 @@ export default function ScouterPlayerProfile() {
             {/* Hero – avatar, name, team, rank, region, pro badge, CTA */}
             <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
                 <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="flex items-center gap-6 flex-wrap min-w-0">
-                        <div className="w-28 h-28 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-primary font-black text-5xl shrink-0">
-                            {name.charAt(0).toUpperCase()}
+                    <div className="flex min-w-0 flex-wrap items-center gap-6">
+                        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border-2 border-primary/40 bg-zinc-900 ring-1 ring-zinc-800">
+                            {avatarUrl && !avatarImgError ? (
+                                <img
+                                    src={avatarUrl}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                    onError={() => setAvatarImgError(true)}
+                                />
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-primary/20 text-5xl font-black text-primary">
+                                    {name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -395,7 +576,7 @@ export default function ScouterPlayerProfile() {
                                     </span>
                                 )}
                             </div>
-                            {email && <p className="text-white/50 text-sm mt-1">{email}</p>}
+                            {email ? <p className="mt-1 text-sm text-zinc-500">{email}</p> : null}
                             {team && (
                                 <div className="flex items-center gap-2 mt-3">
                                     {team.logo ? (
@@ -420,8 +601,9 @@ export default function ScouterPlayerProfile() {
                                 <span className="flex items-center gap-1.5 text-white/70">
                                     Rank: {profile.rank ?? '—'}
                                 </span>
-                                <span className="flex items-center gap-1.5 text-white/70">
-                                    <MapPin size={14} /> {profile.region ?? '—'}
+                                <span className="flex min-w-0 items-center gap-1.5 text-white/70">
+                                    <MapPin size={14} className="shrink-0" />
+                                    <span className="truncate">{locationLabel}</span>
                                 </span>
                             </div>
                             <div className="flex flex-wrap gap-2 mt-4">
@@ -444,13 +626,6 @@ export default function ScouterPlayerProfile() {
                                         </button>
                                     )
                                 )}
-                                <button
-                                    onClick={handleAddToEvaluated}
-                                    disabled={adding}
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/20 border border-primary/30 text-primary font-bold text-sm hover:bg-primary/30 transition-colors disabled:opacity-50"
-                                >
-                                    <Star size={16} /> {adding ? 'Adding…' : 'Add to evaluated list'}
-                                </button>
                                 <button
                                     onClick={() => setReportModalOpen(true)}
                                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-sm hover:bg-white/15"
@@ -970,14 +1145,42 @@ export default function ScouterPlayerProfile() {
                 <form onSubmit={handleCreateRecommendation} className="space-y-4 px-6 pb-6">
                     <p className="text-white/60 text-sm">Send a formal recommendation to a team or academy. They can accept or reject.</p>
                     <div>
-                        <label className="block text-sm font-medium text-white/80 mb-1">Organization ID (team or academy)</label>
-                        <Input
-                            value={recommendForm.organizationId}
-                            onChange={(e) => setRecommendForm((f) => ({ ...f, organizationId: e.target.value }))}
-                            placeholder="MongoDB ObjectId of the organization"
-                            required
-                            className="rounded-xl bg-white/5 border border-primary/20"
-                        />
+                        <label className="block text-sm font-medium text-white/80 mb-1">Team or academy</label>
+                        <p className="text-xs text-white/45 mb-2">
+                            Pick a registered team. The same identifier is sent to the scouting API as the organization reference.
+                        </p>
+                        {recommendTeamsLoading ? (
+                            <p className="text-sm text-white/50 py-2">Loading teams…</p>
+                        ) : recommendTeams.length > 0 ? (
+                            <select
+                                value={recommendForm.organizationId}
+                                onChange={(e) => setRecommendForm((f) => ({ ...f, organizationId: e.target.value }))}
+                                required
+                                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-primary/20 text-white text-sm outline-none focus:border-primary/50"
+                            >
+                                {recommendTeams.map((t) => (
+                                    <option key={t._id} value={t._id}>
+                                        {t.name}
+                                        {t.isVerified ? ' · verified' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <>
+                                {recommendTeamsError ? (
+                                    <p className="text-sm text-amber-400/90 mb-2">{recommendTeamsError}</p>
+                                ) : (
+                                    <p className="text-sm text-white/50 mb-2">No teams are available yet. You can paste an organization ID if your admin provided one.</p>
+                                )}
+                                <Input
+                                    value={recommendForm.organizationId}
+                                    onChange={(e) => setRecommendForm((f) => ({ ...f, organizationId: e.target.value }))}
+                                    placeholder="Organization ID"
+                                    required
+                                    className="rounded-xl bg-white/5 border border-primary/20"
+                                />
+                            </>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-white/80 mb-1">Recommendation level</label>
@@ -1002,7 +1205,11 @@ export default function ScouterPlayerProfile() {
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                         <Button type="button" variant="ghost" onClick={() => setRecommendModalOpen(false)}>Cancel</Button>
-                        <Button type="submit" disabled={recommendSubmitting} className="bg-primary text-black hover:bg-primary/90">
+                        <Button
+                            type="submit"
+                            disabled={recommendSubmitting || recommendTeamsLoading}
+                            className="bg-primary text-black hover:bg-primary/90"
+                        >
                             {recommendSubmitting ? 'Sending…' : 'Send recommendation'}
                         </Button>
                     </div>

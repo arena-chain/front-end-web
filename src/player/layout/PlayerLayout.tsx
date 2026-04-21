@@ -1,66 +1,23 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import type { LucideIcon } from 'lucide-react';
 import {
-    History,
-    LogOut,
-    User,
-    Gamepad2,
-    Ticket,
-    Trophy,
-    Award,
-    DollarSign,
-    Bell,
-    ChevronDown,
-    Search,
-    Crown,
-    Store,
-    Radio,
-    Video,
-    Users,
     ChevronLeft,
     ChevronRight,
     Circle,
-    Newspaper,
-    Clapperboard,
-    Film,
-    Sparkles,
-    Wallet,
+    UserPlus,
+    RefreshCw,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiBase } from '../../lib/apiBase';
 import PlayerAmbientBackground from '../components/PlayerAmbientBackground';
 import PlayerEnergyStreakOverlay from '../components/PlayerEnergyStreakOverlay';
-import PlayerGameTokenBalance from '../components/PlayerGameTokenBalance';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
 import { useAuth } from '../../contexts/AuthContext';
-// ─── Top nav links (shown in the horizontal top bar) ─────────────────────────
-const TOP_NAV_LINKS = [
-    { to: '/player/channel', label: 'Channel', icon: <Video size={16} /> },
-    { to: '/player/go-live', label: 'Go Live', icon: <Radio size={16} /> },
-    { to: '/player/all-lives', label: 'Lives', icon: <Users size={16} /> },
-    { to: '/player/marketplace', label: 'Marketplace', icon: <Store size={16} /> },
-    { to: '/player/market', label: 'Get Tickets', icon: <DollarSign size={16} /> },
-    { to: '/player/rankings', label: 'Rankings', icon: <Crown size={16} /> },
-    { to: '/player/news', label: 'News', icon: <Newspaper size={16} /> },
-];
-
-// ─── Primary rail: full section = icon + label; compact = icons only ──────────
-const PRIMARY_NAV_LINKS: { to: string; label: string; icon: LucideIcon }[] = [
-    { to: '/player/dashboard', label: 'Play', icon: Gamepad2 },
-    { to: '/player/tournaments', label: 'Tournaments', icon: Trophy },
-    { to: '/player/my-tickets', label: 'My Tickets', icon: Ticket },
-    { to: '/player/matches', label: 'Match History', icon: History },
-    { to: '/player/leagues', label: 'Leagues', icon: Award },
-    { to: '/player/channel', label: 'Studio & clips', icon: Clapperboard },
-    { to: '/player/my-videos', label: 'My videos', icon: Film },
-    { to: '/player/highlights', label: 'Highlights', icon: Sparkles },
-];
-
-const PRIMARY_NAV_BOTTOM: { to: string; label: string; icon: LucideIcon }[] = [
-    { to: '/player/profile', label: 'Profil', icon: User },
-];
+import { toast } from 'sonner';
+import { friendshipPresenceService, type FriendItem } from '../../services/friendshipPresence.service';
+import TopNavbar from '../_componenets/top_navbar';
+import SideNavbar from '../_componenets/side_navbar';
 
 interface PlayerProfileData {
     _id?: string;
@@ -79,6 +36,11 @@ export default function PlayerLayout() {
     const [profile, setProfile] = useState<PlayerProfileData | null>(null);
     const [channels, setChannels] = useState<ChannelRecord[]>([]);
     const [loadingChannels, setLoadingChannels] = useState(false);
+    const [friends, setFriends] = useState<FriendItem[]>([]);
+    const [loadingFriends, setLoadingFriends] = useState(false);
+    const [friendRecipientId, setFriendRecipientId] = useState('');
+    const [addingFriend, setAddingFriend] = useState(false);
+    const [friendsSearch, setFriendsSearch] = useState('');
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
         try {
             return localStorage.getItem('player_channels_sidebar_collapsed') === '1';
@@ -86,32 +48,6 @@ export default function PlayerLayout() {
             return false;
         }
     });
-
-    /** Primary rail: icon-only by default; expands while pointer hovers header logo strip or rail. */
-    const [primaryNavExpanded, setPrimaryNavExpanded] = useState(false);
-    const primaryNavLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const clearPrimaryNavLeaveTimer = useCallback(() => {
-        if (primaryNavLeaveTimer.current != null) {
-            clearTimeout(primaryNavLeaveTimer.current);
-            primaryNavLeaveTimer.current = null;
-        }
-    }, []);
-
-    const onPrimaryRailEnter = useCallback(() => {
-        clearPrimaryNavLeaveTimer();
-        setPrimaryNavExpanded(true);
-    }, [clearPrimaryNavLeaveTimer]);
-
-    const onPrimaryRailLeave = useCallback(() => {
-        clearPrimaryNavLeaveTimer();
-        primaryNavLeaveTimer.current = window.setTimeout(() => {
-            setPrimaryNavExpanded(false);
-            primaryNavLeaveTimer.current = null;
-        }, 280);
-    }, [clearPrimaryNavLeaveTimer]);
-
-    useEffect(() => () => clearPrimaryNavLeaveTimer(), [clearPrimaryNavLeaveTimer]);
 
     useEffect(() => {
         try {
@@ -146,6 +82,15 @@ export default function PlayerLayout() {
         void loadSidebarChannels();
     }, []);
 
+    useEffect(() => {
+        const myId = profile?._id || profile?.id;
+        if (!myId) {
+            setFriends([]);
+            return;
+        }
+        void loadFriends(String(myId));
+    }, [profile?._id, profile?.id]);
+
     async function loadSidebarChannels() {
         setLoadingChannels(true);
         try {
@@ -159,215 +104,119 @@ export default function PlayerLayout() {
         }
     }
 
-    const primaryNavWidthClass = primaryNavExpanded ? 'w-[248px]' : 'w-[72px]';
+    async function loadFriends(userIdOverride?: string) {
+        const myId = userIdOverride || profile?._id || profile?.id;
+        if (!myId) {
+            setFriends([]);
+            return;
+        }
+        setLoadingFriends(true);
+        try {
+            const list = await friendshipPresenceService.getPresenceFriends(String(myId));
+            setFriends(Array.isArray(list) ? list : []);
+        } catch (error) {
+            setFriends([]);
+            const message = error instanceof Error ? error.message : 'Failed to load friends';
+            toast.error(message);
+        } finally {
+            setLoadingFriends(false);
+        }
+    }
+
+    async function addFriend() {
+        const requesterId = profile?._id || profile?.id;
+        const recipientId = friendRecipientId.trim();
+        if (!requesterId) {
+            toast.error('Profile not ready yet');
+            return;
+        }
+        if (!recipientId) {
+            toast.error('Enter recipient user ID');
+            return;
+        }
+        if (recipientId === requesterId) {
+            toast.error('You cannot add yourself');
+            return;
+        }
+
+        setAddingFriend(true);
+        try {
+            await friendshipPresenceService.sendFriendRequest(String(requesterId), recipientId);
+            setFriendRecipientId('');
+            toast.success('Friend request sent');
+            await loadFriends(String(requesterId));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Could not send friend request';
+            toast.error(message);
+        } finally {
+            setAddingFriend(false);
+        }
+    }
+
+    const headerRailWidthClass = 'w-[54px]';
+    const primaryNavWidthClass = 'w-[54px]';
 
     return (
         <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-text">
             {/* ═══ Unified Shell ═══ */}
-            <div className="flex flex-col flex-1 bg-[#111214] rounded-3xl overflow-hidden">
-                {/* ═══ Full-width Unified Header ═══ */}
-                <header className="h-16 shrink-0 flex items-center z-30 border-b border-white/5 bg-[#060708]">
-                    {/* Logo — width matches primary sidebar */}
-                    <div
-                        className={cn(
-                            'h-full flex shrink-0 border-r border-white/5 transition-[width] duration-300 ease-out',
-                            primaryNavWidthClass,
-                        )}
-                        onMouseEnter={onPrimaryRailEnter}
-                        onMouseLeave={onPrimaryRailLeave}
-                    >
-                        <div
-                            className={cn(
-                                'flex h-full w-full flex-row items-center',
-                                primaryNavExpanded ? 'justify-start gap-2 px-2 sm:px-3' : 'justify-center gap-1 px-1',
-                            )}
-                        >
-                            <NavLink to="/player/dashboard" className="shrink-0">
-                                <div
-                                    className={cn(
-                                        'flex items-center justify-center rounded-xl bg-primary font-black text-black shadow-[0_0_20px_rgba(0,255,136,0.3)] transition-all hover:scale-105',
-                                        primaryNavExpanded ? 'h-10 w-10 text-lg' : 'h-9 w-9 text-base',
-                                    )}
-                                >
-                                    A
-                                </div>
-                            </NavLink>
-                        </div>
-                    </div>
-                    {/* Nav links + right controls */}
-                    <div className="flex flex-1 items-center justify-between px-8">
-                        <div className="flex items-center gap-6">
-                            <nav className="flex items-center gap-2">
-                                {TOP_NAV_LINKS.map(link => (
-                                    <NavLink
-                                        key={link.to}
-                                        to={link.to}
-                                        className={({ isActive }) => cn(
-                                            "flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300",
-                                            isActive
-                                                ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(0,255,135,0.1)]"
-                                                : "text-white/40 hover:text-white hover:bg-white/5"
-                                        )}
-                                    >
-                                        {({ isActive }) => (
-                                            <>
-                                                {isActive ? <Circle size={4} className="fill-primary animate-pulse" /> : <span className="opacity-40">{link.icon}</span>}
-                                                <span className="hidden xl:inline">{link.label}</span>
-                                            </>
-                                        )}
-                                    </NavLink>
-                                ))}
-                            </nav>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="hidden lg:flex items-center relative w-64">
-                                <Search className="absolute left-3 w-4 h-4 text-text-muted" />
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    className="w-full bg-white/5 border border-white/5 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-primary/40 transition-colors"
-                                />
-                            </div>
-                            <PlayerGameTokenBalance className="hidden sm:flex" />
-                            <button className="relative p-2 rounded-xl hover:bg-white/5 text-text-muted hover:text-white transition-colors">
-                                <Bell size={18} />
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-                            </button>
-                            <div className="relative">
-                                <button
-                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                    className="flex items-center gap-3 p-1 rounded-2xl border border-transparent hover:border-white/10 hover:bg-white/5 transition-all"
-                                >
-                                    <div className="w-9 h-9 rounded-2xl bg-[#16191d] border border-white/10 flex items-center justify-center p-0.5 overflow-hidden">
-                                        <img
-                                            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-                                            alt="Player"
-                                            className="w-full h-full rounded-xl object-cover"
-                                        />
-                                    </div>
-                                    <div className="hidden md:flex flex-col items-start">
-                                        <span className="text-[11px] font-black text-white leading-none uppercase tracking-tighter italic">Player One</span>
-                                        <div className="flex items-center gap-1.5 mt-1">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                            <span className="text-[9px] text-primary font-black uppercase tracking-widest leading-none">Elite</span>
-                                        </div>
-                                    </div>
-                                    <ChevronDown size={14} className="text-white/20 ml-1 hidden md:block" />
-                                </button>
-                                {isProfileOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
-                                        <div className="absolute right-0 top-full mt-3 w-60 bg-[#0c0e11] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-3xl animate-in fade-in zoom-in duration-200">
-                                            <div className="p-5 border-b border-white/5 bg-white/5">
-                                                <p className="text-sm font-black text-white italic">PLAYER ONE</p>
-                                                <p className="text-[10px] text-white/40 font-bold tracking-wider mt-0.5 uppercase">player.one@arena.com</p>
-                                            </div>
-                                            <div className="p-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        navigate('/player/profile');
-                                                        setIsProfileOpen(false);
-                                                    }}
-                                                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all"
-                                                >
-                                                    <User size={15} className="opacity-40" /> Mon Profil
-                                                </button>
-                                            </div>
-                                            <div className="p-2 border-t border-white/5">
-                                                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-400 hover:bg-red-400/10 rounded-xl transition-all">
-                                                    <LogOut size={15} /> Déconnexion
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </header>
+            <div className="relative flex min-h-0 flex-1 flex-col rounded-3xl overflow-hidden">
+                <div className="pointer-events-none absolute inset-0 z-0">
+                    <PlayerAmbientBackground />
+                    <PlayerEnergyStreakOverlay />
+                </div>
+                <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+                <TopNavbar
+                    headerRailWidthClass={headerRailWidthClass}
+                    isProfileOpen={isProfileOpen}
+                    onToggleProfile={() => setIsProfileOpen((v) => !v)}
+                    onCloseProfile={() => setIsProfileOpen(false)}
+                    onGoProfile={() => {
+                        navigate('/player/profile');
+                        setIsProfileOpen(false);
+                    }}
+                    onLogout={handleLogout}
+                />
 
                 {/* ═══ Body: Sidebars + Content ═══ */}
-                <div className="flex flex-1 overflow-hidden">
-
-                {/* ═══ Primary sidebar: nav links + footer (expand/collapse labels) ═══ */}
-                <aside
-                    className={cn(
-                        'relative flex flex-col shrink-0 h-full z-40 bg-[#060708] border-r border-white/[0.06] transition-[width] duration-300 ease-out overflow-hidden shadow-[inset_-1px_0_0_rgba(0,255,136,0.04)]',
-                        primaryNavWidthClass,
-                    )}
-                    onMouseEnter={onPrimaryRailEnter}
-                    onMouseLeave={onPrimaryRailLeave}
-                >
-                    <nav className="flex flex-col gap-0.5 py-3 shrink-0">
-                        {PRIMARY_NAV_LINKS.map((link) => (
-                            <PrimaryNavItem key={link.to} {...link} expanded={primaryNavExpanded} />
-                        ))}
-                    </nav>
-
-                    <div className="flex-1 min-h-0" />
-
-                    <div className="shrink-0 flex flex-col gap-1 pt-2 pb-3 border-t border-white/[0.06] mt-auto">
-                        {PRIMARY_NAV_BOTTOM.map((link) => (
-                            <PrimaryNavItem key={link.to} {...link} expanded={primaryNavExpanded} />
-                        ))}
-                        <NavLink
-                            to="/player/wallet"
-                            title="Portefeuille & historique"
-                            aria-label="Portefeuille Vex"
-                            className={({ isActive }) =>
-                                cn(
-                                    'relative flex items-center overflow-hidden rounded-xl transition-all duration-200',
-                                    primaryNavExpanded ? 'gap-3 px-3 py-2.5 mx-2' : 'mx-auto h-11 w-11 justify-center',
-                                    isActive
-                                        ? 'border border-primary/25 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-primary shadow-[0_0_20px_rgba(0,255,136,0.14)]'
-                                        : 'border border-transparent text-white/40 hover:bg-white/[0.06] hover:text-white',
-                                )
-                            }
-                        >
-                            {({ isActive }) => (
-                                <>
-                                    {isActive && (
-                                        <span className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_12px_rgba(0,255,136,0.7)]" />
-                                    )}
-                                    <Wallet size={22} className="relative z-[1] shrink-0" strokeWidth={isActive ? 2.25 : 2} />
-                                    {primaryNavExpanded && (
-                                        <span className="relative z-[1] truncate text-[11px] font-black uppercase tracking-wider">
-                                            Portefeuille
-                                        </span>
-                                    )}
-                                </>
-                            )}
-                        </NavLink>
-                        <div className={cn('my-1 border-t border-white/[0.06]', primaryNavExpanded ? 'mx-3' : 'mx-auto w-6')} />
+                <div className="relative flex min-h-0 flex-1 overflow-x-visible overflow-y-hidden">
+                <div className="absolute inset-y-0 left-0 z-50 w-[54px] shrink-0 overflow-visible">
+                    <div className="relative h-full w-full">
+                        <SideNavbar widthClass={primaryNavWidthClass} onLogout={handleLogout} />
                         <button
                             type="button"
-                            onClick={handleLogout}
-                            title="Déconnexion"
+                            onClick={() => setIsSidebarCollapsed((v) => !v)}
+                            title={isSidebarCollapsed ? 'Afficher chaînes & suivis' : 'Masquer le panneau'}
+                            aria-expanded={!isSidebarCollapsed}
                             className={cn(
-                                'flex items-center rounded-xl text-white/25 hover:bg-red-500/10 hover:text-red-400 transition-all',
-                                primaryNavExpanded
-                                    ? 'gap-3 px-3 py-2.5 mx-2 text-[11px] font-black uppercase tracking-wider'
-                                    : 'justify-center w-11 h-11 mx-auto',
+                                'absolute left-full top-1/2 z-[60] flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-[#0a0c0f] bg-primary text-black shadow-[0_0_20px_rgba(0,255,136,0.45)]',
+                                'transition-transform duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none motion-reduce:duration-0',
+                                'hover:scale-110 active:scale-95',
                             )}
                         >
-                            <LogOut size={20} className="shrink-0" />
-                            {primaryNavExpanded && <span>Déconnexion</span>}
+                            {isSidebarCollapsed ? (
+                                <ChevronRight size={15} strokeWidth={2.5} className="shrink-0" />
+                            ) : (
+                                <ChevronLeft size={15} strokeWidth={2.5} className="shrink-0" />
+                            )}
                         </button>
                     </div>
-                </aside>
+                </div>
+                <div className="flex flex-1 min-h-0 overflow-hidden pl-[54px]">
 
                 {/* ═══ Channels sidebar — toggle stays outside collapsing width so it is always clickable ═══ */}
                 <div
                     className={cn(
-                        'relative h-full shrink-0 z-30 transition-[width] duration-300 ease-out overflow-visible',
+                        'relative h-full shrink-0 z-30 overflow-visible transition-[width] duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none motion-reduce:duration-0',
                         isSidebarCollapsed ? 'w-0' : 'w-[240px]',
                     )}
                 >
                     <aside
                         className={cn(
-                            'absolute inset-y-0 left-0 flex w-[240px] flex-col border-r border-white/[0.06] bg-[#0a0b0e] transition-opacity duration-300',
-                            isSidebarCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100',
+                            'absolute inset-y-0 left-0 flex w-[240px] flex-col border-r border-white/[0.06] bg-[#0a0b0e] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]',
+                            'transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none motion-reduce:duration-0',
+                            isSidebarCollapsed
+                                ? 'pointer-events-none -translate-x-[calc(100%-0.5rem)] opacity-0'
+                                : 'translate-x-0 opacity-100',
                         )}
                         aria-hidden={isSidebarCollapsed}
                     >
@@ -404,6 +253,120 @@ export default function PlayerLayout() {
                                     ))}
                                 </div>
                             </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between px-2">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 italic">
+                                        Friends
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => void loadFriends()}
+                                        className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-white/40 hover:text-white hover:border-white/20 transition-colors"
+                                        title="Refresh friends"
+                                        disabled={loadingFriends}
+                                    >
+                                        <RefreshCw size={12} className={cn(loadingFriends && 'animate-spin')} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2 px-2">
+                                    <div className="relative">
+                                        <input
+                                            value={friendRecipientId}
+                                            onChange={(event) => setFriendRecipientId(event.target.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    void addFriend();
+                                                }
+                                            }}
+                                            placeholder="Recipient user ID"
+                                            className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 pr-9 text-[11px] font-semibold text-white placeholder:text-white/20 outline-none focus:border-primary/35"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => void addFriend()}
+                                            disabled={addingFriend}
+                                            title="Send friend request"
+                                            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+                                        >
+                                            <UserPlus size={12} />
+                                        </button>
+                                    </div>
+
+                                    <input
+                                        value={friendsSearch}
+                                        onChange={(event) => setFriendsSearch(event.target.value)}
+                                        placeholder="Search friend..."
+                                        className="h-8 w-full rounded-xl border border-white/8 bg-black/25 px-3 text-[11px] font-semibold text-white placeholder:text-white/20 outline-none focus:border-primary/25"
+                                    />
+                                </div>
+
+                                <div className="space-y-1 px-1">
+                                    {loadingFriends ? (
+                                        <div className="space-y-2 px-1">
+                                            {[1, 2, 3].map((i) => (
+                                                <div key={i} className="h-10 rounded-xl bg-white/5 animate-pulse" />
+                                            ))}
+                                        </div>
+                                    ) : friends.length === 0 ? (
+                                        <p className="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-white/25">
+                                            No friends yet
+                                        </p>
+                                    ) : (
+                                        friends
+                                            .filter((f) => {
+                                                const q = friendsSearch.trim().toLowerCase();
+                                                if (!q) return true;
+                                                return (
+                                                    f.nickname.toLowerCase().includes(q) ||
+                                                    f.email.toLowerCase().includes(q) ||
+                                                    f.userId.toLowerCase().includes(q)
+                                                );
+                                            })
+                                            .slice(0, 12)
+                                            .map((friend) => (
+                                                <div
+                                                    key={friend.userId}
+                                                    className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-2 py-2"
+                                                >
+                                                    <div className="relative shrink-0">
+                                                        <img
+                                                            src={friend.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.nickname || friend.userId}`}
+                                                            alt={friend.nickname}
+                                                            className="h-8 w-8 rounded-lg border border-white/10 bg-black object-cover"
+                                                        />
+                                                        <span
+                                                            className={cn(
+                                                                'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0b0e]',
+                                                                friend.status === 'offline'
+                                                                    ? 'bg-white/30'
+                                                                    : friend.status === 'in_game'
+                                                                        ? 'bg-purple-400'
+                                                                        : friend.status === 'in_queue'
+                                                                            ? 'bg-amber-400'
+                                                                            : friend.status === 'away'
+                                                                                ? 'bg-orange-400'
+                                                                                : 'bg-primary',
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-[11px] font-black uppercase tracking-tight text-white/85">
+                                                            {friend.nickname || 'Player'}
+                                                        </p>
+                                                        <p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/30">
+                                                            {friend.status === 'in_game'
+                                                                ? `In game${friend.game ? ` · ${friend.game}` : ''}`
+                                                                : friend.status.replace('_', ' ')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         <div
@@ -422,32 +385,10 @@ export default function PlayerLayout() {
                             </div>
                         </div>
                     </aside>
-
-                    <button
-                        type="button"
-                        onClick={() => setIsSidebarCollapsed((v) => !v)}
-                        title={isSidebarCollapsed ? 'Afficher chaînes & suivis' : 'Masquer le panneau'}
-                        aria-expanded={!isSidebarCollapsed}
-                        className={cn(
-                            'absolute z-[60] flex h-8 w-8 items-center rounded-full border-2 border-[#0a0c0f] bg-primary text-black shadow-[0_0_20px_rgba(0,255,136,0.45)] transition-transform duration-200 hover:scale-110 active:scale-95',
-                            'top-[5.25rem]',
-                            isSidebarCollapsed
-                                ? 'left-0 -translate-x-1/2 justify-end pr-1'
-                                : 'right-0 translate-x-1/2 justify-center',
-                        )}
-                    >
-                        {isSidebarCollapsed ? (
-                            <ChevronRight size={15} strokeWidth={2.5} className="shrink-0" />
-                        ) : (
-                            <ChevronLeft size={15} strokeWidth={2.5} className="shrink-0" />
-                        )}
-                    </button>
                 </div>
 
                     {/* ═══ Main Content ═══ */}
-                    <main className="relative flex-1 overflow-auto bg-[#0a0c0f] scrollbar-hide">
-                        <PlayerAmbientBackground />
-                        <PlayerEnergyStreakOverlay />
+                    <main className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-transparent">
                         <div
                             className={cn(
                                 'relative z-10 transition-all duration-500',
@@ -462,66 +403,12 @@ export default function PlayerLayout() {
                         </div>
                     </main>
                 </div>
+                </div>
+                </div>
             </div>
         </div>
     );
 
-}
-
-// ─── Primary nav row (icon + optional label) ─────────────────────────────
-
-function usePlayerNavActive(to: string): boolean {
-    const { pathname } = useLocation();
-    if (to === '/player/dashboard') {
-        return pathname === '/player/dashboard' || pathname === '/player';
-    }
-    if (to === '/player/highlights') {
-        return pathname === '/player/highlights' || /^\/player\/videos\/[^/]+\/highlights$/.test(pathname);
-    }
-    if (to === '/player/my-videos') {
-        return pathname === '/player/my-videos';
-    }
-    return pathname === to || pathname.startsWith(`${to}/`);
-}
-
-function PrimaryNavItem({
-    to,
-    label,
-    icon: Icon,
-    expanded,
-}: {
-    to: string;
-    label: string;
-    icon: LucideIcon;
-    expanded: boolean;
-}) {
-    const isActive = usePlayerNavActive(to);
-    return (
-        <NavLink
-            to={to}
-            title={label}
-            className={cn(
-                'relative flex items-center overflow-hidden rounded-xl transition-all duration-200',
-                expanded ? 'gap-3 px-3 py-2.5 mx-2' : 'mx-auto h-11 w-11 justify-center',
-                isActive
-                    ? 'border border-primary/25 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-primary shadow-[0_0_20px_rgba(0,255,136,0.14)]'
-                    : 'border border-transparent text-white/40 hover:bg-white/[0.06] hover:text-white',
-            )}
-        >
-            {isActive && (
-                <>
-                    <span className="absolute inset-0 rounded-xl bg-primary/[0.06] pointer-events-none" />
-                    <span className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_12px_rgba(0,255,136,0.7)]" />
-                </>
-            )}
-            <Icon size={22} className="relative z-[1] shrink-0" strokeWidth={isActive ? 2.25 : 2} />
-            {expanded && (
-                <span className="relative z-[1] truncate text-[11px] font-black uppercase tracking-wider">
-                    {label}
-                </span>
-            )}
-        </NavLink>
-    );
 }
 
 // ─── Channel Sidebar Item ──────────────────────────────────────────────

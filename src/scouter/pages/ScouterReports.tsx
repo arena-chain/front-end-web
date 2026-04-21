@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, Plus, Star, Calendar, ArrowRight, Search, User } from 'lucide-react';
 import { scoutingService, type ScoutingReport } from '../../services/scoutingService';
@@ -28,6 +28,64 @@ function toPlayerOption(p: ScoutedPlayerProfile, index: number): PlayerOption {
 const fmtDate = (d: string) =>
     d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
+function collectIdsFromPlayerRef(v: unknown, out: string[], depth: number): void {
+    if (depth > 8 || v == null) return;
+    if (typeof v === 'string') {
+        const t = v.trim();
+        if (t) out.push(t);
+        return;
+    }
+    if (typeof v !== 'object') return;
+    const o = v as Record<string, unknown>;
+    if (typeof o.$oid === 'string' && o.$oid.trim()) out.push(o.$oid.trim());
+    for (const key of ['_id', 'id']) {
+        if (o[key] != null) collectIdsFromPlayerRef(o[key], out, depth + 1);
+    }
+    for (const key of ['userId', 'user']) {
+        if (o[key] != null) collectIdsFromPlayerRef(o[key], out, depth + 1);
+    }
+}
+
+/** Ids that might identify the player on a report (user id, profile id, BSON `$oid`, populated refs). */
+function reportPlayerIdCandidates(r: ScoutingReport): string[] {
+    const out: string[] = [];
+    collectIdsFromPlayerRef(r.playerId, out, 0);
+    return [...new Set(out)];
+}
+
+function reportMatchesFilterSet(r: ScoutingReport, acceptedIds: Set<string>): boolean {
+    if (acceptedIds.size === 0) return true;
+    return reportPlayerIdCandidates(r).some((id) => acceptedIds.has(id));
+}
+
+function reportInPlayerView(
+    r: ScoutingReport,
+    playerFilterId: string,
+    acceptedIds: Set<string>,
+    apiMatchedReportIds: Set<string>
+): boolean {
+    if (!playerFilterId) return true;
+    return reportMatchesFilterSet(r, acceptedIds) || apiMatchedReportIds.has(r._id);
+}
+
+/** `/scouter/players/:playerUserId` expects the account user id when the payload includes it. */
+function reportPlayerUserRouteId(r: ScoutingReport): string {
+    const p = r.playerId;
+    if (typeof p === 'string' && p.trim()) return p.trim();
+    if (p && typeof p === 'object') {
+        const o = p as Record<string, unknown>;
+        const uid = o.userId ?? o.user;
+        if (typeof uid === 'string' && uid.trim()) return uid.trim();
+        if (uid && typeof uid === 'object') {
+            const u = uid as Record<string, unknown>;
+            if (u._id != null) return String(u._id);
+            if (u.id != null) return String(u.id);
+        }
+        if (o._id != null) return String(o._id);
+    }
+    return '';
+}
+
 function getScouterId(): string | null {
     try {
         const raw = localStorage.getItem('user');
@@ -51,6 +109,10 @@ export default function ScouterReports() {
     const [selectedPlayer, setSelectedPlayer] = useState<PlayerOption | null>(null);
     const [playerDropdownOpen, setPlayerDropdownOpen] = useState(false);
     const [selectedReport, setSelectedReport] = useState<ScoutingReport | null>(null);
+    /** Profile `_id` / nested user ids for `?playerId=` (user id) so reports keyed by profile id still match. */
+    const [resolvedFilterExtraIds, setResolvedFilterExtraIds] = useState<string[]>([]);
+    /** Report `_id`s returned by `GET …/reports/player/:id` for query id / profile id (authoritative when embed shape is odd). */
+    const [matchedReportIdsFromPlayerApi, setMatchedReportIdsFromPlayerApi] = useState<string[]>([]);
     const [form, setForm] = useState({
         playerId: '',
         rating: 85,
@@ -134,24 +196,95 @@ export default function ScouterReports() {
         return 'Player';
     };
 
-    const playerId = (r: ScoutingReport) => {
-        const p = r.playerId;
-        if (typeof p === 'object' && p && '_id' in p) return (p as { _id: string })._id;
-        return typeof p === 'string' ? p : '';
-    };
-
     const query = new URLSearchParams(location.search);
-    const playerFilterId = query.get('playerId') ?? '';
+    const playerFilterId = query.get('playerId')?.trim() ?? '';
+
+    useEffect(() => {
+        if (!playerFilterId) {
+            setResolvedFilterExtraIds([]);
+            setMatchedReportIdsFromPlayerApi([]);
+            return;
+        }
+        setResolvedFilterExtraIds([]);
+        setMatchedReportIdsFromPlayerApi([]);
+        let cancelled = false;
+
+        const mergeReportIds = (into: Set<string>, list: ScoutingReport[]) => {
+            for (const r of list) {
+                if (r?._id) into.add(r._id);
+            }
+        };
+
+        const tryListByPlayer = async (id: string, into: Set<string>) => {
+            if (!id.trim()) return;
+            try {
+                const list = await scoutingService.listReportsByPlayer(id.trim());
+                if (!cancelled) mergeReportIds(into, list);
+            } catch {
+                /* ignore */
+            }
+        };
+
+        (async () => {
+            const reportIds = new Set<string>();
+            await tryListByPlayer(playerFilterId, reportIds);
+
+            try {
+                const profile = await scouterService.getPlayerProfile(playerFilterId);
+                if (cancelled) return;
+
+                const extra: string[] = [];
+                if (profile?._id) extra.push(String(profile._id));
+                const u = profile?.userId;
+                if (typeof u === 'string' && u.trim()) extra.push(u.trim());
+                else if (u && typeof u === 'object' && u !== null && '_id' in u) {
+                    const id = (u as { _id?: string })._id;
+                    if (id) extra.push(String(id));
+                }
+                const uniqueExtras = [...new Set(extra)];
+                setResolvedFilterExtraIds(uniqueExtras);
+
+                for (const alt of uniqueExtras) {
+                    if (alt && alt !== playerFilterId) await tryListByPlayer(alt, reportIds);
+                }
+            } catch {
+                if (!cancelled) setResolvedFilterExtraIds([]);
+            }
+
+            if (!cancelled) setMatchedReportIdsFromPlayerApi([...reportIds]);
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [playerFilterId]);
+
+    const playerFilterIdSet = useMemo(() => {
+        const s = new Set<string>();
+        if (!playerFilterId) return s;
+        s.add(playerFilterId);
+        for (const x of resolvedFilterExtraIds) {
+            if (x) s.add(x);
+        }
+        return s;
+    }, [playerFilterId, resolvedFilterExtraIds]);
+
+    const matchedFromApiSet = useMemo(
+        () => new Set(matchedReportIdsFromPlayerApi),
+        [matchedReportIdsFromPlayerApi]
+    );
 
     const visibleReports = playerFilterId
-        ? reports.filter((r) => playerId(r) === playerFilterId)
+        ? reports.filter((r) => reportInPlayerView(r, playerFilterId, playerFilterIdSet, matchedFromApiSet))
         : reports;
 
     useEffect(() => {
         if (!playerFilterId || reports.length === 0) return;
-        const first = reports.find((r) => playerId(r) === playerFilterId);
+        const first = reports.find((r) =>
+            reportInPlayerView(r, playerFilterId, playerFilterIdSet, matchedFromApiSet)
+        );
         if (first) setSelectedReport(first);
-    }, [playerFilterId, reports]);
+    }, [playerFilterId, reports, playerFilterIdSet, matchedFromApiSet]);
 
     return (
         <div className="space-y-8 animate-fade-in-up">
@@ -233,7 +366,7 @@ export default function ScouterReports() {
                                         View details
                                     </button>
                                     <Link
-                                        to={`/scouter/players/${playerId(r)}#reports`}
+                                        to={`/scouter/players/${reportPlayerUserRouteId(r)}#reports`}
                                         className="inline-flex items-center gap-1 text-primary font-bold text-sm hover:underline"
                                     >
                                         View profile <ArrowRight size={14} />
@@ -280,7 +413,7 @@ export default function ScouterReports() {
                         <div className="flex items-center justify-between pt-1">
                             <p className="text-xs text-white/50">Created: {fmtDate(selectedReport.createdAt)}</p>
                             <Link
-                                to={`/scouter/players/${playerId(selectedReport)}#reports`}
+                                to={`/scouter/players/${reportPlayerUserRouteId(selectedReport)}#reports`}
                                 className="text-sm font-bold text-primary hover:underline"
                                 onClick={() => setSelectedReport(null)}
                             >

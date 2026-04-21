@@ -7,6 +7,7 @@ import { getApiBase } from '../../lib/apiBase';
 import { isLocalCurrencyPackId } from '../../lib/localCurrencyPacks';
 import { cn } from '../../lib/utils';
 import {
+    creditTestGameToken,
     displayTokenSymbol,
     fetchActiveCurrencyPacksDetailed,
     fetchGameTokenConfig,
@@ -26,6 +27,14 @@ function axiosMessage(err: unknown): string {
     }
     if (err instanceof Error) return err.message;
     return '';
+}
+
+function axiosStatus(err: unknown): number | null {
+    if (typeof err === 'object' && err !== null && 'response' in err) {
+        const status = (err as { response?: { status?: unknown } }).response?.status;
+        return typeof status === 'number' ? status : null;
+    }
+    return null;
 }
 
 function formatPackPrice(p: CurrencyPackRow): string {
@@ -143,20 +152,26 @@ export default function CurrencyPackStorefront({
             return;
         }
         if (isLocalCurrencyPackId(packId)) {
-            if (!me.purchaseSimulationAvailable) {
-                toast.error(
-                    'Pack créé dans l’admin (navigateur) : activez GTK_ALLOW_PURCHASE_SIMULATION sur l’API ou publiez les packs en base pour un achat réel.',
-                );
-                return;
-            }
             setBusyPackId(packId);
             try {
-                await purchaseSimulatedGameToken(pack.grantWholeTokens);
+                // Try purchase first, then test-credit fallback (handles stale capability flags).
+                try {
+                    await purchaseSimulatedGameToken(pack.grantWholeTokens);
+                } catch (purchaseErr: unknown) {
+                    const purchaseStatus = axiosStatus(purchaseErr);
+                    if (purchaseStatus !== 403 && purchaseStatus !== 404) {
+                        throw purchaseErr;
+                    }
+                    await creditTestGameToken(pack.grantWholeTokens);
+                }
                 toast.success(`${pack.title} — +${pack.grantWholeTokens} ${sym}`);
                 await load();
                 await onPurchaseSuccess?.();
             } catch (e: unknown) {
-                toast.error(axiosMessage(e) || 'Achat simulation impossible');
+                toast.error(
+                    axiosMessage(e) ||
+                        'Achat impossible (API refuse la requête). Activez GTK_ALLOW_PURCHASE_SIMULATION ou GTK_ALLOW_TEST_CREDIT sur le backend.',
+                );
             } finally {
                 setBusyPackId(null);
             }

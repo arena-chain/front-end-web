@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext } from 'react-router-dom';
@@ -10,6 +10,12 @@ import {
 } from 'lucide-react';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { getApiBase } from '../../lib/apiBase';
+import {
+    createPresenceSocket,
+    friendshipPresenceService,
+    type FriendItem,
+    type FriendStatus,
+} from '../../services/friendshipPresence.service';
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -37,15 +43,27 @@ interface RecentMatch {
     score: string;
     ago: string;
 }
+interface MatchApiRecord {
+    _id?: string;
+    team1GamesWon?: number | string;
+    team2GamesWon?: number | string;
+    scheduledStart?: string;
+    mapName?: string;
+}
+interface PlayerProfileApiRecord {
+    userId?: string | { _id?: string };
+    elo?: number | string;
+    rank?: string;
+}
 interface OnlinePlayer {
     id: string;
     name: string;
     avatar: string;
     rank: string;
     rankEmoji: string;
-    status: 'online' | 'in-game';
+    status: 'online' | 'in-game' | 'in-queue' | 'away' | 'offline';
     game?: string;
-    region: string;
+    details?: string;
     elo: number;
 }
 
@@ -59,6 +77,9 @@ export default function PlayerDashboard() {
     const [statsLoading, setStatsLoading] = useState(true);
     const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
     const [onlinePlayers, setOnlinePlayers] = useState<OnlinePlayer[]>([]);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [playerProfilesByUser, setPlayerProfilesByUser] = useState<Record<string, { elo: number; rank: string }>>({});
+    const presenceSocketRef = useRef<ReturnType<typeof createPresenceSocket> | null>(null);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -67,19 +88,15 @@ export default function PlayerDashboard() {
             const API = getApiBase();
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             try {
-                const [meRes, profileRes, allPlayersRes, usersRes, channelsRes] = await Promise.allSettled([
+                const [meRes, profileRes, allPlayersRes] = await Promise.allSettled([
                     axios.get(`${API}/player/me`, { headers }),
                     axios.get(`${API}/auth/profile`, { headers }),
                     axios.get(`${API}/player`, { headers }),
-                    axios.get(`${API}/users`, { headers }),
-                    axios.get(`${API}/channel`),
                 ]);
 
                 const me = meRes.status === 'fulfilled' ? meRes.value.data : null;
                 const myUser = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
                 const allPlayers = allPlayersRes.status === 'fulfilled' && Array.isArray(allPlayersRes.value.data) ? allPlayersRes.value.data : [];
-                const allUsers = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value.data) ? usersRes.value.data : [];
-                const allChannels = channelsRes.status === 'fulfilled' && Array.isArray(channelsRes.value.data) ? channelsRes.value.data : [];
 
                 setPlayerStats({
                     elo: me?.elo ?? 0,
@@ -88,11 +105,12 @@ export default function PlayerDashboard() {
                 });
 
                 const myUserId = myUser?._id || outletCtx?.profile?._id;
+                setCurrentUserId(myUserId ? String(myUserId) : null);
                 if (myUserId) {
                     try {
                         const matchesRes = await axios.get(`${API}/scouter/players/${myUserId}/matches`, { headers });
                         const matches = Array.isArray(matchesRes.data) ? matchesRes.data.slice(0, 5) : [];
-                        const mapped: RecentMatch[] = matches.map((m: any) => {
+                        const mapped: RecentMatch[] = matches.map((m: MatchApiRecord) => {
                             const t1 = Number(m.team1GamesWon ?? 0);
                             const t2 = Number(m.team2GamesWon ?? 0);
                             const result: 'W' | 'L' = t1 >= t2 ? 'W' : 'L';
@@ -113,53 +131,127 @@ export default function PlayerDashboard() {
                     setRecentMatches([]);
                 }
 
-                const playerProfilesByUser = new Map<string, { elo?: number; rank?: string }>();
-                allPlayers.forEach((p: any) => {
+                const profileMap: Record<string, { elo: number; rank: string }> = {};
+                allPlayers.forEach((p: PlayerProfileApiRecord) => {
                     const uid = typeof p.userId === 'object' ? p.userId?._id : p.userId;
-                    if (uid) playerProfilesByUser.set(String(uid), { elo: p.elo, rank: p.rank });
-                });
-
-                const liveByOwner = new Map<string, { game?: string }>();
-                allChannels.forEach((c: any) => {
-                    if (c?.isActive && c?.ownerId?._id) {
-                        liveByOwner.set(String(c.ownerId._id), { game: c.categories?.[0] });
+                    if (uid) {
+                        profileMap[String(uid)] = {
+                            elo: Number(p.elo ?? 0),
+                            rank: typeof p.rank === 'string' ? p.rank : 'Unranked',
+                        };
                     }
                 });
-
-                const mappedOnline: OnlinePlayer[] = allUsers
-                    .filter((u: any) => u?.role === 'player' && u?.isActive && u?._id !== myUserId)
-                    .slice(0, 30)
-                    .map((u: any) => {
-                        const prof = playerProfilesByUser.get(String(u._id));
-                        const isLive = liveByOwner.has(String(u._id));
-                        const rankText = prof?.rank || 'Unranked';
-                        const rankEmoji = rankText.toLowerCase().includes('diamond') ? '💎'
-                            : rankText.toLowerCase().includes('platinum') ? '🏆'
-                                : rankText.toLowerCase().includes('gold') ? '⚡'
-                                    : '🥈';
-                        return {
-                            id: String(u._id),
-                            name: u.nickname || 'Player',
-                            avatar: u.avatar || u.nickname || String(u._id).slice(-6),
-                            rank: rankText,
-                            rankEmoji,
-                            status: isLive ? 'in-game' : 'online',
-                            game: liveByOwner.get(String(u._id))?.game,
-                            region: u.region || 'EU',
-                            elo: Number(prof?.elo ?? 0),
-                        };
-                    });
-                setOnlinePlayers(mappedOnline);
+                setPlayerProfilesByUser(profileMap);
             } catch {
                 setPlayerStats({ elo: 0, rank: 'Unranked' });
                 setRecentMatches([]);
                 setOnlinePlayers([]);
+                setCurrentUserId(null);
             } finally {
                 setStatsLoading(false);
             }
         };
         fetchStats();
     }, [outletCtx?.profile?._id]);
+
+    useEffect(() => {
+        if (!currentUserId) {
+            setOnlinePlayers([]);
+            return;
+        }
+
+        let active = true;
+        const toOnlinePlayers = (friends: FriendItem[]) =>
+            friends
+                .map((friend) => mapFriendToOnlinePlayer(friend, playerProfilesByUser))
+                .sort((a, b) => statusPriority(a.status) - statusPriority(b.status) || b.elo - a.elo);
+        const applyPresenceList = (friends: FriendItem[]) => {
+            if (!active) return;
+            setOnlinePlayers(toOnlinePlayers(friends));
+        };
+        const upsertPresence = (payload: Partial<FriendItem> & { userId?: string }, forcedStatus?: FriendStatus) => {
+            if (!payload.userId) return;
+            setOnlinePlayers((previous) => {
+                const next = [...previous];
+                const idx = next.findIndex((item) => item.id === payload.userId);
+                const profile = playerProfilesByUser[payload.userId];
+                const base: OnlinePlayer =
+                    idx >= 0
+                        ? next[idx]
+                        : {
+                            id: payload.userId,
+                            name: payload.nickname || payload.userId,
+                            avatar: payload.avatar || payload.nickname || payload.userId.slice(-6),
+                            rank: profile?.rank || 'Unranked',
+                            rankEmoji: rankEmojiFor(profile?.rank || 'Unranked'),
+                            status: 'offline',
+                            elo: profile?.elo ?? 0,
+                        };
+                const incomingStatus = forcedStatus || payload.status;
+                const merged: OnlinePlayer = {
+                    ...base,
+                    name: payload.nickname || base.name,
+                    avatar: payload.avatar || base.avatar,
+                    status: mapPresenceStatusToUi(incomingStatus || 'offline'),
+                    game: payload.game ?? base.game,
+                    details: payload.details ?? base.details,
+                    rank: profile?.rank || base.rank,
+                    rankEmoji: rankEmojiFor(profile?.rank || base.rank),
+                    elo: profile?.elo ?? base.elo,
+                };
+                if (idx >= 0) {
+                    next[idx] = merged;
+                } else {
+                    next.push(merged);
+                }
+                next.sort((a, b) => statusPriority(a.status) - statusPriority(b.status) || b.elo - a.elo);
+                return next;
+            });
+        };
+        const loadPresenceSnapshot = async () => {
+            try {
+                const friends = await friendshipPresenceService.getPresenceFriends(currentUserId);
+                applyPresenceList(friends);
+            } catch {
+                // Keep old state when API is temporarily unavailable.
+            }
+        };
+
+        void loadPresenceSnapshot();
+        const socket = createPresenceSocket();
+        presenceSocketRef.current = socket;
+        socket.on('connect', () => {
+            socket.emit('get-friends');
+        });
+        socket.on('presence-ready', (payload: FriendItem[] | { friends?: FriendItem[] }) => {
+            const friends = Array.isArray(payload) ? payload : Array.isArray(payload?.friends) ? payload.friends : [];
+            applyPresenceList(friends);
+        });
+        socket.on('friend-online', (payload: Partial<FriendItem> & { userId?: string }) => {
+            upsertPresence(payload, 'online');
+        });
+        socket.on('friend-offline', (payload: Partial<FriendItem> & { userId?: string }) => {
+            upsertPresence(payload, 'offline');
+        });
+        socket.on('friend-status', (payload: Partial<FriendItem> & { userId?: string }) => {
+            upsertPresence(payload);
+        });
+
+        const pollId = window.setInterval(() => {
+            if (!socket.connected) {
+                void loadPresenceSnapshot();
+            }
+        }, 30000);
+
+        return () => {
+            active = false;
+            window.clearInterval(pollId);
+            socket.disconnect();
+            if (presenceSocketRef.current === socket) {
+                presenceSocketRef.current = null;
+            }
+        };
+    }, [currentUserId, playerProfilesByUser]);
 
     const chartData = recentMatches
         .slice()
@@ -295,7 +387,7 @@ export default function PlayerDashboard() {
                     icon={<Flame size={18} />}
                     label="Live Players"
                     value={String(onlinePlayers.filter((p) => p.status === 'in-game').length)}
-                    sub={`${onlinePlayers.length} online`}
+                    sub={`${onlinePlayers.filter((p) => p.status !== 'offline').length} online`}
                     color="#f97316"
                 />
                 <HudStat
@@ -398,7 +490,7 @@ export default function PlayerDashboard() {
                         </div>
                         <div className="p-3 space-y-2">
                             {[
-                                { label: 'Players online', value: onlinePlayers.length },
+                                { label: 'Players online', value: onlinePlayers.filter((p) => p.status !== 'offline').length },
                                 { label: 'Players in live channels', value: onlinePlayers.filter((p) => p.status === 'in-game').length },
                                 { label: 'Recent matches loaded', value: recentMatches.length },
                             ].map((item) => (
@@ -448,19 +540,20 @@ export default function PlayerDashboard() {
 // ─── Online Players Panel (right) ────────────────────────────────────────────
 
 function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
-    const [filter, setFilter] = useState<'all' | 'in-game' | 'online'>('all');
+    const [filter, setFilter] = useState<'all' | 'in-game' | 'online' | 'offline'>('all');
     const [search, setSearch] = useState('');
 
     const inGameCount  = players.filter(p => p.status === 'in-game').length;
-    const onlineCount  = players.filter(p => p.status === 'online').length;
+    const onlineCount  = players.filter(p => p.status !== 'offline').length;
 
     const visible = players.filter(p => {
-        const matchFilter = filter === 'all' || p.status === filter;
+        const matchFilter =
+            filter === 'all' ||
+            p.status === filter ||
+            (filter === 'online' && (p.status === 'online' || p.status === 'in-queue' || p.status === 'away'));
         const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
         return matchFilter && matchSearch;
     });
-
-    const regionFlag: Record<string, string> = { EU: '🇪🇺', NA: '🇺🇸', AS: '🌏', AF: '🌍' };
 
     return (
         <div className="w-56 shrink-0 flex flex-col gap-3 h-full overflow-hidden">
@@ -499,7 +592,7 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                         </div>
                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
                             style={{ background: 'rgba(0,255,0,0.08)', color: '#00ff00', border: '1px solid rgba(0,255,0,0.15)' }}>
-                            {players.length} online
+                            {onlineCount} online
                         </span>
                     </div>
 
@@ -517,7 +610,7 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
 
                     {/* Filter tabs */}
                     <div className="flex gap-1">
-                        {(['all', 'in-game', 'online'] as const).map(f => (
+                        {(['all', 'in-game', 'online', 'offline'] as const).map(f => (
                             <button key={f} onClick={() => setFilter(f)}
                                 className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
                                 style={{
@@ -531,8 +624,7 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                                         ? f === 'in-game' ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(0,255,0,0.2)'
                                         : '1px solid transparent',
                                 }}>
-                                {f === 'all' ? 'All' : f === 'in-game' ? '🎮' : '●'}
-                                {f === 'all' ? '' : f === 'in-game' ? ' Game' : ' Online'}
+                                {f === 'all' ? 'All' : f === 'in-game' ? '🎮 Game' : f === 'online' ? '● Online' : '○ Offline'}
                             </button>
                         ))}
                     </div>
@@ -575,12 +667,16 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                                     <span className="text-[11px] font-black text-white truncate group-hover:text-primary transition-colors" style={{ '--tw-text-opacity': 1 } as React.CSSProperties}>
                                         {p.name}
                                     </span>
-                                    <span className="text-[9px] shrink-0">{regionFlag[p.region]}</span>
                                 </div>
                                 <div className="text-[9px] font-bold truncate" style={{
-                                    color: p.status === 'in-game' ? 'rgba(168,85,247,0.8)' : 'rgba(255,255,255,0.3)',
+                                    color:
+                                        p.status === 'in-game'
+                                            ? 'rgba(168,85,247,0.8)'
+                                            : p.status === 'offline'
+                                                ? 'rgba(255,255,255,0.22)'
+                                                : 'rgba(255,255,255,0.35)',
                                 }}>
-                                    {p.status === 'in-game' ? `🎮 ${p.game}` : `${p.rankEmoji} ${p.rank}`}
+                                    {presenceLine(p)}
                                 </div>
                             </div>
 
@@ -596,6 +692,65 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
             </div>
         </div>
     );
+}
+
+function mapPresenceStatusToUi(status: FriendStatus): OnlinePlayer['status'] {
+    if (status === 'in_game') return 'in-game';
+    if (status === 'in_queue') return 'in-queue';
+    return status;
+}
+
+function rankEmojiFor(rankText: string): string {
+    const value = rankText.toLowerCase();
+    if (value.includes('immortal')) return '💀';
+    if (value.includes('diamond')) return '💎';
+    if (value.includes('platinum')) return '🏆';
+    if (value.includes('gold')) return '⚡';
+    return '🥈';
+}
+
+function mapFriendToOnlinePlayer(
+    friend: FriendItem,
+    playerProfilesByUser: Record<string, { elo: number; rank: string }>,
+): OnlinePlayer {
+    const profile = playerProfilesByUser[friend.userId];
+    const rank = profile?.rank || 'Unranked';
+    return {
+        id: friend.userId,
+        name: friend.nickname || 'Player',
+        avatar: friend.avatar || friend.nickname || friend.userId.slice(-6),
+        rank,
+        rankEmoji: rankEmojiFor(rank),
+        status: mapPresenceStatusToUi(friend.status),
+        game: friend.game,
+        details: friend.details,
+        elo: profile?.elo ?? 0,
+    };
+}
+
+function statusPriority(status: OnlinePlayer['status']): number {
+    switch (status) {
+        case 'in-game':
+            return 0;
+        case 'in-queue':
+            return 1;
+        case 'online':
+            return 2;
+        case 'away':
+            return 3;
+        case 'offline':
+            return 4;
+        default:
+            return 5;
+    }
+}
+
+function presenceLine(player: OnlinePlayer): string {
+    if (player.status === 'in-game') return `🎮 ${player.game || 'In game'}`;
+    if (player.status === 'in-queue') return `⏳ ${player.details || 'In queue'}`;
+    if (player.status === 'away') return `🌙 ${player.details || 'Away'}`;
+    if (player.status === 'offline') return '○ Offline';
+    return `${player.rankEmoji} ${player.rank}`;
 }
 
 // ─── HUD Stat Card ────────────────────────────────────────────────────────────

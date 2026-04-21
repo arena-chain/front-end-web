@@ -17,7 +17,7 @@ export interface ScouterProfile {
 
 export interface ScoutedPlayerProfile {
     _id: string;
-    userId?: string | { _id: string; nickname: string; email: string; avatar?: string };
+    userId?: string | { _id: string; nickname: string; email: string; avatar?: string; country?: string; region?: string };
     elo?: number;
     rank?: string;
     region?: string;
@@ -81,15 +81,19 @@ export const scouterService = {
 
     /** GET /scouter/players/:playerUserId – player profile detail */
     getPlayerProfile: (playerUserId: string): Promise<ScoutedPlayerProfile> =>
-        axios.get(`${base}/players/${playerUserId}`, auth()).then(r => r.data),
+        axios.get(`${base}/players/${playerUserId}`, auth()).then((r) => {
+            const raw = r.data;
+            if (raw == null || typeof raw !== 'object') return raw as ScoutedPlayerProfile;
+            const o = raw as Record<string, unknown>;
+            if (o.data && typeof o.data === 'object' && !Array.isArray(o.data)) return o.data as ScoutedPlayerProfile;
+            if (o.profile && typeof o.profile === 'object') return o.profile as ScoutedPlayerProfile;
+            if (o.player && typeof o.player === 'object') return o.player as ScoutedPlayerProfile;
+            return raw as ScoutedPlayerProfile;
+        }),
 
     /** GET /scouter/players/:playerUserId/matches – player match history */
     getPlayerMatches: (playerUserId: string): Promise<PlayerMatchSummary[]> =>
         axios.get(`${base}/players/${playerUserId}/matches`, auth()).then(r => (Array.isArray(r.data) ? r.data : r.data?.data ?? r.data?.matches ?? [])),
-
-    /** PATCH /scouter/:scouterUserId/scouted/:playerProfileId – add player to evaluated list */
-    addToEvaluated: (scouterUserId: string, playerProfileId: string): Promise<unknown> =>
-        axios.patch(`${base}/${scouterUserId}/scouted/${playerProfileId}`, {}, auth()).then(r => r.data),
 
     /** GET leaderboard by game – ranked players (best to worst); optional team logo & origin from user/team */
     getLeaderboard: (gameId: string): Promise<LeaderboardEntry[]> =>

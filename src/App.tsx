@@ -43,6 +43,7 @@ import PlayerPayment from './player/pages/PlayerPayment';
 import PlayerWalletPage from './player/pages/PlayerWalletPage';
 import PlayerRankings from './player/pages/PlayerRankings';
 import PlayerNews from './player/pages/PlayerNews';
+import PlayerFriends from './player/pages/PlayerFriends';
 import NewsArticlePage from './_public/pages/NewsArticlePage';
 
 // Manager Imports
@@ -63,7 +64,6 @@ import ScouterDashboard from './scouter/pages/ScouterDashboard';
 import ScouterPlayers from './scouter/pages/ScouterPlayers';
 import ScouterPlayerProfile from './scouter/pages/ScouterPlayerProfile';
 import ScouterHighlights from './scouter/pages/ScouterHighlights';
-import ScouterEvaluated from './scouter/pages/ScouterEvaluated';
 import ScouterReports from './scouter/pages/ScouterReports';
 import ScouterRecommendations from './scouter/pages/ScouterRecommendations';
 import ScouterWatchlist from './scouter/pages/ScouterWatchlist';
@@ -188,6 +188,7 @@ function App() {
           <Route path="/player" element={<RequireRole allow={['player']}><PlayerLayout /></RequireRole>}>
             <Route index element={<Navigate to="/player/dashboard" replace />} />
             <Route path="dashboard" element={<PlayerDashboard />} />
+            <Route path="friends" element={<PlayerFriends />} />
             <Route path="tournaments" element={<PlayerTournaments />} />
             <Route path="tournaments/:id" element={<PlayerTournamentDetails />} />
             <Route path="market" element={<PlayerTicketMarket />} />
@@ -246,7 +247,6 @@ function App() {
           <Route path="highlights" element={<ScouterHighlights />} />
           <Route path="reels" element={<Navigate to="/scouter/highlights" replace />} />
           <Route path="best-highlights" element={<Navigate to="/scouter/highlights" replace />} />
-          <Route path="evaluated" element={<ScouterEvaluated />} />
         </Route>
       </Routes>
     </Router>

@@ -103,7 +103,20 @@ export interface CreateRecommendationDto {
 export interface WatchlistEntry {
     _id: string;
     scouterId: string;
-    playerId: string | { _id: string; nickname?: string; email?: string; country?: string };
+    /** Backend stores player **user** id; list may populate as User or as PlayerProfile (use `userId` / `user` for account id). */
+    playerId:
+        | string
+        | {
+              _id?: string;
+              id?: string;
+              nickname?: string;
+              email?: string;
+              country?: string;
+              region?: string;
+              avatar?: string;
+              userId?: string | { _id?: string; id?: string; nickname?: string; email?: string; avatar?: string; country?: string };
+              user?: { _id?: string; id?: string; nickname?: string; email?: string; avatar?: string; country?: string };
+          };
     notes: string;
     priority: ProspectPriority;
     createdAt: string;
@@ -192,8 +205,21 @@ export const scoutingService = {
     addToWatchlist: (body: AddToWatchlistDto): Promise<WatchlistEntry> =>
         axios.post(`${base}/watchlist`, body, auth()).then((r) => r.data),
 
-    removeFromWatchlist: (scouterId: string, playerId: string): Promise<void> =>
-        axios.delete(`${base}/watchlist/scouter/${scouterId}/player/${playerId}`, auth()).then(() => undefined),
+    /** DELETE `/scouting/watchlist/scouter/:scouterId/player/:playerId` — `playerId` must be the player **user** Mongo id. */
+    removeFromWatchlist: (scouterId: string, playerUserId: string): Promise<void> =>
+        axios
+            .delete(
+                `${base}/watchlist/scouter/${encodeURIComponent(scouterId)}/player/${encodeURIComponent(playerUserId)}`,
+                auth(),
+            )
+            .then(() => undefined),
+
+    /**
+     * Deletes a watchlist document by its own `_id`.
+     * Use for orphan rows where `playerId` is missing or invalid (standard remove pair cannot run).
+     */
+    removeWatchlistByEntryId: (watchlistEntryId: string): Promise<void> =>
+        axios.delete(`${base}/watchlist/${encodeURIComponent(watchlistEntryId)}`, auth()).then(() => undefined),
 
     listWatchlistByScouter: (scouterId: string): Promise<WatchlistEntry[]> =>
         axios

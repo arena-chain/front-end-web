@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { vexCurrencyLogo } from '../../assets/vexCurrencyBrand';
-import { ensureChain, getEthereum } from '../../lib/evmWallet';
+import { ensureChain, getEthereum, METAMASK_REQUEST_PENDING, metaMaskRpcCode, metaMaskRpcMessage } from '../../lib/evmWallet';
 import {
-    creditTestGameToken,
     displayTokenName,
     displayTokenSymbol,
     fetchGameTokenConfig,
@@ -23,9 +22,9 @@ export default function PlayerGameTokenBalance({ className }: { className?: stri
     const [config, setConfig] = useState<GameTokenConfig | null>(null);
     const [me, setMe] = useState<GameTokenMe | null>(null);
     const [loading, setLoading] = useState(true);
-    const [crediting, setCrediting] = useState(false);
     const [metaMaskBusy, setMetaMaskBusy] = useState(false);
     const [statusText, setStatusText] = useState<string | null>(null);
+    const metaMaskConnectLock = useRef(false);
 
     const load = useCallback(async () => {
         const token = localStorage.getItem('token');
@@ -95,12 +94,10 @@ export default function PlayerGameTokenBalance({ className }: { className?: stri
     const sym = displayTokenSymbol(config, me);
     const display =
         me.balanceFormatted != null ? `${me.balanceFormatted} ${sym}` : me.linked ? `— ${sym}` : `0 ${sym}`;
-    const showTestTopUp =
-        me.testCreditMintAvailable &&
-        me.linked &&
-        (import.meta.env.DEV || import.meta.env.VITE_GTK_ENABLE_TEST_PURCHASE === 'true');
+    const showBuyAction = me.linked;
 
     const onMetaMaskChipClick = async () => {
+        if (metaMaskConnectLock.current) return;
         if (!localStorage.getItem('token')) {
             toast.error('Connectez-vous d’abord à Arena.');
             return;
@@ -110,6 +107,7 @@ export default function PlayerGameTokenBalance({ className }: { className?: stri
             toast.error('MetaMask introuvable. Installez l’extension ou activez-la pour ce site.');
             return;
         }
+        metaMaskConnectLock.current = true;
         setMetaMaskBusy(true);
         try {
             const accounts = (await eth.request({ method: 'eth_requestAccounts' })) as string[];
@@ -124,29 +122,21 @@ export default function PlayerGameTokenBalance({ className }: { className?: stri
             }
             void navigate('/player/wallet');
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Connexion MetaMask refusée ou annulée.';
+            const code = metaMaskRpcCode(e);
+            const msg =
+                code === METAMASK_REQUEST_PENDING
+                    ? 'MetaMask a déjà une demande en attente. Répondez à la fenêtre MetaMask, puis réessayez.'
+                    : (metaMaskRpcMessage(e) ?? 'Connexion MetaMask refusée ou annulée.');
             toast.error(msg);
         } finally {
+            metaMaskConnectLock.current = false;
             setMetaMaskBusy(false);
         }
     };
 
-    const onTestTopUp = async (e: MouseEvent<HTMLButtonElement>) => {
+    const onBuyClick = (e: MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
-        setCrediting(true);
-        try {
-            await creditTestGameToken(100);
-            toast.success('100 crédits de test ajoutés');
-            await load();
-        } catch (err: unknown) {
-            const msg =
-                err && typeof err === 'object' && 'response' in err
-                    ? String((err as { response?: { data?: { message?: string | string[] } } }).response?.data?.message)
-                    : '';
-            toast.error(msg || 'Impossible d’ajouter des crédits de test');
-        } finally {
-            setCrediting(false);
-        }
+        void navigate('/player/wallet');
     };
 
     return (
@@ -161,9 +151,9 @@ export default function PlayerGameTokenBalance({ className }: { className?: stri
                 }
             }}
             className={cn(
-                'flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-white shadow-[inset_0_0_0_1px_rgba(0,255,136,0.06)]',
+                'flex h-10 items-center gap-2.5 rounded-xl border border-white/[0.09] bg-black/25 px-3 text-white shadow-[inset_0_0_0_1px_rgba(0,255,136,0.06)]',
                 'cursor-pointer select-none transition-colors hover:border-primary/30 hover:bg-white/[0.07] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                (metaMaskBusy || crediting) && 'pointer-events-none opacity-70',
+                metaMaskBusy && 'pointer-events-none opacity-70',
                 className,
             )}
             title="Ouvrir MetaMask (compte + réseau du jeton) — portefeuille Arena inchangé"
@@ -176,27 +166,20 @@ export default function PlayerGameTokenBalance({ className }: { className?: stri
                 className="h-9 w-9 shrink-0 object-contain pointer-events-none"
                 draggable={false}
             />
-            <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-[11px] font-black text-white tabular-nums leading-tight truncate max-w-[140px] sm:max-w-[200px]">
+            <div className="min-w-0 flex-1">
+                <span className="block text-[11px] font-black text-white tabular-nums leading-none truncate max-w-[140px] sm:max-w-[200px]">
                     {display}
                 </span>
-                {me.walletAddress ? (
-                    <span className="text-[9px] text-white/35 font-bold uppercase tracking-wider leading-none mt-0.5">
-                        <span className="normal-case text-primary/90">Portefeuille Arena</span>
-                    </span>
-                ) : me.hint ? (
-                    <span className="text-[9px] text-amber-200/80 font-bold leading-none mt-0.5 truncate max-w-[200px]">{me.hint}</span>
-                ) : null}
             </div>
-            {showTestTopUp && (
+            {showBuyAction && (
                 <button
                     type="button"
-                    onClick={(e) => void onTestTopUp(e)}
-                    disabled={crediting || metaMaskBusy}
+                    onClick={onBuyClick}
+                    disabled={metaMaskBusy}
                     className="shrink-0 rounded-lg border border-white/15 bg-white/[0.06] px-2 py-1 text-[9px] font-black uppercase tracking-wider text-primary hover:bg-white/10 disabled:opacity-50"
-                    title="Crédit de test (API uniquement)"
+                    title="Acheter des VEX via la page portefeuille"
                 >
-                    {crediting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '+100'}
+                    Buy
                 </button>
             )}
         </div>

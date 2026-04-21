@@ -57,10 +57,20 @@ export function getDemoProfile(playerUserId: string): {
   if (!lbEntry) return null;
 
   const entry = STATIC_ENTRIES.find(e => (e.user as { _id: string })?._id === playerUserId)!;
-  const user = entry.user as { _id: string; nickname?: string; email?: string; country?: string; region?: string };
+  const user = entry.user as { _id: string; nickname?: string; email?: string; country?: string; region?: string; avatar?: string };
+  const nick = user.nickname ?? 'Player';
   const profile: ScoutedPlayerProfile = {
     _id: lbEntry._id,
-    userId: { _id: user._id, nickname: user.nickname ?? 'Player', email: `${(user.nickname ?? 'player').toLowerCase().replace(/\s/g, '')}@arena.gg` },
+    userId: {
+      _id: user._id,
+      nickname: nick,
+      email: `${nick.toLowerCase().replace(/\s/g, '')}@arena.gg`,
+      country: user.country,
+      region: user.region,
+      avatar:
+        user.avatar?.trim() ||
+        `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(`${user._id}-${nick}`)}`,
+    },
     elo: entry.elo,
     rank: entry.tier && entry.division != null ? `${entry.tier} ${entry.division}` : (entry.tier ?? '—'),
     region: user.country ?? user.region ?? '—',
