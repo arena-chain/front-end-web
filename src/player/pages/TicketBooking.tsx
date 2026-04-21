@@ -4,9 +4,34 @@ import { Ticket, Calendar, MapPin, Trophy, Shield, Check, CreditCard, ArrowLeft 
 import { Button } from '../../components/ui/core';
 import tournamentService from '../../services/tournamentService';
 import ticketService from '../../services/ticketService';
+import { StripePaymentModal } from '../../components/payment/StripePaymentModal';
 import type { Tournament } from '../../models/tournament';
 import type { TicketType } from '../../models/ticket';
 import { placeholderImage } from '../../lib/placeholderImage';
+
+const normalizeTicketType = (ticket: any): TicketType | null => {
+    const name = String(ticket?.name ?? ticket?.type ?? ticket?.ticketType ?? ticket?.label ?? '').trim();
+    if (!name) return null;
+    return {
+        name,
+        price: Number(ticket?.price ?? ticket?.amount ?? ticket?.cost ?? 0) || 0,
+        capacity: Number(ticket?.capacity ?? ticket?.maxCapacity ?? ticket?.quantity ?? ticket?.stock ?? 0) || 0,
+        bundles: Array.isArray(ticket?.bundles) ? ticket.bundles : [],
+    };
+};
+
+const mergeTicketTypes = (primary: any[], fallback: any[]): TicketType[] => {
+    const map = new Map<string, TicketType>();
+    [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(fallback) ? fallback : [])]
+        .map(normalizeTicketType)
+        .filter(Boolean)
+        .forEach((ticket) => {
+            if (!ticket) return;
+            const key = ticket.name.toUpperCase();
+            if (!map.has(key)) map.set(key, ticket);
+        });
+    return Array.from(map.values());
+};
 
 export default function TicketBooking() {
     const { id } = useParams();
@@ -14,8 +39,8 @@ export default function TicketBooking() {
     const [tournament, setTournament] = useState<Tournament | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null);
-    const [quantity, setQuantity] = useState(1);
     const [bookingLoading, setBookingLoading] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -33,7 +58,7 @@ export default function TicketBooking() {
             setTournament(tournamentData);
 
             // Handle tickets data structure
-            let tickets: TicketType[] = [];
+            let tickets: any[] = [];
             if (ticketsData.availableTickets) {
                 tickets = ticketsData.availableTickets;
             } else if (Array.isArray(ticketsData)) {
@@ -42,12 +67,13 @@ export default function TicketBooking() {
                 // Fallback to tournament data if populated
                 tickets = tournamentData.ticketTypes;
             }
+            const mergedTickets = mergeTicketTypes(tickets, Array.isArray(tournamentData.ticketTypes) ? tournamentData.ticketTypes : []);
 
             // Update tournament object with fetched tickets to ensure UI renders them
-            setTournament(prev => prev ? { ...prev, ticketTypes: tickets } : { ...tournamentData, ticketTypes: tickets });
+            setTournament(prev => prev ? { ...prev, ticketTypes: mergedTickets } : { ...tournamentData, ticketTypes: mergedTickets });
 
-            if (tickets.length > 0) {
-                setSelectedTicket(tickets[0]);
+            if (mergedTickets.length > 0) {
+                setSelectedTicket(mergedTickets[0]);
             }
         } catch (error) {
             console.error('Failed to fetch tournament details:', error);
@@ -56,37 +82,31 @@ export default function TicketBooking() {
         }
     };
 
-    const handleBooking = async () => {
+    const handleInitialPayClick = () => {
         if (!selectedTicket || !tournament) return;
-
-        setBookingLoading(true);
-        try {
-            await ticketService.bookTicket(tournament._id, selectedTicket.name, quantity);
-            // Navigate to My Tickets on success
-            navigate('/player/my-tickets');
-        } catch (error: unknown) {
-            alert(`Booking failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        } finally {
-            setBookingLoading(false);
-        }
+        
+        navigate('/player/payment', {
+            state: {
+                type: 'ticket',
+                ticketData: {
+                    tournamentId: tournament._id,
+                    tournamentName: tournament.name,
+                    ticketName: selectedTicket.name,
+                    price: selectedTicket.price
+                }
+            }
+        });
     };
 
     const calculateTotal = () => {
         if (!selectedTicket) return 0;
-
-        // Check for bundle pricing
-        if (selectedTicket.bundles) {
-            const bundle = selectedTicket.bundles.find(b => b.quantity === quantity);
-            if (bundle) return bundle.price;
-        }
-
-        return selectedTicket.price * quantity;
+        return selectedTicket.price;
     };
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-background">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="flex items-center justify-center min-h-screen bg-background text-primary animate-pulse">
+                <div className="text-xl font-black italic uppercase tracking-widest">Loading_Data...</div>
             </div>
         );
     }
@@ -243,40 +263,17 @@ export default function TicketBooking() {
 
                             {selectedTicket && (
                                 <div className="mb-6 pt-4 border-t border-white/10">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <span className="text-sm font-medium">Quantity</span>
-                                        <div className="flex items-center bg-black/40 rounded-lg p-1 border border-white/10">
-                                            <button
-                                                className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded text-white disabled:opacity-50"
-                                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                                disabled={quantity <= 1}
-                                            >
-                                                -
-                                            </button>
-                                            <span className="w-8 text-center font-bold text-sm">{quantity}</span>
-                                            <button
-                                                className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded text-white"
-                                                onClick={() => setQuantity(Math.min(10, quantity + 1))}
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    </div>
-
                                     <div className="flex justify-between items-end mb-2">
                                         <span className="text-text-muted">Total Amount</span>
                                         <span className="text-3xl font-black text-primary">${calculateTotal()}</span>
                                     </div>
-                                    {selectedTicket.bundles?.some(b => b.quantity === quantity) && (
-                                        <p className="text-xs text-green-400 text-right">Bundle discount applied!</p>
-                                    )}
                                 </div>
                             )}
 
                             <Button
                                 className="w-full h-14 text-lg font-bold shadow-[0_0_20px_-5px_rgba(0,255,136,0.3)]"
                                 disabled={!selectedTicket || bookingLoading}
-                                onClick={handleBooking}
+                                onClick={handleInitialPayClick}
                                 isLoading={bookingLoading}
                             >
                                 <CreditCard className="w-5 h-5 mr-2" />

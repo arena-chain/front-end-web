@@ -30,6 +30,9 @@ export interface TicketType {
     price: number;
     capacity: number;
     bundles?: Bundle[];     // Optional bundle discounts
+    isNft?: boolean;        // Marks this ticket type as NFT-backed
+    perks?: string;         // Optional perks label
+    metadata?: Record<string, unknown>;
 }
 
 export interface TournamentInfo {
@@ -37,6 +40,15 @@ export interface TournamentInfo {
     name?: string;
     startDate?: string;
     bannerImageUrl?: string;
+    [key: string]: unknown;
+}
+
+// Ticket Metadata interface
+export interface TicketMetadata {
+    gate?: string;
+    section?: string;
+    seat?: string;
+    row?: string;
     [key: string]: unknown;
 }
 
@@ -52,8 +64,12 @@ export interface Ticket {
     qrCode: string;          // Base64 data URL or QR code data
     type: string;            // "VIP", "Standard", etc.
     perks?: string;          // Special perks for VIP tickets
+    nftTokenId?: string;     // NFT token ID if applicable
+    nftContractAddress?: string; // NFT contract address if applicable
+    blockchain?: string;     // "Polygon", "Ethereum", etc.
     usedAt?: string;
     expiresAt?: string;
+    metadata?: TicketMetadata; // Gate, section, seat info
     createdAt: string;
     updatedAt: string;
 }

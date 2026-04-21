@@ -5,32 +5,36 @@ const auth = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('
 
 const base = `${API}/scouting`;
 
-// ─── Enums ─────────────────────────────────────────────────────────────
-export enum ProspectLevel {
-    UNKNOWN = 'UNKNOWN',
-    WATCHLIST = 'WATCHLIST',
-    PROSPECT = 'PROSPECT',
-    ELITE_PROSPECT = 'ELITE_PROSPECT',
-    SIGNED = 'SIGNED',
-}
+// ─── String unions (const objects — erasableSyntaxOnly compatible) ───────
+export const ProspectLevel = {
+    UNKNOWN: 'UNKNOWN',
+    WATCHLIST: 'WATCHLIST',
+    PROSPECT: 'PROSPECT',
+    ELITE_PROSPECT: 'ELITE_PROSPECT',
+    SIGNED: 'SIGNED',
+} as const;
+export type ProspectLevel = (typeof ProspectLevel)[keyof typeof ProspectLevel];
 
-export enum ProspectPriority {
-    LOW = 'LOW',
-    MEDIUM = 'MEDIUM',
-    HIGH = 'HIGH',
-}
+export const ProspectPriority = {
+    LOW: 'LOW',
+    MEDIUM: 'MEDIUM',
+    HIGH: 'HIGH',
+} as const;
+export type ProspectPriority = (typeof ProspectPriority)[keyof typeof ProspectPriority];
 
-export enum RecommendationLevel {
-    CONSIDER = 'CONSIDER',
-    STRONGLY_RECOMMEND = 'STRONGLY_RECOMMEND',
-    MUST_SIGN = 'MUST_SIGN',
-}
+export const RecommendationLevel = {
+    CONSIDER: 'CONSIDER',
+    STRONGLY_RECOMMEND: 'STRONGLY_RECOMMEND',
+    MUST_SIGN: 'MUST_SIGN',
+} as const;
+export type RecommendationLevel = (typeof RecommendationLevel)[keyof typeof RecommendationLevel];
 
-export enum RecommendationStatus {
-    PENDING = 'PENDING',
-    ACCEPTED = 'ACCEPTED',
-    REJECTED = 'REJECTED',
-}
+export const RecommendationStatus = {
+    PENDING: 'PENDING',
+    ACCEPTED: 'ACCEPTED',
+    REJECTED: 'REJECTED',
+} as const;
+export type RecommendationStatus = (typeof RecommendationStatus)[keyof typeof RecommendationStatus];
 
 // ─── Interfaces ────────────────────────────────────────────────────────
 export interface ScoutingReport {

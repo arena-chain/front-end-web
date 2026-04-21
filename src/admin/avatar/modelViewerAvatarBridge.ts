@@ -352,7 +352,7 @@ export async function applyAvatarDynamicConfig(el: HTMLElement, cfg: AvatarDynam
     if (!scene?.target) return;
 
     const highPoly = useHighPolyBody(cfg.bodyType);
-    scene.target.traverse(obj => {
+    scene.target.traverse((obj: Object3D) => {
         if (obj.name === 'Body_low') obj.visible = !highPoly;
         if (obj.name === 'Body_high') obj.visible = highPoly;
     });
@@ -367,7 +367,7 @@ export async function applyAvatarDynamicConfig(el: HTMLElement, cfg: AvatarDynam
         root.scale.setScalar(uniform);
     }
 
-    scene.target.traverse(obj => {
+    scene.target.traverse((obj: Object3D) => {
         if (isMeshObject(obj) && isHeadMaterialMesh(obj)) {
             obj.scale.setScalar(headScalar);
         }

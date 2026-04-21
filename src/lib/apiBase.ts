@@ -24,7 +24,9 @@ export function resolveBackendAssetUrl(path: string): string {
     const p = path.startsWith('/') ? path : `/${path}`;
     return `${origin}${p}`;
 }
-
+export function getBlockchainRpcUrl(): string {
+    return 'https://polygon-mainnet.g.alchemy.com/v2/Cne8sVjZYbsdhnBZxn4e-';
+}
 /**
  * Nest serves GLBs at `/inventory-files/...` (not under `/api`).
  * In Vite dev, use a same-origin path so `vite.config.ts` can proxy to the API

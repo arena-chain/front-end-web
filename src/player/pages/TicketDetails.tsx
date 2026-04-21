@@ -1,249 +1,184 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Calendar, MapPin, User, Shield } from 'lucide-react';
+import {
+    ShieldCheck,
+    Ticket as TicketIcon,
+    Trophy
+} from 'lucide-react';
 import { Button } from '../../components/ui/core';
-import type { Ticket } from '../../models/ticket';
 import ticketService from '../../services/ticketService';
+import type { Ticket } from '../../models/ticket';
 import { QRCodeSVG } from 'qrcode.react';
+import { useAuth } from '../../contexts/AuthContext';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 export default function TicketDetails() {
-    const { id } = useParams<{ id: string }>();
+    const { id } = useParams();
     const navigate = useNavigate();
+    const { user, refreshProfile } = useAuth();
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (id) {
-            fetchTicket(id);
-        }
+        refreshProfile().catch(() => undefined);
+    }, [refreshProfile]);
+
+    useEffect(() => {
+        const fetchTicket = async () => {
+            if (!id) return;
+            try {
+                setLoading(true);
+                const data = await ticketService.getTicketById(id);
+                setTicket(data);
+            } catch (error) {
+                console.error('Failed to fetch ticket:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTicket();
     }, [id]);
-
-    const fetchTicket = async (ticketId: string) => {
-        setLoading(true);
-        try {
-            const data = await ticketService.getTicketById(ticketId);
-            setTicket(data);
-        } catch (error) {
-            console.error('Failed to fetch ticket:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDownload = () => {
-        // Implement download ticket as image
-        console.log('Downloading ticket...');
-    };
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-white text-lg">Loading ticket...</div>
+            <div className="min-h-screen bg-[#0e0e0e] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full border-2 border-zinc-800 border-t-[#00FF00] animate-spin" />
             </div>
         );
     }
 
     if (!ticket) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold text-white mb-4">Ticket Not Found</h2>
-                    <Button onClick={() => navigate('/player/tickets')}>
-                        Back to My Tickets
-                    </Button>
-                </div>
+            <div className="min-h-screen bg-[#0e0e0e] flex flex-col items-center justify-center p-6 text-center text-zinc-300">
+                <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-3">Ticket Not Found</h2>
+                <p className="text-zinc-500 mb-6">No ticket data found for this identifier.</p>
+                <Button onClick={() => navigate('/player/my-tickets')}>Back to My Tickets</Button>
             </div>
         );
     }
 
     const tournament = typeof ticket.tournament === 'string' ? null : ticket.tournament;
+    const ticketUser = (typeof ticket.user === 'object' && ticket.user !== null ? ticket.user : null) as Record<string, any> | null;
+    const holderName = String(
+        user?.nickname ||
+        ticketUser?.nickname ||
+        ticketUser?.username ||
+        'PLAYER'
+    ).toUpperCase();
+    const holderAvatarRaw =
+        (typeof tournament?.bannerImageUrl === 'string' ? tournament.bannerImageUrl : '') ||
+        user?.avatar ||
+        (typeof ticketUser?.avatar === 'string' ? ticketUser.avatar : '');
+    const holderAvatar = holderAvatarRaw ? resolveBackendAssetUrl(holderAvatarRaw) : '';
+    const passType = (ticket.type || 'STANDARD').toUpperCase().replace(/\s+/g, '_');
+    const shortId = ticket.ticketNumber || `#${ticket._id.slice(-8).toUpperCase()}`;
+    const eventDate = tournament?.startDate ? new Date(tournament.startDate) : new Date(ticket.purchaseDate || ticket.createdAt);
+    const eventDateLabel = eventDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const section = ticket.metadata?.section ? String(ticket.metadata.section).toUpperCase() : 'N/A';
+    const location = (tournament?.location || 'ALPHA_SECTOR').toUpperCase().replace(/\s+/g, '_');
+    const tournamentName = (tournament?.name || 'TOURNAMENT').toUpperCase();
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'VALID': return 'text-green-400 border-green-400/30 bg-green-400/10';
-            case 'USED': return 'text-blue-400 border-blue-400/30 bg-blue-400/10';
-            case 'CANCELLED': return 'text-red-400 border-red-400/30 bg-red-400/10';
-            case 'EXPIRED': return 'text-gray-400 border-gray-400/30 bg-gray-400/10';
-            default: return 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10';
-        }
-    };
-
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return 'Date TBD';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const formatPrice = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-    };
-
-    const isVIP = ticket.type.toLowerCase().includes('vip');
+    const qrRawValue =
+        typeof ticket.qrCode === 'string' && ticket.qrCode.trim().length > 0
+            ? ticket.qrCode
+            : '';
+    const isQrImage =
+        qrRawValue.startsWith('data:image') ||
+        qrRawValue.startsWith('http://') ||
+        qrRawValue.startsWith('https://');
+    const fallbackQrPayload = JSON.stringify({
+        ticketId: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+        type: ticket.type,
+        status: ticket.status,
+        tournamentId: typeof ticket.tournament === 'string' ? ticket.tournament : ticket.tournament?._id,
+    });
 
     return (
-        <div className="min-h-screen bg-background p-6">
-            <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up">
-                {/* Header */}
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => navigate('/player/tickets')}
-                        className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-white" />
-                    </button>
-                    <div>
-                        <h1 className="text-3xl font-black uppercase tracking-tighter text-white">
-                            Ticket Details
+        <div className="relative w-full overflow-hidden rounded-3xl border border-white/5 bg-[#0b0d10]/70 p-6 md:p-10">
+            <div className="absolute -top-28 -left-16 w-72 h-72 bg-[#00FF00]/10 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute -bottom-28 -right-16 w-80 h-80 bg-cyan-400/10 blur-[140px] rounded-full pointer-events-none" />
+            <div className="absolute inset-0 opacity-[0.06] pointer-events-none [background:radial-gradient(circle_at_20%_20%,rgba(0,255,0,0.16),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(34,211,238,0.12),transparent_35%)]" />
+            <div className="relative mx-auto w-full max-w-sm overflow-hidden bg-zinc-900/40 backdrop-blur-xl border border-[#00FF00]/30 rounded-[2rem] shadow-[0_0_50px_rgba(0,255,0,0.1)] group hover:border-[#00FF00]/60 transition-all duration-500">
+                <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00FF00]/10 blur-[100px] rounded-full" />
+                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#00FF00]/10 blur-[100px] rounded-full" />
+
+                <div className="p-8 pb-4">
+                    <div className="flex justify-between items-start mb-8">
+                        <div className="space-y-1">
+                            <h2 className="text-[#00FF00] text-[10px] font-black uppercase tracking-[0.3em]">Official Access</h2>
+                            <div className="flex items-center gap-2">
+                                <Trophy size={16} className="text-white" />
+                                <span className="text-white font-black italic text-xl tracking-tighter uppercase">{tournamentName}</span>
+                            </div>
+                        </div>
+                        <div className="bg-[#00FF00]/10 border border-[#00FF00]/30 p-2 rounded-xl">
+                            <TicketIcon className="text-[#00FF00]" size={20} />
+                        </div>
+                    </div>
+
+                    <div className="relative aspect-square w-full mb-8 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
+                        {holderAvatar ? (
+                            <img
+                                src={holderAvatar}
+                                alt={holderName}
+                                className="absolute inset-0 w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-[#00FF00]/20 to-transparent flex items-center justify-center">
+                                <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">{holderName}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        <h1 className="text-4xl font-black text-white italic leading-none uppercase tracking-tighter">
+                            E-SPORTS <br />
+                            <span className="text-[#00FF00]">CHAMPIONSHIP</span>
                         </h1>
-                        <p className="text-text-muted">Ticket #{ticket.ticketNumber}</p>
+                        <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{eventDateLabel}</p>
                     </div>
                 </div>
 
-                {/* Main Ticket Card */}
-                <div className="relative">
-                    {/* Background Glow */}
-                    <div className={`absolute inset-0 ${isVIP ? 'bg-[#FFD700]/10' : 'bg-primary/10'} blur-3xl -z-10`} />
-
-                    <div className={`relative bg-gradient-to-br from-[#1A1D21] via-[#1A1D21] to-[#1A1D21]/80 border-2 rounded-3xl overflow-hidden ${isVIP ? 'border-[#FFD700]/30' : 'border-primary/30'
-                        }`}>
-                        {/* Top Section: Decorative Pattern */}
-                        <div className="relative h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent">
-                            <div className="absolute inset-0" style={{
-                                backgroundImage: `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0)`,
-                                backgroundSize: '32px 32px'
-                            }} />
-
-                            {/* Status Badge */}
-                            <div className="absolute top-4 right-4">
-                                <div className={`px-4 py-2 rounded-full border-2 text-sm font-bold uppercase ${getStatusColor(ticket.status)}`}>
-                                    {ticket.status}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-8 space-y-8">
-                            {/* QR Code Section */}
-                            <div className="flex flex-col md:flex-row gap-8 items-center">
-                                {/* QR Code */}
-                                <div className={`flex-shrink-0 p-6 bg-white rounded-2xl border-4 ${isVIP ? 'border-[#FFD700]/50' : 'border-primary/50'
-                                    } shadow-2xl relative`}>
-                                    {isVIP && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#FFD700] text-black text-xs font-black uppercase rounded-full">
-                                            VIP
-                                        </div>
-                                    )}
-                                    <div className="w-48 h-48 flex items-center justify-center">
-                                        <QRCodeSVG
-                                            value={ticket.ticketNumber}
-                                            size={192}
-                                            level="M"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Event Info */}
-                                <div className="flex-1 space-y-4">
-                                    <div>
-                                        <h2 className="text-3xl font-black text-white mb-2">
-                                            {tournament?.name || 'Tournament Name'}
-                                        </h2>
-                                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${isVIP
-                                            ? 'text-[#FFD700] border-[#FFD700]/30 bg-[#FFD700]/10'
-                                            : 'text-primary border-primary/30 bg-primary/10'
-                                            }`}>
-                                            <Shield className="w-4 h-4" />
-                                            <span className="font-bold">{ticket.type} Ticket</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-3 text-text-muted">
-                                            <Calendar className="w-5 h-5 text-primary" />
-                                            <span>{tournament ? formatDate(tournament.startDate) : 'Date TBD'}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-text-muted">
-                                            <MapPin className="w-5 h-5 text-primary" />
-                                            <span>Arena Championship Venue</span>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-text-muted">
-                                            <User className="w-5 h-5 text-primary" />
-                                            <span>1 Person</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Price */}
-                                    <div className="pt-4 border-t border-white/10">
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-black text-white">{formatPrice(ticket.price)}</span>
-                                            <span className="text-text-muted">per person</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* VIP Perks */}
-                            {ticket.perks && (
-                                <div className="p-6 bg-[#FFD700]/10 border border-[#FFD700]/30 rounded-2xl">
-                                    <h3 className="text-lg font-bold text-[#FFD700] mb-3 flex items-center gap-2">
-                                        ✨ VIP Perks Included
-                                    </h3>
-                                    <p className="text-white">{ticket.perks}</p>
-                                </div>
-                            )}
-
-                            {/* Additional Info */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/10">
-                                <div>
-                                    <p className="text-xs text-text-muted mb-1">Purchase Date</p>
-                                    <p className="text-sm font-bold text-white">
-                                        {new Date(ticket.purchaseDate).toLocaleDateString()}
-                                    </p>
-                                </div>
-                                {ticket.usedAt && (
-                                    <div>
-                                        <p className="text-xs text-text-muted mb-1">Used At</p>
-                                        <p className="text-sm font-bold text-white">
-                                            {new Date(ticket.usedAt).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                )}
-                                {ticket.expiresAt && (
-                                    <div>
-                                        <p className="text-xs text-text-muted mb-1">Expires</p>
-                                        <p className="text-sm font-bold text-white">
-                                            {new Date(ticket.expiresAt).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-4">
-                                <Button onClick={handleDownload} className="flex-1 gap-2">
-                                    <Download className="w-4 h-4" />
-                                    Download Ticket
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                <div className="relative h-px w-full my-4">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-[#050505] rounded-full border border-zinc-800" />
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-6 h-6 bg-[#050505] rounded-full border border-zinc-800" />
+                    <div className="w-full h-full border-t border-dashed border-zinc-800" />
                 </div>
 
-                {/* Important Notice */}
-                <div className="p-6 bg-white/5 border border-white/10 rounded-xl">
-                    <h3 className="text-sm font-bold text-white mb-2">Important Information</h3>
-                    <ul className="text-sm text-text-muted space-y-1 list-disc list-inside">
-                        <li>Present this QR code at the venue entrance for scanning</li>
-                        <li>Each ticket is valid for one person only</li>
-                        <li>Please arrive 30 minutes before the event starts</li>
-                        <li>No refunds or exchanges after purchase</li>
-                    </ul>
+                <div className="p-8 pt-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white p-2 rounded-lg">
+                                {isQrImage ? (
+                                    <img src={qrRawValue} alt={`QR ${ticket.ticketNumber}`} className="w-12 h-12 object-contain" />
+                                ) : (
+                                    <QRCodeSVG value={qrRawValue || fallbackQrPayload} size={48} className="text-black" />
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-zinc-500 font-bold uppercase">Gate Node</p>
+                                <p className="text-white font-black text-sm italic">{location}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-2">
+                            <div className="flex -space-x-2">
+                                <div className="w-8 h-8 rounded-full border-2 border-zinc-900 bg-zinc-800 flex items-center justify-center overflow-hidden">
+                                    <ShieldCheck size={14} className="text-[#00FF00]" />
+                                </div>
+                                <div className="w-8 h-8 rounded-full border-2 border-zinc-900 bg-zinc-800 flex items-center justify-center">
+                                    <span className="text-[8px] font-black text-white">V1</span>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-[#00FF00] font-black italic uppercase">{passType}</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-8 flex justify-between items-center text-[8px] font-bold text-zinc-700 uppercase tracking-widest">
+                        <span>ID: {shortId}</span>
+                        <span>Auth: 0x9f...ff88</span>
+                    </div>
                 </div>
             </div>
         </div>

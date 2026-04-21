@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     ShieldAlert, Eye, CheckCircle, XCircle, X, Check,
-    AlertCircle, Clock, Search, ChevronDown,
+    AlertCircle, Search, ChevronDown,
 } from 'lucide-react';
-import { leagueService, League } from '../../../services/leagueService';
-import { seasonService, Season } from '../../../services/seasonService';
+import { leagueService, type League } from '../../../services/leagueService';
+import { seasonService, type Season } from '../../../services/seasonService';
 import {
-    matchDisputeService, MatchDispute, DisputeStatus, DisputeReason,
+    matchDisputeService, type MatchDispute, type DisputeStatus,
 } from '../../../services/matchDisputeService';
 
 interface Toast { msg: string; ok: boolean }
@@ -17,10 +17,6 @@ const STATUS_META: Record<DisputeStatus, { label: string; cls: string }> = {
     ACCEPTED:     { label: 'Accepted',     cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
     REJECTED:     { label: 'Rejected',     cls: 'bg-red-500/20 text-red-300 border-red-500/30' },
 };
-
-const REASONS: DisputeReason[] = [
-    'CHEATING', 'WRONG_RESULT', 'NO_SHOW', 'TECHNICAL_ISSUE', 'RULE_VIOLATION', 'OTHER',
-];
 
 export default function DisputesPage() {
     const [leagues, setLeagues]     = useState<League[]>([]);

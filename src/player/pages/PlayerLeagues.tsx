@@ -7,8 +7,7 @@ import {
     TrendingUp, Shield,
     Video, Play, Layers,
     Lock, BookOpen,
-    LayoutList, GitBranch, Shuffle, Grid2X2,
-    Radio, MapPin, MessageCircle,
+    LayoutList, GitBranch, Shuffle, Grid2X2, Ticket as TicketIcon,
 } from 'lucide-react';
 import { leagueService, type League, type LeagueParticipant } from '../../services/leagueService';
 import { seasonService, type Season } from '../../services/seasonService';
@@ -291,6 +290,22 @@ export default function PlayerLeagues() {
                                 </div>
                             </div>
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => selectedLeague && navigate(`/player/leagues/${selectedLeague._id}/hub`)}
+                                    className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-primary hover:border-primary/30 transition-colors"
+                                >
+                                    <BookOpen size={14} className="text-primary" />
+                                    Tournament wiki
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/player/events')}
+                                    className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-black transition-all"
+                                >
+                                    <TicketIcon size={14} />
+                                    Get Tickets
+                                </button>
                                 {matches.filter(m => m.status === 'LIVE').length > 0 && (
                                     <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest"
                                         style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}>

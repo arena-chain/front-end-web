@@ -272,15 +272,20 @@ function GameCard({ game, onEdit, onDelete }: { game: Game; onEdit: () => void; 
                                         <span className="font-semibold text-white/80">{game.publisher}</span>
                                     </div>
                                 )}
-                                {(game.teamSize ?? (game.metadata as Record<string, unknown> | undefined)?.teamSize) && (
+                                {(() => {
+                                    const meta = game.metadata as Record<string, unknown> | undefined;
+                                    const raw = game.teamSize ?? meta?.teamSize;
+                                    if (raw === undefined || raw === null || raw === '') return null;
+                                    const label = String(raw);
+                                    return (
                                     <div className="flex items-center gap-1.5 text-xs text-text-muted">
                                         <Users className="w-3.5 h-3.5 text-primary/60" />
                                         <span>
-                                            {String(game.teamSize ?? (game.metadata as Record<string, unknown>)?.teamSize)}v
-                                            {String(game.teamSize ?? (game.metadata as Record<string, unknown>)?.teamSize)} per team
+                                            {label}v{label} per team
                                         </span>
                                     </div>
-                                )}
+                                    );
+                                })()}
                                 {(game.platforms || []).length > 0 && (
                                     <div className="flex items-center gap-1.5 text-xs text-text-muted">
                                         <Monitor className="w-3.5 h-3.5 text-primary/60" />

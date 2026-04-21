@@ -98,32 +98,19 @@ export default function TournamentTickets() {
     const handleReserve = async () => {
         if (!tournament || getTotalTickets() === 0) return;
 
-        setSubmitting(true);
-        try {
-            // For simplicity, create one reservation per ticket type
-            const user = localStorage.getItem('userId') || 'current-user-id';
-
-            const createdReservations = [];
-
-            for (const selection of Object.values(selections)) {
-                const res = await reservationService.createReservation({
-                    tournament: tournament._id,
-                    user,
-                    ticketType: selection.type,
-                    quantity: selection.quantity,
-                });
-                createdReservations.push(res);
+        const firstSelection = Object.values(selections)[0];
+        
+        navigate('/player/payment', {
+            state: {
+                type: 'ticket',
+                ticketData: {
+                    tournamentId: tournament._id,
+                    tournamentName: tournament.name,
+                    ticketName: firstSelection.type,
+                    price: getTotalPrice()
+                }
             }
-
-            navigate('/player/reservation-confirmation', {
-                state: { tournamentId: tournament._id, reservations: createdReservations }
-            });
-        } catch (error) {
-            console.error('Failed to create reservation:', error);
-            alert('Failed to reserve tickets. Please try again.');
-        } finally {
-            setSubmitting(false);
-        }
+        });
     };
 
     if (loading) {

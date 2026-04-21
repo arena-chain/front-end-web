@@ -4,6 +4,24 @@ import { getApiBase } from '../lib/apiBase';
 
 const API_BASE_URL = `${getApiBase()}/catalog`;
 
+function getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function buildErrorMessage(response: Response, fallback: string): Promise<string> {
+    try {
+        const payload = await response.json();
+        const message = payload?.message;
+        if (Array.isArray(message)) return message.join(', ');
+        if (typeof message === 'string' && message.trim()) return message;
+        if (typeof payload?.error === 'string' && payload.error.trim()) return payload.error;
+    } catch {
+        // Ignore JSON parsing errors and use fallback
+    }
+    return fallback;
+}
+
 export interface CreateGameDto {
     title: string;
     genre: string;
@@ -87,18 +105,12 @@ class CatalogService {
 
             const response = await fetch(API_BASE_URL, {
                 method: 'POST',
-                headers,
+                headers: { ...headers, ...getAuthHeaders() },
                 body: isFormData ? data : JSON.stringify(data),
             });
 
             if (!response.ok) {
-                let errorMessage = response.statusText;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || JSON.stringify(errorData);
-                } catch (e) {
-                    // Response is not JSON
-                }
+                const errorMessage = await buildErrorMessage(response, response.statusText);
                 throw new Error(`Failed to create game: ${errorMessage}`);
             }
             return await response.json();
@@ -122,18 +134,12 @@ class CatalogService {
 
             const response = await fetch(`${API_BASE_URL}/${id}`, {
                 method: 'PATCH',
-                headers,
+                headers: { ...headers, ...getAuthHeaders() },
                 body: isFormData ? data : JSON.stringify(data),
             });
 
             if (!response.ok) {
-                let errorMessage = response.statusText;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || JSON.stringify(errorData);
-                } catch (e) {
-                    // Response is not JSON
-                }
+                const errorMessage = await buildErrorMessage(response, response.statusText);
                 throw new Error(`Failed to update game: ${errorMessage}`);
             }
             return await response.json();
@@ -150,9 +156,11 @@ class CatalogService {
         try {
             const response = await fetch(`${API_BASE_URL}/${id}`, {
                 method: 'DELETE',
+                headers: getAuthHeaders(),
             });
             if (!response.ok) {
-                throw new Error(`Failed to delete game: ${response.statusText}`);
+                const errorMessage = await buildErrorMessage(response, response.statusText);
+                throw new Error(`Failed to delete game: ${errorMessage}`);
             }
             return await response.json();
         } catch (error) {

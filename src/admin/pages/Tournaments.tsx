@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Globe, Search } from 'lucide-react';
-import { Button, Input, Select } from '../../components/ui/core';
+import { Globe, Search, ExternalLink } from 'lucide-react';
+import { Select } from '../../components/ui/core';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
-import SuccessModal from '../../components/ui/SuccessModal';
-import type { Tournament, CreateTournamentDto } from '../../models/tournament';
+import type { Tournament } from '../../models/tournament';
 import { TournamentStatus } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
-import TournamentCard from '../components/tournaments/TournamentCard';
-import CreateTournamentModal from '../components/tournaments/CreateTournamentModal';
 
 export default function Tournaments() {
     const navigate = useNavigate();
@@ -16,9 +13,6 @@ export default function Tournaments() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
-
-    // Modals
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     // Confirmation Modal State
     const [confirmation, setConfirmation] = useState<{
@@ -61,25 +55,6 @@ export default function Tournaments() {
             console.error('Failed to fetch tournaments:', error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleCreateTournament = async (data: CreateTournamentDto) => {
-        try {
-            const createdTournament = await tournamentService.createTournament(data);
-
-            await fetchTournaments();
-            setIsCreateModalOpen(false);
-
-            // Show success message
-            setSuccessModal({
-                isOpen: true,
-                title: '🎉 Tournament Created!',
-                message: `"${createdTournament.name}" has been successfully created and is now live.`,
-            });
-        } catch (error) {
-            console.error('Failed to create tournament:', error);
-            throw error;
         }
     };
 
@@ -131,6 +106,13 @@ export default function Tournaments() {
         navigate(`/admin/tournaments/${tournament._id}`);
     };
 
+    const formatMoney = (value: number) => {
+        if (!Number.isFinite(value) || value <= 0) return '$0';
+        if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+        if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+        return `$${value.toFixed(0)}`;
+    };
+
     // Filter tournaments
     const filteredTournaments = tournaments.filter((tournament) => {
         // Safe access to gameId properties
@@ -146,28 +128,27 @@ export default function Tournaments() {
     });
 
     return (
-        <div className="space-y-6 animate-fade-in-up">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="animate-fade-in-up text-zinc-300">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-8">
                 <div>
-                    <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">Tournaments</h1>
-                    <p className="text-text-muted">Manage official tournaments.</p>
+                    <h1 className="text-5xl md:text-6xl font-black italic text-white uppercase tracking-tighter leading-none mb-4">
+                        Tournament <span className="text-[#00FF00]">Management</span>
+                    </h1>
+                    <p className="text-zinc-500 font-medium max-w-2xl">
+                        Oversee the entire competitive ecosystem. Configure parameters, monitor registration yields, and deploy live brackets.
+                    </p>
                 </div>
-                <Button className="gap-2" onClick={() => setIsCreateModalOpen(true)}>
-                    <Plus className="w-4 h-4" />
-                    Create Tournament
-                </Button>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4 bg-[#1A1D21] p-4 rounded-xl border border-white/5">
+            <div className="flex flex-col md:flex-row gap-4 bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl mb-8">
                 <div className="flex-1">
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                        <Input
-                            placeholder="Search tournaments..."
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                        <input
+                            placeholder="QUERY SYSTEM..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-11 bg-black/20 border-white/5"
+                            className="w-full h-11 bg-zinc-900/50 border border-zinc-800 rounded-lg py-2 pl-11 pr-4 text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-[#00FF00]/50 text-white"
                         />
                     </div>
                 </div>
@@ -175,7 +156,7 @@ export default function Tournaments() {
                     <Select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-black/20 border-white/5"
+                        className="h-11 bg-zinc-900/50 border-zinc-800 text-white"
                     >
                         <option value="all">All Status</option>
                         <option value={TournamentStatus.DRAFT}>Draft</option>
@@ -187,52 +168,93 @@ export default function Tournaments() {
                 </div>
             </div>
 
-            {/* Content Area - List View */}
             {loading ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-surface border border-white/5 rounded-xl h-24 animate-pulse" />
+                        <div key={i} className="bg-zinc-900/40 border border-zinc-800 rounded-xl h-80 animate-pulse" />
                     ))}
                 </div>
             ) : filteredTournaments.length > 0 ? (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {filteredTournaments.map((tournament) => (
-                        <TournamentCard
+                        <div
                             key={tournament._id}
-                            tournament={tournament}
-                            onClick={() => handleTournamentClick(tournament)}
-                            isOfficial={true}
-                            onDelete={handleDeleteClick}
-                            onCancel={handleCancelClick}
-                        />
+                            className="bg-zinc-900/40 border border-zinc-800 rounded-xl overflow-hidden hover:border-[#00FF00]/50 transition-all duration-300 group"
+                        >
+                            <div className="relative h-48 overflow-hidden">
+                                <img
+                                    src={tournament.bannerImageUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800'}
+                                    alt={tournament.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
+                                {tournament.status === TournamentStatus.ONGOING && (
+                                    <div className="absolute top-4 left-4 bg-[#00FF00] text-black text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 bg-black rounded-full animate-pulse" />
+                                        ONGOING
+                                    </div>
+                                )}
+                                {tournament.status === TournamentStatus.OPEN_REGISTRATION && (
+                                    <div className="absolute top-4 left-4 bg-zinc-800/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded border border-zinc-700">
+                                        OPEN REGISTRATION
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-6">
+                                <h3 className="text-2xl font-black italic text-white mb-1 uppercase tracking-tight">{tournament.name}</h3>
+                                <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-6">
+                                    OFFICIAL • {(tournament.status || 'UNKNOWN').replace('_', ' ')}
+                                </p>
+
+                                <div className="grid grid-cols-3 gap-4 mb-8">
+                                    <div>
+                                        <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Revenue Est.</p>
+                                        <p className="text-[#00FF00] font-black italic">{formatMoney(Number(tournament.prizePool || 0))}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Slots Filled</p>
+                                        <p className="text-white font-black italic">{tournament.currentTeams || 0} / {tournament.maxTeams || 0}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Ticketing</p>
+                                        <p className="text-white font-black italic">{Array.isArray(tournament.ticketTypes) ? tournament.ticketTypes.length : 0} Tiers</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    className="w-full flex items-center justify-between group/btn text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:text-[#00FF00] transition-colors"
+                                    onClick={() => handleTournamentClick(tournament)}
+                                >
+                                    <span>Manage Core Node</span>
+                                    <ExternalLink size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                                </button>
+                            </div>
+                        </div>
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-16 bg-[#1A1D21] rounded-xl border border-white/5 border-dashed">
-                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Globe className="w-10 h-10 text-text-muted" />
+                <div className="text-center py-16 bg-zinc-900/40 rounded-xl border border-zinc-800 border-dashed">
+                    <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Globe className="w-10 h-10 text-zinc-500" />
                     </div>
                     <h3 className="text-lg font-bold text-white mb-2">No Tournaments Found</h3>
-                    <p className="text-text-muted mb-6">
+                    <p className="text-zinc-500 mb-2">
                         {searchQuery || statusFilter !== 'all'
                             ? 'Try adjusting your filters'
-                            : 'Create your first tournament to get started'
+                            : 'No tournament data available yet'
                         }
                     </p>
-                    {!searchQuery && statusFilter === 'all' && (
-                        <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-                            <Plus className="w-4 h-4" />
-                            Create Tournament
-                        </Button>
-                    )}
                 </div>
             )}
-            {/* Modals */}
-            <CreateTournamentModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onSubmit={handleCreateTournament}
-            />
+
+            <div className="mt-10 pt-6 border-t border-zinc-900 flex justify-between items-center text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+                <div className="flex gap-8">
+                    <span>Network Latency: <span className="text-[#00FF00]">12ms Optimal</span></span>
+                    <span>Active Admins: <span className="text-white">4 Online</span></span>
+                </div>
+                <span>KINETIC.DASH_BORD_SYSTEMS_V2</span>
+            </div>
 
             <ConfirmationModal
                 isOpen={confirmation.isOpen}
@@ -243,13 +265,6 @@ export default function Tournaments() {
                 confirmText={confirmation.type === 'delete' ? 'Delete' : 'Cancel Tournament'}
                 variant={confirmation.type === 'delete' ? 'danger' : 'warning'}
                 isLoading={isConfirming}
-            />
-
-            <SuccessModal
-                isOpen={successModal.isOpen}
-                onClose={() => setSuccessModal(prev => ({ ...prev, isOpen: false }))}
-                title={successModal.title}
-                message={successModal.message}
             />
         </div>
     );

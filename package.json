@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@google/model-viewer": "^4.2.0",
+    "@stripe/react-stripe-js": "^6.2.0",
+    "@stripe/stripe-js": "^9.2.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/qrcode.react": "^1.0.5",
     "@videojs/react": "^10.0.0-beta.15",
@@ -33,6 +35,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.182.0",
     "@vitejs/plugin-react-swc": "^4.2.2",
     "autoprefixer": "^10.4.24",
     "eslint": "^9.39.1",

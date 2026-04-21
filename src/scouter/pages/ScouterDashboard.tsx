@@ -382,13 +382,14 @@ export default function ScouterDashboard() {
                             <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-950 p-4">
                                 {filterResults.slice(0, 10).map((p: { _id?: string; userId?: { _id?: string; nickname?: string } }, i: number) => (
                                     <Link
-                                        key={p._id ?? i}
-                                        to={`/scouter/players/${(p.userId as { _id?: string })?._id ?? p._id}`}
+                                        key={row._id ?? i}
+                                        to={`/scouter/players/${(row.userId as { _id?: string })?._id ?? row._id}`}
                                         className="block text-primary hover:underline text-sm"
                                     >
-                                        {(p.userId as { nickname?: string })?.nickname ?? 'Player'} →
+                                        {(row.userId as { nickname?: string })?.nickname ?? 'Player'} →
                                     </Link>
-                                ))}
+                                    );
+                                })}
                                 {filterResults.length > 10 && (
                                     <p className="text-xs text-zinc-500">… and {filterResults.length - 10} more</p>
                                 )}
