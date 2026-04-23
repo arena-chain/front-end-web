@@ -5,7 +5,7 @@ import {
     ChevronRight, Calendar, Zap, Star,
     CheckSquare, AlertTriangle, MapPin,
 } from 'lucide-react';
-import { leagueService, type League, LeagueLevel } from '../../services/leagueService';
+import { leagueService, type League, type CreateLeaguePayload, LeagueLevel } from '../../services/leagueService';
 import CreateLeagueModal from '../components/leagues/CreateLeagueModal';
 import { cn } from '../../lib/utils';
 
@@ -168,7 +168,7 @@ export default function AdminLeagues() {
 
     useEffect(() => { fetchLeagues(); }, []);
 
-    const handleSubmit = async (data: any) => {
+    const handleSubmit = async (data: CreateLeaguePayload | FormData) => {
         try {
             if (editingLeague) {
                 await leagueService.updateLeague(editingLeague._id, data);
@@ -197,6 +197,9 @@ export default function AdminLeagues() {
         l.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
         (levelFilter === 'all' || l.level === levelFilter)
     );
+
+    const isLeagueLevel = (value: string): value is LeagueLevel =>
+        Object.values(LeagueLevel).includes(value as LeagueLevel);
 
     const counts = Object.fromEntries(
         ([...Object.values(LeagueLevel), 'all'] as string[]).map(lv => [
@@ -252,7 +255,7 @@ export default function AdminLeagues() {
                     {(['all', ...Object.values(LeagueLevel)] as string[]).map(lv => (
                         <button
                             key={lv}
-                            onClick={() => setLevelFilter(lv as any)}
+                            onClick={() => setLevelFilter(lv === 'all' ? 'all' : (isLeagueLevel(lv) ? lv : 'all'))}
                             className={cn(
                                 'px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all',
                                 levelFilter === lv

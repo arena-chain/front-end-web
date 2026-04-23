@@ -199,15 +199,26 @@ export async function loadOutfitIntoScene(
     }
 
     // Dynamically import GLTFLoader so it doesn't bloat the initial bundle
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js') as any;
+    type GltfLoadResult = { scene: Group };
+    type GltfLoaderLike = {
+        load(
+            url: string,
+            onLoad: (gltf: GltfLoadResult) => void,
+            onProgress?: ((event: ProgressEvent<EventTarget>) => void) | undefined,
+            onError?: ((error: unknown) => void) | undefined,
+        ): void;
+    };
+    type GltfLoaderCtor = new () => GltfLoaderLike;
+    const loaderMod = (await import('three/examples/jsm/loaders/GLTFLoader.js')) as {
+        GLTFLoader: GltfLoaderCtor;
+    };
+    const { GLTFLoader } = loaderMod;
     const loader = new GLTFLoader();
 
     await new Promise<void>((resolve, reject) => {
         loader.load(
             outfitUrl,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (gltf: any) => {
+            (gltf: GltfLoadResult) => {
                 const outfitGroup = gltf.scene as Group;
                 outfitGroup.name = OUTFIT_NODE_NAME;
 

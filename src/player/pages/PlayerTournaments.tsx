@@ -80,7 +80,7 @@ export default function PlayerTournaments() {
             <div className="relative overflow-hidden rounded-[2rem] shrink-0"
                 style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #141419 100%)', border: '1px solid rgba(255,255,255,0.05)' }}>
                 {/* Neon Glow */}
-                <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full blur-[120px] pointer-events-none bg-[#00ff88]/5" />
+                <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full blur-[120px] pointer-events-none bg-primary/10" />
                 <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full blur-[120px] pointer-events-none bg-red-500/5" />
 
                 <div className="relative px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
@@ -93,14 +93,14 @@ export default function PlayerTournaments() {
                                 </span>
                             )}
                             {openCount > 0 && (
-                                <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88]">
+                                <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary">
                                     <Zap size={10} className="fill-current" />
                                     {openCount} OPEN REGISTRATIONS
                                 </span>
                             )}
                         </div>
                         <h1 className="text-5xl font-black uppercase tracking-tighter text-white leading-none mb-3">
-                            Arena <span className="text-[#00ff88]">Tournaments</span>
+                            Arena <span className="text-primary">Tournaments</span>
                         </h1>
                         <p className="text-sm text-white/30 font-medium max-w-xl mb-6">
                             The ultimate battleground for elite creators. Compete in community tournaments,
@@ -114,7 +114,7 @@ export default function PlayerTournaments() {
                             <div className="flex gap-4">
                                 {[
                                     { label: 'Tournaments', value: tournaments.length, color: '#white' },
-                                    { label: 'Wins', value: '12', color: '#00ff88' },
+                                    { label: 'Wins', value: '12', color: 'hsl(var(--primary))' },
                                 ].map(s => (
                                     <div key={s.label} className="flex flex-col items-center justify-center min-w-[100px] px-5 py-4 rounded-2xl bg-white/5 border border-white/10">
                                         <span className="text-2xl font-black leading-none" style={{ color: s.color }}>{s.value}</span>
@@ -130,7 +130,7 @@ export default function PlayerTournaments() {
 
                         <Button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="h-12 px-8 bg-white/5 border border-white/10 text-white/60 font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#00ff88] hover:text-black hover:border-transparent transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)] group"
+                            className="h-12 px-8 bg-primary border border-primary/60 text-black font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-primary/90 hover:border-primary hover:text-black transition-all shadow-[0_10px_30px_rgba(0,255,136,0.22)] group"
                         >
                             <Plus size={16} className="mr-3 group-hover:rotate-90 transition-transform duration-500" />
                             Organize Tournament
@@ -143,29 +143,30 @@ export default function PlayerTournaments() {
             <div className="flex flex-col sm:flex-row gap-4 shrink-0">
                 {/* Search */}
                 <div className="relative flex-1 group">
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-[#00ff88] transition-colors" />
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-primary transition-colors" />
                     <input
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Search tournament, game or creator..."
-                        className="w-full rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white placeholder-white/20 outline-none transition-all duration-300 bg-[#141419] border border-white/5 focus:border-[#00ff88]/50 focus:shadow-[0_0_30px_rgba(0,255,136,0.05)]"
+                        className="w-full rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white placeholder-white/20 outline-none transition-all duration-300 bg-[#141419] border border-white/5 focus:border-primary/50 focus:shadow-[0_0_30px_rgba(0,255,136,0.08)]"
                     />
                 </div>
 
                 {/* Status tabs */}
-                <div className="flex gap-1.5 p-1.5 rounded-2xl shrink-0 bg-[#141419] border border-white/5">
+                <div className="flex gap-1.5 shrink-0">
                     {STATUS_TABS.map(tab => {
                         const sc = STATUS[tab.value];
                         const active = statusFilter === tab.value;
                         return (
                             <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
                                 className={cn(
-                                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300",
-                                    active ? "bg-white/10 text-white shadow-lg" : "text-white/30 hover:text-white hover:bg-white/5"
+                                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 border backdrop-blur-xl",
+                                    active
+                                        ? "bg-primary/12 border-primary/30 text-primary shadow-[0_0_18px_rgba(0,255,136,0.14)]"
+                                        : "bg-white/[0.03] border-white/12 text-white/35 hover:text-white hover:bg-white/[0.06]"
                                 )}
                                 style={{
-                                    border: active ? `1px solid ${sc?.border ?? 'rgba(255,255,255,0.1)'}` : '1px solid transparent',
-                                    color: active ? (sc?.color ?? '#ffffff') : 'undefined'
+                                    color: active ? 'hsl(var(--primary))' : undefined,
                                 }}>
                                 {tab.icon}
                                 {tab.label}
@@ -276,19 +277,19 @@ function TournamentCard({ tournament, onClick }: { tournament: Tournament; onCli
 
             {/* Content */}
             <div className="flex flex-col flex-1 p-6">
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-4 leading-tight group-hover:text-[#00ff88] transition-colors">
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-4 leading-tight group-hover:text-primary transition-colors">
                     {tournament.name}
                 </h3>
 
                 {/* Metadata */}
                 <div className="flex items-center gap-4 mb-6">
                     <div className="flex items-center gap-2 text-xs font-bold text-white/40">
-                        <Calendar size={14} className="text-[#00ff88]" />
+                        <Calendar size={14} className="text-primary" />
                         <span>{new Date(tournament.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                     </div>
                     <div className="w-1 h-1 rounded-full bg-white/10" />
                     <div className="flex items-center gap-2 text-xs font-bold text-white/40">
-                        <Users size={14} className="text-[#00ff88]" />
+                        <Users size={14} className="text-primary" />
                         <span>{tournament.currentTeams} / {tournament.maxTeams} TEAMS</span>
                     </div>
                 </div>
@@ -297,11 +298,11 @@ function TournamentCard({ tournament, onClick }: { tournament: Tournament; onCli
                 <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">REGISTRATION FILL</span>
-                        <span className="text-[10px] font-black text-[#00ff88]">{Math.round(fill)}%</span>
+                        <span className="text-[10px] font-black text-primary">{Math.round(fill)}%</span>
                     </div>
                     <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-gradient-to-r from-[#00ff88] to-[#00ff88]/50 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(0,255,136,0.3)]"
+                            className="h-full bg-gradient-to-r from-primary to-primary/50 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(0,255,136,0.3)]"
                             style={{ width: `${fill}%` }}
                         />
                     </div>
@@ -315,7 +316,7 @@ function TournamentCard({ tournament, onClick }: { tournament: Tournament; onCli
                             ? "bg-red-500/10 text-red-500 border border-red-500/20 cursor-not-allowed"
                             : isLive
                                 ? "bg-red-500 text-white hover:bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.2)]"
-                                : "bg-white/5 text-white/60 hover:bg-[#00ff88] hover:text-black border border-white/5 hover:border-transparent"
+                                : "bg-white/5 text-white/60 hover:bg-primary hover:text-black border border-white/5 hover:border-transparent"
                     )}
                     disabled={tournament.status === 'BLOCKED' || tournament.status === 'REJECTED' || tournament.status === 'PENDING_APPROVAL'}
                 >

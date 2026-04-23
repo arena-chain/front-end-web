@@ -9,6 +9,11 @@ import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 type WatchlistRowModel = WatchlistEntry & { profileDetail?: ScoutedPlayerProfile };
 
+/** Populated `playerId` / row shapes omit index signatures; use when probing dynamic API fields. */
+function looseRec(o: object): Record<string, unknown> {
+    return o as unknown as Record<string, unknown>;
+}
+
 function getScouterId(): string | null {
     try {
         const raw = localStorage.getItem('user');
@@ -22,7 +27,7 @@ function getScouterId(): string | null {
 function playerEmail(e: WatchlistEntry): string | undefined {
     const p = e.playerId;
     if (typeof p === 'object' && p != null) {
-        const o = p as Record<string, unknown>;
+        const o = looseRec(p);
         const u = o.user as { email?: string } | undefined;
         const em =
             (typeof o.email === 'string' && o.email.trim() ? o.email : undefined) ??
@@ -40,7 +45,7 @@ function playerEmail(e: WatchlistEntry): string | undefined {
 function playerName(e: WatchlistEntry): string {
     const p = e.playerId;
     if (typeof p === 'object' && p != null) {
-        const o = p as Record<string, unknown>;
+        const o = looseRec(p);
         const u = o.user as { nickname?: string; email?: string } | undefined;
         if (u?.nickname?.trim()) return u.nickname.trim();
         const uid = o.userId;
@@ -70,7 +75,7 @@ function playerAvatarPath(e: WatchlistRowModel): string | undefined {
     }
     const p = e.playerId;
     if (typeof p === 'object' && p != null) {
-        const o = p as Record<string, unknown>;
+        const o = looseRec(p);
         const u = o.user as { avatar?: string } | undefined;
         const fromUser = typeof u?.avatar === 'string' ? u.avatar.trim() : '';
         if (fromUser) return fromUser;
@@ -88,7 +93,7 @@ function playerAvatarPath(e: WatchlistRowModel): string | undefined {
 function playerMetaLine(e: WatchlistEntry): string | undefined {
     const p = e.playerId;
     if (typeof p !== 'object' || p == null) return undefined;
-    const o = p as Record<string, unknown>;
+    const o = looseRec(p);
     const user = o.user as { country?: string; region?: string } | undefined;
     const country = (typeof o.country === 'string' && o.country.trim() ? o.country : user?.country?.trim()) || '';
     const region = (typeof o.region === 'string' && o.region.trim() ? o.region : user?.region?.trim()) || '';
@@ -102,7 +107,7 @@ function rowLocationLabel(e: WatchlistRowModel): string {
     if (prof) return prof;
     const p = e.playerId;
     if (typeof p === 'object' && p != null) {
-        const o = p as Record<string, unknown>;
+        const o = looseRec(p);
         const user = o.user as { country?: string; region?: string } | undefined;
         const c = (typeof o.country === 'string' && o.country.trim() ? o.country : user?.country?.trim()) || '';
         const r = (typeof o.region === 'string' && o.region.trim() ? o.region : user?.region?.trim()) || '';
@@ -128,7 +133,7 @@ function rowRank(e: WatchlistRowModel): string {
 function playerRawNickname(e: WatchlistEntry): string | undefined {
     const p = e.playerId;
     if (typeof p === 'object' && p != null) {
-        const o = p as Record<string, unknown>;
+        const o = looseRec(p);
         const u = o.user as { nickname?: string } | undefined;
         if (u?.nickname?.trim()) return u.nickname.trim();
         const uid = o.userId;
@@ -150,12 +155,13 @@ function unwrapMongoId(raw: unknown): string {
     return '';
 }
 
-function idFromUserLike(o: Record<string, unknown>): string {
-    return unwrapMongoId(o._id ?? o.id);
+function idFromUserLike(o: object): string {
+    const rec = looseRec(o);
+    return unwrapMongoId(rec._id ?? rec.id);
 }
 
 function watchlistPlayerUserId(e: WatchlistEntry): string {
-    const extRoot = e as Record<string, unknown>;
+    const extRoot = looseRec(e);
     for (const key of ['playerId', 'player', 'playerUserId']) {
         const v = extRoot[key];
         if (typeof v === 'string' && v.trim()) return v.trim();
@@ -164,41 +170,41 @@ function watchlistPlayerUserId(e: WatchlistEntry): string {
     const p = e.playerId;
     if (typeof p === 'string' && p.trim()) return p.trim();
 
-    const fromObject = (o: Record<string, unknown> | null | undefined): string => {
+    const fromObject = (o: object | null | undefined): string => {
         if (!o) return '';
-        const uidField = o.userId;
+        const obj = looseRec(o);
+        const uidField = obj.userId;
         if (typeof uidField === 'string' && uidField.trim()) return uidField.trim();
         if (uidField && typeof uidField === 'object') {
-            const id = idFromUserLike(uidField as Record<string, unknown>);
+            const id = idFromUserLike(uidField);
             if (id) return id;
         }
-        const user = o.user;
+        const user = obj.user;
         if (user && typeof user === 'object') {
-            const id = idFromUserLike(user as Record<string, unknown>);
+            const id = idFromUserLike(user);
             if (id) return id;
         }
-        const own = idFromUserLike(o);
-        return own;
+        return idFromUserLike(obj);
     };
 
     if (p && typeof p === 'object') {
-        const hit = fromObject(p as Record<string, unknown>);
+        const hit = fromObject(p);
         if (hit) return hit;
     }
 
-    const ext = e as Record<string, unknown>;
+    const ext = looseRec(e);
     if (typeof ext.player === 'string' && ext.player.trim()) return ext.player.trim();
 
     const nestedPlayer = ext.player;
     if (nestedPlayer && typeof nestedPlayer === 'object') {
-        const hit = fromObject(nestedPlayer as Record<string, unknown>);
+        const hit = fromObject(nestedPlayer);
         if (hit) return hit;
     }
     for (const key of ['playerUserId', 'userId']) {
         const v = ext[key];
         if (typeof v === 'string' && v.trim()) return v.trim();
         if (v && typeof v === 'object') {
-            const id = idFromUserLike(v as Record<string, unknown>);
+            const id = idFromUserLike(v);
             if (id) return id;
         }
     }
@@ -210,28 +216,29 @@ function watchlistRowActionId(e: WatchlistEntry): string {
     if (primary) return primary;
     const p = e.playerId;
     if (p && typeof p === 'object') {
-        const id = idFromUserLike(p as Record<string, unknown>);
+        const id = idFromUserLike(p);
         if (id) return id;
     }
-    const ex = e as Record<string, unknown>;
+    const ex = looseRec(e);
     if (typeof ex.player === 'string' && ex.player.trim()) return ex.player.trim();
     if (ex.player && typeof ex.player === 'object') {
-        const id = idFromUserLike(ex.player as Record<string, unknown>);
+        const id = idFromUserLike(ex.player);
         if (id) return id;
     }
     return '';
 }
 
 function normalizeWatchlistRow(row: WatchlistEntry): WatchlistEntry {
-    const r = row as Record<string, unknown>;
-    const next = { ...row } as Record<string, unknown>;
-    if ((next.playerId === null || next.playerId === undefined) && r.player != null) {
-        next.playerId = r.player as WatchlistEntry['playerId'];
+    const r = looseRec(row);
+    const next: WatchlistEntry = { ...row };
+    const n = looseRec(next);
+    if ((n.playerId === null || n.playerId === undefined) && r.player != null) {
+        n.playerId = r.player as WatchlistEntry['playerId'];
     }
-    if ((next.playerId === null || next.playerId === undefined) && typeof r.player_id === 'string') {
-        next.playerId = r.player_id as WatchlistEntry['playerId'];
+    if ((n.playerId === null || n.playerId === undefined) && typeof r.player_id === 'string') {
+        n.playerId = r.player_id as WatchlistEntry['playerId'];
     }
-    return next as WatchlistEntry;
+    return next;
 }
 
 function enrichWatchlistEntry(e: WatchlistEntry, pool: User[]): WatchlistEntry {
@@ -254,7 +261,7 @@ function enrichWatchlistEntry(e: WatchlistEntry, pool: User[]): WatchlistEntry {
     if (typeof cur === 'object' && cur !== null) {
         return {
             ...e,
-            playerId: { ...(cur as Record<string, unknown>), user: mergedUser, userId: u._id } as WatchlistEntry['playerId'],
+            playerId: { ...looseRec(cur), user: mergedUser, userId: u._id } as WatchlistEntry['playerId'],
         };
     }
     return { ...e, playerId: mergedUser as WatchlistEntry['playerId'] };
@@ -280,10 +287,6 @@ function WatchlistAvatar({ entry }: { entry: WatchlistRowModel }) {
     const url = raw ? resolveBackendAssetUrl(raw) : '';
     const [imgFailed, setImgFailed] = useState(false);
     const initial = playerName(entry).charAt(0).toUpperCase();
-
-    useEffect(() => {
-        setImgFailed(false);
-    }, [url]);
 
     if (url && !imgFailed) {
         return (
@@ -311,7 +314,10 @@ export default function ScouterWatchlist() {
     const load = useCallback(
         async (opts?: { silent?: boolean }) => {
             if (!scouterId) return;
-            if (!opts?.silent) setLoading(true);
+            if (!opts?.silent) {
+                await Promise.resolve();
+                setLoading(true);
+            }
             try {
                 const list = await scoutingService.listWatchlistByScouter(scouterId);
                 const users = await UserService.getAllUsers().catch(() => [] as User[]);
@@ -329,8 +335,15 @@ export default function ScouterWatchlist() {
     );
 
     useEffect(() => {
+        if (!scouterId) {
+            queueMicrotask(() => {
+                setLoading(false);
+                setEntries([]);
+            });
+            return;
+        }
         void load();
-    }, [load]);
+    }, [scouterId, load]);
 
     const handleRemove = async (e: WatchlistRowModel) => {
         if (!scouterId) return;
@@ -394,7 +407,10 @@ export default function ScouterWatchlist() {
                                     key={e._id}
                                     className="flex flex-col gap-4 px-5 py-5 transition-colors hover:bg-zinc-900/50 sm:flex-row sm:items-center sm:gap-6"
                                 >
-                                    <WatchlistAvatar entry={e} />
+                                    <WatchlistAvatar
+                                        key={`${e._id}-${playerAvatarPath(e) ?? 'no-avatar'}`}
+                                        entry={e}
+                                    />
                                     <div className="min-w-0 flex-1 space-y-2">
                                         <h2 className="text-xl font-black tracking-tight text-white">{playerName(e)}</h2>
                                         {email ? (

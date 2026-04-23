@@ -5,11 +5,11 @@ import { Badge, Button, Input, Textarea } from '../../components/ui/core';
 import { createLiveSocket, getIceServers } from '../../lib/live';
 import { getStreamEmbed, pickPreferredStreamUrl } from '../../lib/stream';
 import { channelService, type ChannelRecord } from '../../services/channel.service';
-import { streamService, type StreamRecord } from '../../services/stream.service';
+import { streamService, type StreamRecord, type StreamPayload } from '../../services/stream.service';
 import type { Socket } from 'socket.io-client';
 import { getStreamCategory, sortLiveStreams, type LiveSortMode } from '../../lib/streamBrowse';
 import { cn } from '../../lib/utils';
-import { Link2, Monitor, Radio, Sparkles, Tv, Check, Copy, Trash2, Plus, Zap, Activity, Mic, MicOff, Video, VideoOff, Maximize, Upload, X } from 'lucide-react';
+import { Link2, Monitor, Radio, Sparkles, Tv, Check, Zap, Activity, Mic, MicOff, Video, VideoOff, Maximize } from 'lucide-react';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 const PREDEFINED_TAGS = [
@@ -41,10 +41,6 @@ export default function GoLivePage() {
     const [form, setForm] = useState(emptyForm);
     const [isScheduled, setIsScheduled] = useState(false);
     const [savedSortMode, setSavedSortMode] = useState<LiveSortMode>('date-desc');
-    const [isSetupOpen, setIsSetupOpen] = useState(true);
-    const [isScheduled, setIsScheduled] = useState(false);
-    const [currentTime, setCurrentTime] = useState(new Date());
-    const [forceStart, setForceStart] = useState(false);
 
     const sortedSavedStreams = useMemo(
         () => sortLiveStreams(streams, savedSortMode),
@@ -68,31 +64,6 @@ export default function GoLivePage() {
         ),
     );
 
-    const { isFutureScheduled, timeUntilStart } = useMemo(() => {
-        if (!isScheduled || !form.scheduledStartTime) {
-            return { isFutureScheduled: false, timeUntilStart: '' };
-        }
-        const start = new Date(form.scheduledStartTime);
-        if (Number.isNaN(start.getTime())) {
-            return { isFutureScheduled: false, timeUntilStart: '' };
-        }
-        const diff = start.getTime() - currentTime.getTime();
-        if (diff <= 0) {
-            return { isFutureScheduled: false, timeUntilStart: '' };
-        }
-
-        const totalSeconds = Math.floor(diff / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        return {
-            isFutureScheduled: true,
-            timeUntilStart: `${hours > 0 ? `${hours}h ` : ''}${minutes}m ${seconds}s`
-        };
-    }, [isScheduled, form.scheduledStartTime, currentTime]);
-
-    const isLiveDisabled = isFutureScheduled && !forceStart;
     const watchUrl = channel ? `${window.location.origin}/watch/${channel._id}` : '';
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
@@ -180,15 +151,10 @@ export default function GoLivePage() {
             iceServersRef.current = servers;
         });
 
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
-
         return () => {
-            clearInterval(timer);
             void stopRealtimeBroadcast(false);
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps -- mount-only bootstrap
 
     async function load() {
         setLoading(true);
@@ -225,7 +191,7 @@ export default function GoLivePage() {
 
         setSaving(true);
         try {
-            const payload = {
+            const payload: StreamPayload = {
                 channelId: channel._id,
                 title: form.title.trim(),
                 description: form.description.trim() || undefined,
@@ -237,29 +203,24 @@ export default function GoLivePage() {
                 scheduledEndTime: isScheduled ? form.scheduledEndTime || undefined : undefined,
             };
 
-            let saved = currentStream
-                ? await streamService.updateStream(currentStream._id, payload)
-                : await streamService.createStream({ ...payload, isLive: false });
-
-            if (makeLive && !saved.isLive) {
-                saved = await streamService.startStream(saved._id);
-            }
-
             let saved: StreamRecord;
-            if (currentStream && (currentStream.isLive || selectedStreamId)) {
-                saved = await streamService.update(currentStream._id, streamData);
+            if (currentStream) {
+                saved = await streamService.update(currentStream._id, payload);
                 toast.success('Live details updated');
             } else {
-                saved = await streamService.create(streamData);
+                saved = await streamService.create({ ...payload, isLive: false });
                 setSelectedStreamId(saved._id);
                 toast.success('Stream draft created');
+            }
+
+            if (makeLive && !saved.isLive) {
+                saved = await streamService.start(saved._id);
             }
 
             setStreams((previous) => [
                 saved,
                 ...previous.filter((item) => item._id !== saved._id),
             ]);
-            setIsSetupOpen(false);
             return saved;
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to save stream');
@@ -287,7 +248,7 @@ export default function GoLivePage() {
         compositeCanvasRef.current = null;
     }
 
-    async function createScreenCameraBroadcastStream() {
+    async function createScreenCameraBroadcastStream(): Promise<MediaStream> {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
@@ -445,15 +406,6 @@ export default function GoLivePage() {
         return socket;
     }
 
-    function cleanupPeer(viewerId: string) {
-        const peer = peerConnectionsRef.current.get(viewerId);
-        if (peer) {
-            peer.close();
-            peerConnectionsRef.current.delete(viewerId);
-        }
-        pendingIceCandidatesRef.current.delete(viewerId);
-    }
-
     async function replaceTrackInPeers(newStream: MediaStream) {
         const videoTrack = newStream.getVideoTracks()[0];
         const audioTrack = newStream.getAudioTracks()[0];
@@ -495,67 +447,6 @@ export default function GoLivePage() {
         }
     }
 
-    async function createScreenCameraBroadcastStream(): Promise<MediaStream> {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
-        sourceStreamsRef.current = [screenStream, cameraStream];
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 1920;
-        canvas.height = 1080;
-        compositeCanvasRef.current = canvas;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Could not get 2d context for composite broadcast');
-        }
-
-        const screenVideo = document.createElement('video');
-        screenVideo.srcObject = screenStream;
-        void screenVideo.play();
-
-        const cameraVideo = document.createElement('video');
-        cameraVideo.srcObject = cameraStream;
-        void cameraVideo.play();
-
-        const render = () => {
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
-            ctx.drawImage(cameraVideo, canvas.width - 420, canvas.height - 320, 400, 300);
-            compositeFrameRef.current = requestAnimationFrame(render);
-        };
-        render();
-
-        const compositeVideoTrack = canvas.captureStream(30).getVideoTracks()[0];
-        const combinedAudioContext = new AudioContext();
-        const destination = combinedAudioContext.createMediaStreamDestination();
-
-        if (screenStream.getAudioTracks().length > 0) {
-            combinedAudioContext.createMediaStreamSource(screenStream).connect(destination);
-        }
-        if (cameraStream.getAudioTracks().length > 0) {
-            combinedAudioContext.createMediaStreamSource(cameraStream).connect(destination);
-        }
-
-        const compositeStream = new MediaStream([compositeVideoTrack, ...destination.stream.getAudioTracks()]);
-
-        compositeStream.getVideoTracks()[0].onended = () => {
-            void stopRealtimeBroadcast(true);
-        };
-
-        return compositeStream;
-    }
-
-    function stopCompositeRenderer() {
-        if (compositeFrameRef.current) {
-            cancelAnimationFrame(compositeFrameRef.current);
-            compositeFrameRef.current = null;
-        }
-        compositeCanvasRef.current = null;
-    }
-
     async function startRealtimeBroadcast(mode: 'screen' | 'camera' | 'screen-camera') {
         if (!channel) {
             toast.error('Create your channel first');
@@ -577,41 +468,35 @@ export default function GoLivePage() {
                     : await createScreenCameraBroadcastStream();
 
             // Apply current mute states to new tracks
-            newStream.getAudioTracks().forEach(t => t.enabled = !isMicMuted);
-            newStream.getVideoTracks().forEach(t => t.enabled = !isCamMuted);
+            stream.getAudioTracks().forEach((t) => { t.enabled = !isMicMuted; });
+            stream.getVideoTracks().forEach((t) => { t.enabled = !isCamMuted; });
 
             if (isBroadcasting) {
                 // SWITCHING MODE
-                await replaceTrackInPeers(newStream);
+                await replaceTrackInPeers(stream);
 
                 // Stop old tracks
                 if (localStreamRef.current) {
-                    localStreamRef.current.getTracks().forEach(t => t.stop());
+                    localStreamRef.current.getTracks().forEach((t) => t.stop());
                 }
-                sourceStreamsRef.current.forEach(s => s.getTracks().forEach(t => t.stop()));
+                sourceStreamsRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()));
 
-                localStreamRef.current = newStream;
-                await attachLocalPreview(newStream);
+                localStreamRef.current = stream;
+                await attachLocalPreview(stream);
                 setBroadcastMode(mode);
                 toast.success(`Mode switched to ${mode}`);
             } else {
                 // STARTING FRESH
-                const saved = await saveStream(true);
-                if (!saved) {
-                    newStream.getTracks().forEach(t => t.stop());
-                    return;
-                }
+                localStreamRef.current = stream;
+                await attachLocalPreview(stream);
 
-                localStreamRef.current = newStream;
-                await attachLocalPreview(newStream);
-
-            const socket = await ensureSocket();
-            const joinBroadcasterChannel = () => {
-                socket.emit('join-channel', {
-                    channelId: channel._id,
-                    role: 'broadcaster',
-                });
-            };
+                const socket = await ensureSocket();
+                const joinBroadcasterChannel = () => {
+                    socket.emit('join-channel', {
+                        channelId: channel._id,
+                        role: 'broadcaster',
+                    });
+                };
 
                 if (socket.connected) {
                     joinBroadcasterChannel();
@@ -626,7 +511,7 @@ export default function GoLivePage() {
 
             // Set up onended for new main stream tracks
             if (mode !== 'screen-camera') {
-                newStream.getVideoTracks().forEach((track) => {
+                stream.getVideoTracks().forEach((track) => {
                     track.onended = () => {
                         void stopRealtimeBroadcast(true);
                     };
@@ -735,49 +620,66 @@ export default function GoLivePage() {
                         </p>
                     </div>
 
-                {channel && (
-                    <div className="flex justify-center pt-4">
-                        <div className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-500 bg-[#141414]",
-                            currentStream?.isLive ? "border-primary/50 shadow-[0_0_10px_rgba(34,197,94,0.15)]" : "border-white/5"
-                        )}>
-                            <div className={cn(
-                                "flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-500 shadow-xl",
-                                currentStream?.isLive
-                                    ? "bg-primary/10 border-primary/20 shadow-primary/5"
-                                    : "bg-white/5 border-white/5 shadow-black/20"
-                            )}>
-                                {currentStream?.isLive && <div className="w-2.5 h-2.5 bg-primary rounded-full animate-ping shadow-[0_0_10px_rgba(0,255,135,0.8)]" />}
-                                <span className={cn(
-                                    "text-[10px] font-black uppercase tracking-[0.2em]",
-                                    currentStream?.isLive ? "text-primary" : "text-white/30"
-                                )}>
-                                    {currentStream?.isLive ? "En Direct — Studio Actif" : "Hors Ligne — Prêt à diffuser"}
-                                </span>
+                    {channel && (
+                        <div className="flex flex-col gap-6 lg:items-end">
+                            <div className="flex justify-center pt-4 lg:justify-end">
+                                <div
+                                    className={cn(
+                                        'flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-500 bg-[#141414]',
+                                        currentStream?.isLive
+                                            ? 'border-primary/50 shadow-[0_0_10px_rgba(34,197,94,0.15)]'
+                                            : 'border-white/5',
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            'flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-500 shadow-xl',
+                                            currentStream?.isLive
+                                                ? 'bg-primary/10 border-primary/20 shadow-primary/5'
+                                                : 'bg-white/5 border-white/5 shadow-black/20',
+                                        )}
+                                    >
+                                        {currentStream?.isLive && (
+                                            <div className="w-2.5 h-2.5 bg-primary rounded-full animate-ping shadow-[0_0_10px_rgba(0,255,135,0.8)]" />
+                                        )}
+                                        <span
+                                            className={cn(
+                                                'text-[10px] font-black uppercase tracking-[0.2em]',
+                                                currentStream?.isLive ? 'text-primary' : 'text-white/30',
+                                            )}
+                                        >
+                                            {currentStream?.isLive
+                                                ? 'En Direct — Studio Actif'
+                                                : 'Hors Ligne — Prêt à diffuser'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                        <div className="flex flex-wrap gap-3 lg:justify-end">
-                            {channel ? (
-                                <>
-                                    <Link to="/player/all-lives">
-                                        <Button variant="outline" className="h-14 px-8 rounded-2xl group/btn border-white/5 bg-white/5 backdrop-blur hover:border-white/20 transition-all">
-                                            <Tv className="mr-3 h-5 w-5 opacity-50 group-hover/btn:opacity-100 group-hover/btn:scale-110 transition-all" />
-                                            <span className="text-xs font-black uppercase tracking-widest text-white/70 group-hover/btn:text-white">Parcourir</span>
-                                        </Button>
-                                    </Link>
-                                    <Link to={`/watch/${channel._id}`}>
-                                        <Button variant="outline" className="h-14 px-8 rounded-2xl group/btn border-white/5 bg-white/5 backdrop-blur hover:border-white/20 transition-all">
-                                            <span className="text-xs font-black uppercase tracking-widest text-white/70 group-hover/btn:text-white">Page Spectateur</span>
-                                        </Button>
-                                    </Link>
-                                </>
-                            ) : (
-                                <Link to="/player/channel">
-                                    <Button size="lg" className="h-14 px-10 rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-primary/20">Créer une chaîne</Button>
+                            <div className="flex flex-wrap gap-3 lg:justify-end">
+                                <Link to="/player/all-lives">
+                                    <Button
+                                        variant="outline"
+                                        className="h-14 px-8 rounded-2xl group/btn border-white/5 bg-white/5 backdrop-blur hover:border-white/20 transition-all"
+                                    >
+                                        <Tv className="mr-3 h-5 w-5 opacity-50 group-hover/btn:opacity-100 group-hover/btn:scale-110 transition-all" />
+                                        <span className="text-xs font-black uppercase tracking-widest text-white/70 group-hover/btn:text-white">
+                                            Parcourir
+                                        </span>
+                                    </Button>
                                 </Link>
-                            )}
+                                <Link to={`/watch/${channel._id}`}>
+                                    <Button
+                                        variant="outline"
+                                        className="h-14 px-8 rounded-2xl group/btn border-white/5 bg-white/5 backdrop-blur hover:border-white/20 transition-all"
+                                    >
+                                        <span className="text-xs font-black uppercase tracking-widest text-white/70 group-hover/btn:text-white">
+                                            Page Spectateur
+                                        </span>
+                                    </Button>
+                                </Link>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </header>
 
@@ -1002,8 +904,6 @@ export default function GoLivePage() {
                                                         </div>
                                                     </div>
                                                 )}
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
 
@@ -1151,8 +1051,11 @@ export default function GoLivePage() {
                                                     </div>
                                                 )}
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div className="flex h-full min-h-[200px] items-center justify-center p-6 text-center text-[11px] font-medium text-white/35">
+                                                Lance une diffusion ou renseigne une URL de preview pour voir l&apos;aperçu ici.
+                                            </div>
+                                        )}
 
                                     {currentStream && (
                                         <div className="rounded-2xl border border-white/10 p-4">
@@ -1178,6 +1081,7 @@ export default function GoLivePage() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
                             </div>
 
                             <div className="rounded-2xl border border-white/[0.07] bg-[#0c0e11] p-4 shadow-inner shadow-black/30 sm:p-5">
@@ -1268,6 +1172,43 @@ export default function GoLivePage() {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+function ThumbnailUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+    const [uploading, setUploading] = useState(false);
+
+    return (
+        <div className="space-y-2">
+            <input
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                className="block w-full text-[10px] text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-[10px] file:font-black file:text-primary file:uppercase"
+                onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploading(true);
+                    try {
+                        const url = await streamService.uploadThumbnail(file);
+                        onChange(url);
+                        toast.success('Vignette mise à jour');
+                    } catch {
+                        toast.error('Échec du téléversement');
+                    } finally {
+                        setUploading(false);
+                        e.target.value = '';
+                    }
+                }}
+            />
+            {value ? (
+                <img
+                    src={resolveBackendAssetUrl(value)}
+                    alt=""
+                    className="max-h-32 w-full rounded-lg border border-white/10 object-contain bg-black/40"
+                />
+            ) : null}
         </div>
     );
 }

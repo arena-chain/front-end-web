@@ -48,17 +48,17 @@ export default function TopNavbar({
 
             <div className="flex flex-1 items-center justify-between px-6 xl:px-8">
                 <div className="flex items-center gap-4">
-                    <nav className="flex items-center gap-1 rounded-2xl border border-white/15 bg-white/[0.06] p-1.5 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(255,255,255,0.05)]">
+                    <nav className="flex items-center gap-1.5">
                         {TOP_NAV_LINKS.map((link) => (
                             <NavLink
                                 key={link.to}
                                 to={link.to}
                                 className={({ isActive }) =>
                                     cn(
-                                        'group flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300',
+                                        'group flex items-center gap-2.5 rounded-xl border px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 backdrop-blur-xl',
                                         isActive
-                                            ? 'bg-primary/[0.11] text-primary ring-1 ring-primary/25 shadow-[0_0_18px_rgba(0,255,135,0.14)]'
-                                            : 'text-white/40 hover:bg-white/[0.04] hover:text-white/80',
+                                            ? 'border-primary/30 bg-primary/[0.11] text-primary shadow-[0_0_18px_rgba(0,255,135,0.14)]'
+                                            : 'border-white/12 bg-white/[0.03] text-white/40 hover:bg-white/[0.06] hover:text-white/80',
                                     )
                                 }
                             >
@@ -78,7 +78,7 @@ export default function TopNavbar({
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className="relative hidden w-64 items-center rounded-2xl border border-white/15 bg-white/[0.06] px-1.5 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(255,255,255,0.05)] lg:flex">
+                    <div className="relative hidden w-64 items-center rounded-2xl border border-white/12 bg-white/[0.03] px-1.5 backdrop-blur-xl lg:flex">
                         <Search className="absolute left-4 h-4 w-4 text-white/35" />
                         <input
                             type="text"
@@ -89,7 +89,7 @@ export default function TopNavbar({
 
                     <PlayerGameTokenBalance className="hidden sm:flex" />
 
-                    <button className="relative rounded-xl border border-white/15 bg-white/[0.06] p-2.5 text-white/45 backdrop-blur-xl transition-all shadow-[0_8px_24px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18)] hover:border-white/25 hover:bg-white/[0.10] hover:text-white">
+                    <button className="relative rounded-xl border border-white/12 bg-white/[0.03] p-2.5 text-white/45 backdrop-blur-xl transition-all hover:border-white/25 hover:bg-white/[0.08] hover:text-white">
                         <Bell size={18} />
                         <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
                     </button>
@@ -97,7 +97,7 @@ export default function TopNavbar({
                     <div className="relative">
                         <button
                             onClick={onToggleProfile}
-                            className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.06] p-1.5 backdrop-blur-xl transition-all shadow-[0_8px_24px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18)] hover:border-white/25 hover:bg-white/[0.10]"
+                            className="flex items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.03] p-1.5 backdrop-blur-xl transition-all hover:border-white/25 hover:bg-white/[0.08]"
                         >
                             <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#16191d] p-0.5">
                                 <img

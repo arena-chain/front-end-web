@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
-import ticketService from '../../services/ticketService';
-import type { Ticket } from '../../models/ticket';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    ShieldCheck,
+    LayoutGrid,
+    List,
+    Search,
+    Ticket as TicketIcon,
+    Calendar,
+    MapPin,
+    ChevronRight,
+    Gem,
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../../components/ui/core';
+import ticketService from '../../services/ticketService';
+import type { Ticket } from '../../models/ticket';
 import { cn } from '../../lib/utils';
 
 export default function MyTickets() {
@@ -45,28 +58,26 @@ export default function MyTickets() {
     });
 
     return (
-        <div className="min-h-screen bg-[#060606] text-white p-6 lg:p-10 selection:bg-[#00ff87] selection:text-black">
+        <div className="min-h-screen bg-[#060606] text-white p-6 lg:p-10 selection:bg-primary selection:text-black">
             {/* Ambient Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#00ff87]/5 blur-[120px] rounded-full" />
+                <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/10 blur-[120px] rounded-full" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full" />
                 <div className="absolute inset-0 opacity-[0.02]"
                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45v-30z' fill-rule='evenodd' stroke='%23fff' stroke-width='1' fill='none'/%3E%3C/svg%3E")`, backgroundSize: '30px' }}
                 />
             </div>
-        );
-    }
 
             <div className="max-w-7xl mx-auto relative z-10 space-y-10">
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-[#00ff87] font-black text-[10px] tracking-[0.3em] uppercase italic">
+                        <div className="flex items-center gap-2 text-primary font-black text-[10px] tracking-[0.3em] uppercase italic">
                             <ShieldCheck size={14} className="animate-pulse" />
                             Secure Assets Verified
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter uppercase leading-none">
-                            Digital <span className="text-[#00ff87]">Vault</span>
+                            Digital <span className="text-primary">Vault</span>
                         </h1>
                         <p className="text-white/40 font-medium tracking-wide max-w-md">
                             Manage your authenticated tournament passes and NFT tickets in one high-security interface.
@@ -77,13 +88,13 @@ export default function MyTickets() {
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-1.5 flex gap-1">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={cn("p-2.5 rounded-xl transition-all", viewMode === 'grid' ? "bg-white/10 text-[#00ff87]" : "text-white/30 hover:text-white")}
+                                className={cn("p-2.5 rounded-xl transition-all", viewMode === 'grid' ? "bg-white/10 text-primary" : "text-white/30 hover:text-white")}
                             >
                                 <LayoutGrid size={18} />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={cn("p-2.5 rounded-xl transition-all", viewMode === 'list' ? "bg-white/10 text-[#00ff87]" : "text-white/30 hover:text-white")}
+                                className={cn("p-2.5 rounded-xl transition-all", viewMode === 'list' ? "bg-white/10 text-primary" : "text-white/30 hover:text-white")}
                             >
                                 <List size={18} />
                             </button>
@@ -94,23 +105,23 @@ export default function MyTickets() {
                 {/* Filters & Search */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div className="md:col-span-8 relative group">
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#00ff87] transition-colors" size={18} />
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors" size={18} />
                         <input
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="SEARCH ENCRYPTED LEDGER..."
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-[11px] font-black tracking-widest focus:outline-none focus:border-[#00ff87]/50 focus:bg-white/[0.08] transition-all placeholder:text-white/10 text-white"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-[11px] font-black tracking-widest focus:outline-none focus:border-primary/50 focus:bg-white/[0.08] transition-all placeholder:text-white/10 text-white"
                         />
                     </div>
                     <div className="md:col-span-4 flex gap-2">
                         {['ALL', 'VALID'].map((f) => (
                             <button
                                 key={f}
-                                onClick={() => setFilter(f as any)}
+                                onClick={() => setFilter(f as 'ALL' | 'VALID')}
                                 className={cn(
                                     "flex-1 rounded-2xl border text-[9px] font-black uppercase tracking-widest transition-all",
                                     filter === f
-                                        ? "bg-[#00ff87]/10 border-[#00ff87]/40 text-[#00ff87]"
+                                        ? "bg-primary/12 border-primary/40 text-primary"
                                         : "bg-white/5 border-white/10 text-white/30 hover:border-white/20"
                                 )}
                             >
@@ -164,7 +175,7 @@ export default function MyTickets() {
                             <Button
                                 variant="outline"
                                 onClick={() => navigate('/player/market')}
-                                className="mt-8 border-white/10 hover:border-[#00ff87] hover:text-[#00ff87]"
+                                className="mt-8 border-white/10 hover:border-primary hover:text-primary"
                             >
                                 BROWSE MARKETPLACE
                             </Button>
@@ -188,7 +199,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={onClick}
-                className="group bg-[#111] border border-white/5 rounded-2xl p-4 flex items-center gap-6 cursor-pointer hover:border-[#00ff87]/30 hover:bg-white/[0.02] transition-all"
+                className="group bg-[#111] border border-white/5 rounded-2xl p-4 flex items-center gap-6 cursor-pointer hover:border-primary/30 hover:bg-white/[0.02] transition-all"
             >
                 <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center shrink-0">
                     {ticket.qrCode ? (
@@ -218,7 +229,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                     )}>
                         {ticket.status}
                     </div>
-                    <ChevronRight size={18} className="text-white/20 group-hover:text-[#00ff87] group-hover:translate-x-1 transition-all" />
+                    <ChevronRight size={18} className="text-white/20 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                 </div>
             </motion.div>
         );
@@ -230,7 +241,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1 }}
             onClick={onClick}
-            className="group relative h-[440px] bg-[#111] border border-white/5 rounded-[32px] overflow-hidden cursor-pointer hover:border-[#00ff87]/30 transition-all duration-500 shadow-2xl flex flex-col"
+            className="group relative h-[440px] bg-[#111] border border-white/5 rounded-[32px] overflow-hidden cursor-pointer hover:border-primary/30 transition-all duration-500 shadow-2xl flex flex-col"
         >
             {/* Holographic Overlay Effect */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-700 mix-blend-color-dodge"
@@ -258,7 +269,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                 <div className="absolute top-4 left-4 z-20">
                     <div className={cn(
                         "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-[0.2em] backdrop-blur-md",
-                        ticket.status === 'VALID' ? "bg-[#00ff87]/10 text-[#00ff87] border border-[#00ff87]/20" : "bg-black/60 text-white/20 border border-white/10"
+                        ticket.status === 'VALID' ? "bg-primary/12 text-primary border border-primary/25" : "bg-black/60 text-white/20 border border-white/10"
                     )}>
                         {ticket.status === 'VALID' ? 'ACTIVE_PASS' : 'ARCHIVED'}
                     </div>
@@ -278,7 +289,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
             {/* Content Body */}
             <div className="p-8 flex flex-col flex-1 relative">
                 <div className="flex-1 space-y-4">
-                    <h3 className="text-2xl font-black italic tracking-tighter uppercase text-white group-hover:text-[#00ff87] transition-colors leading-[1.1]">
+                    <h3 className="text-2xl font-black italic tracking-tighter uppercase text-white group-hover:text-primary transition-colors leading-[1.1]">
                         {tournament?.name || 'Tournament Access Pass'}
                     </h3>
 
@@ -304,7 +315,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                     </div>
 
                     <div className="relative group/qr">
-                        <div className="absolute -inset-2 bg-[#00ff87]/20 blur-xl opacity-0 group-hover/qr:opacity-100 transition-opacity" />
+                        <div className="absolute -inset-2 bg-primary/20 blur-xl opacity-0 group-hover/qr:opacity-100 transition-opacity" />
                         <div className="relative bg-white p-1.5 rounded-xl transition-all duration-300 group-hover:scale-110">
                             {ticket.qrCode ? (
                                 <img src={ticket.qrCode} alt={`QR ${ticket.ticketNumber}`} className="w-[50px] h-[50px]" />
@@ -318,7 +329,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
 
             {/* Bottom Progress/Deco */}
             <div className="h-1 w-full bg-white/[0.02]">
-                <div className="h-full bg-[#00ff87] w-[40%] group-hover:w-full transition-all duration-700" />
+                <div className="h-full bg-primary w-[40%] group-hover:w-full transition-all duration-700" />
             </div>
         </motion.div>
     );

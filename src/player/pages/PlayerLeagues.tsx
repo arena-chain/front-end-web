@@ -8,6 +8,7 @@ import {
     Video, Play, Layers,
     Lock, BookOpen,
     LayoutList, GitBranch, Shuffle, Grid2X2, Ticket as TicketIcon,
+    Radio, MapPin, MessageCircle,
 } from 'lucide-react';
 import { leagueService, type League, type LeagueParticipant } from '../../services/leagueService';
 import { seasonService, type Season } from '../../services/seasonService';
@@ -40,6 +41,7 @@ type LeagueFull = League & {
 };
 
 type MatchStatus = 'LIVE' | 'UPCOMING' | 'FINISHED';
+type LeagueHubTab = 'live' | 'standings' | 'seasons' | 'wiki';
 interface DisplayMatch {
     id: string;
     teamA: string; teamB: string;
@@ -107,7 +109,7 @@ export default function PlayerLeagues() {
     const [standings, setStandings] = useState<LeagueParticipant[]>([]);
     const [pageLoading, setPageLoading] = useState(true);
     const [standingsLoading, setStandingsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'live' | 'standings' | 'seasons' | 'wiki'>('live');
+    const [activeTab, setActiveTab] = useState<LeagueHubTab>('live');
 
     // Seasons + stages state
     const [seasons, setSeasons] = useState<Season[]>([]);
@@ -129,6 +131,8 @@ export default function PlayerLeagues() {
             })
             .catch(console.error)
             .finally(() => setPageLoading(false));
+    // Intentionally once: catalog is global; route `id` is synced via the `[id, leagues]` effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -319,13 +323,13 @@ export default function PlayerLeagues() {
 
                     {/* Tab bar */}
                     <div className="flex gap-1 p-1 rounded-2xl shrink-0 self-start pb-0 overflow-x-auto" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        {[
-                            { key: 'live', label: 'Live Stream', icon: <Video size={13} /> },
-                            { key: 'standings', label: 'Standings', icon: <TrendingUp size={13} /> },
-                            { key: 'seasons', label: 'Seasons', icon: <Layers size={13} /> },
-                            { key: 'wiki', label: 'Tournament Wiki', icon: <BookOpen size={13} /> },
-                        ].map(tab => (
-                            <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
+                        {([
+                            { key: 'live' as const, label: 'Live Stream', icon: <Video size={13} /> },
+                            { key: 'standings' as const, label: 'Standings', icon: <TrendingUp size={13} /> },
+                            { key: 'seasons' as const, label: 'Seasons', icon: <Layers size={13} /> },
+                            { key: 'wiki' as const, label: 'Tournament Wiki', icon: <BookOpen size={13} /> },
+                        ] satisfies { key: LeagueHubTab; label: string; icon: React.ReactNode }[]).map((tab) => (
+                            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200"
                                 style={{
                                     background: activeTab === tab.key ? 'var(--color-primary)' : 'transparent',
@@ -549,8 +553,8 @@ export default function PlayerLeagues() {
                                     );
                                 }) : standings.length > 0 ? standings.map((p, i) => {
                                     const isTeam = !!p.teamId && typeof p.teamId === 'object';
-                                    const name = isTeam ? (p.teamId as any).name : (p.playerId?.nickname || 'Unknown');
-                                    const avatar = isTeam ? (p.teamId as any).logo : (p.playerId?.avatar || null);
+                                    const name = isTeam ? p.teamId.name : (p.playerId?.nickname || 'Unknown');
+                                    const avatar = isTeam ? p.teamId.logo : (p.playerId?.avatar || null);
                                     const sub = isTeam ? 'Team' : (p.playerId?.email || '');
                                     const ps = positionStyles[i] ?? defaultPS;
                                     return (

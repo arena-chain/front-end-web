@@ -1,35 +1,58 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
     Store, Gem, ShoppingCart, Tag, X, Search, Heart,
     Sparkles, Crown, Star, Diamond, ArrowUpDown,
-    ChevronLeft, ChevronRight, Clock,
+    ChevronLeft, ChevronRight, Clock, Package,
 } from 'lucide-react';
 import { nftService } from '../../services/nftService';
-import type { NftAvatar, NftRarity } from '../../services/nftService';
-import {
-    nftInventoryApi,
-    nftTemplateImage,
-    type NftItemOwned,
-    type NftTemplate,
-} from '../../services/nftInventoryApi';
+import type { NftAvatar, NftRarity, NftTransaction } from '../../services/nftService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Inline styles + gradients for motion cards (accent / glow). */
-const RARITY_THEMES: Record<NftRarity, { accent: string; glow: string; gradient: string }> = {
-    COMMON: { accent: '#a1a1aa', glow: 'rgba(161,161,170,0.28)', gradient: 'from-zinc-600/20 to-zinc-800/20' },
-    RARE: { accent: '#60a5fa', glow: 'rgba(59,130,246,0.28)', gradient: 'from-blue-600/20 to-blue-900/20' },
-    EPIC: { accent: '#a78bfa', glow: 'rgba(139,92,246,0.3)', gradient: 'from-violet-600/20 to-violet-900/20' },
-    LEGENDARY: { accent: '#fbbf24', glow: 'rgba(245,158,11,0.32)', gradient: 'from-amber-500/20 to-orange-900/20' },
-};
 
 const RARITY_ICON: Record<NftRarity, React.ReactNode> = {
     COMMON: <Star size={12} />,
     RARE: <Sparkles size={12} />,
     EPIC: <Crown size={12} />,
     LEGENDARY: <Diamond size={12} />,
+};
+
+const RARITY_STYLES: Record<
+    NftRarity,
+    { badge: string; border: string; bg: string; text: string; gradient: string; glow: string }
+> = {
+    COMMON: {
+        badge: 'bg-zinc-500/15 text-zinc-300 border border-zinc-400/30',
+        border: 'border-zinc-500/30',
+        bg: 'bg-zinc-500/8',
+        text: 'text-zinc-300',
+        gradient: 'from-zinc-700/35 via-zinc-600/15 to-black',
+        glow: '',
+    },
+    RARE: {
+        badge: 'bg-sky-500/15 text-sky-300 border border-sky-400/30',
+        border: 'border-sky-500/35',
+        bg: 'bg-sky-500/8',
+        text: 'text-sky-300',
+        gradient: 'from-sky-600/30 via-blue-500/10 to-black',
+        glow: 'shadow-[0_0_0_1px_rgba(14,165,233,0.15)]',
+    },
+    EPIC: {
+        badge: 'bg-violet-500/15 text-violet-300 border border-violet-400/30',
+        border: 'border-violet-500/35',
+        bg: 'bg-violet-500/8',
+        text: 'text-violet-300',
+        gradient: 'from-violet-600/30 via-fuchsia-500/10 to-black',
+        glow: 'shadow-[0_0_0_1px_rgba(139,92,246,0.2)]',
+    },
+    LEGENDARY: {
+        badge: 'bg-primary/15 text-primary border border-primary/35',
+        border: 'border-primary/40',
+        bg: 'bg-primary/8',
+        text: 'text-primary',
+        gradient: 'from-primary/30 via-emerald-500/10 to-black',
+        glow: 'shadow-[0_0_0_1px_rgba(0,255,136,0.2)]',
+    },
 };
 
 const CATEGORIES = [
@@ -41,11 +64,14 @@ const CATEGORIES = [
 ];
 
 function useCountdown(target: Date): string {
-    const [now, setNow] = useState(Date.now());
+    const [now, setNow] = useState<number | null>(null);
     useEffect(() => {
-        const id = setInterval(() => setNow(Date.now()), 1000);
+        const tick = () => setNow(Date.now());
+        tick();
+        const id = setInterval(tick, 1000);
         return () => clearInterval(id);
     }, []);
+    if (now == null) return '00h : 00m : 00s';
     const diff = target.getTime() - now;
     if (diff <= 0) return '00h : 00m : 00s';
     const h = Math.floor(diff / 3600000);
@@ -79,7 +105,7 @@ export default function PlayerMarketplace() {
     const [marketplace, setMarketplace] = useState<NftAvatar[]>([]);
     const [featured, setFeatured] = useState<NftAvatar[]>([]);
     const [myNfts, setMyNfts] = useState<NftAvatar[]>([]);
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<NftTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterRarity, setFilterRarity] = useState<NftRarity | 'ALL'>('ALL');
@@ -89,38 +115,34 @@ export default function PlayerMarketplace() {
     const [buying, setBuying] = useState(false);
     const [auctionPage, setAuctionPage] = useState(0);
 
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const [listings, mine] = await Promise.all([
-                nftInventoryApi.getMarketplaceListings({ limit: 100 }),
-                nftInventoryApi.getMyNftItems(),
-            const [mkt, feat, my, hist] = await Promise.all([
-                nftService.getMarketplace({ search: s, rarity: r }).catch(() => DEMO_MARKETPLACE),
-                nftService.getMarketplace({ isFeatured: true }).catch(() => []),
-                nftService.getMyNfts().catch(() => DEMO_MY_NFTS),
-                nftService.getHistory(15).catch(() => []),
+            const [mkt, my, hist] = await Promise.all([
+                nftService.getMarketplace().catch(() => [] as NftAvatar[]),
+                nftService.getMyNfts().catch(() => [] as NftAvatar[]),
+                nftService.getHistory(15).catch(() => [] as NftTransaction[]),
             ]);
-            setMarketplace(mkt.length > 0 || (s || r !== 'ALL') ? mkt : DEMO_MARKETPLACE);
-            setFeatured(feat);
+            const listings = mkt.length > 0 ? mkt : DEMO_MARKETPLACE;
+            setMarketplace(listings);
+            setFeatured(listings.filter((n) => n.rarity === 'LEGENDARY' || n.rarity === 'EPIC').slice(0, 8));
             setMyNfts(my.length > 0 ? my : DEMO_MY_NFTS);
             setHistory(hist);
         } catch {
             setMarketplace(DEMO_MARKETPLACE);
+            setFeatured(
+                DEMO_MARKETPLACE.filter((n) => n.rarity === 'LEGENDARY' || n.rarity === 'EPIC').slice(0, 8),
+            );
             setMyNfts(DEMO_MY_NFTS);
+            setHistory([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { loadData(); }, []);
-
-    // Debounced search effect
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (tab === 'marketplace') loadData(search, filterRarity);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [search, filterRarity, tab]);
+        void loadData();
+    }, [loadData, tab]);
 
     const handleBuy = async (nft: NftAvatar) => {
         try {
@@ -157,7 +179,6 @@ export default function PlayerMarketplace() {
         .sort((a, b) => {
             if (sortBy === 'price-asc') return (a.listPrice ?? a.price) - (b.listPrice ?? b.price);
             if (sortBy === 'price-desc') return (b.listPrice ?? b.price) - (a.listPrice ?? a.price);
-            const RARITY_ORDER: Record<NftRarity, number> = { COMMON: 0, RARE: 1, EPIC: 2, LEGENDARY: 3 };
             return RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity];
         });
 
@@ -442,7 +463,6 @@ export default function PlayerMarketplace() {
                             <button
                                 onClick={() => handleBuy(showBuyConfirm)}
                                 disabled={buying}
-                                className="w-full h-20 bg-[#00ff87] text-black rounded-3xl font-black italic uppercase text-xs tracking-[0.3em] shadow-[0_15px_40px_rgba(0,255,135,0.2)] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                                 className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-black uppercase tracking-wider disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                             >
                                 {buying ? 'Buying…' : <><ShoppingCart size={14} /> Buy</>}
@@ -649,7 +669,7 @@ function ListForSaleModal({ nft, onClose, onListed }: { nft: NftAvatar; onClose:
                         onChange={e => setListPrice(+e.target.value)}
                         className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none"
                     />
-                </label>
+                </div>
 
                 <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between gap-3">
                     <div>

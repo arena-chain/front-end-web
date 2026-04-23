@@ -4,6 +4,7 @@ import type { Tournament } from '../../../models/tournament';
 import { bracketService } from '../../../services/bracketService';
 import type { Bracket, BracketSlot } from '../../../services/bracketService';
 import BracketNode from './BracketNode';
+import type { BracketNodeProps } from './BracketNode';
 import BracketConnector from './BracketConnector';
 import { Button } from '../../../components/ui/core';
 
@@ -22,6 +23,20 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
     const MATCH_HEIGHT = 100;
     const ROUND_SPACING = 120;
     const MATCH_VERTICAL_SPACING = 40;
+
+    type TeamRef = BracketSlot['team1Id'];
+    const teamFromRef = (team: TeamRef): BracketNodeProps['team1'] | undefined => {
+        if (!team) return undefined;
+        if (typeof team === 'object') {
+            return { name: team.name, logo: team.logo };
+        }
+        return { name: `Team ${team.slice(-4)}` };
+    };
+
+    const championName = (champion: Bracket['championId']): string => {
+        if (!champion) return 'TBD';
+        return typeof champion === 'object' ? champion.name : champion;
+    };
 
     useEffect(() => {
         fetchBracket();
@@ -77,25 +92,28 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
     }
 
     // Group slots by round and section (Upper/Lower/Final)
-    const upperRounds: Record<number, BracketSlot[]> = {};
-    const lowerRounds: Record<number, BracketSlot[]> = {};
-    let grandFinalSlot: BracketSlot | null = null;
+    const grandFinalSlot: BracketSlot | null = bracket.slots.find((slot) => slot.slotId === 'GF') ?? null;
 
-    bracket.slots.forEach((slot: BracketSlot) => {
-        if (slot.slotId === 'GF') {
-            grandFinalSlot = slot;
-        } else if (slot.slotId.startsWith('LB')) {
-            if (!lowerRounds[slot.roundNumber]) lowerRounds[slot.roundNumber] = [];
-            lowerRounds[slot.roundNumber].push(slot);
-        } else {
-            // Assume single elim or Upper Bracket
-            if (!upperRounds[slot.roundNumber]) upperRounds[slot.roundNumber] = [];
-            upperRounds[slot.roundNumber].push(slot);
-        }
-    });
+    const upperRounds = bracket.slots
+        .filter((slot) => slot.slotId !== 'GF' && !slot.slotId.startsWith('LB'))
+        .reduce<Record<number, BracketSlot[]>>((acc, slot) => {
+            if (!acc[slot.roundNumber]) acc[slot.roundNumber] = [];
+            acc[slot.roundNumber].push(slot);
+            return acc;
+        }, {});
+
+    const lowerRounds = bracket.slots
+        .filter((slot) => slot.slotId.startsWith('LB'))
+        .reduce<Record<number, BracketSlot[]>>((acc, slot) => {
+            if (!acc[slot.roundNumber]) acc[slot.roundNumber] = [];
+            acc[slot.roundNumber].push(slot);
+            return acc;
+        }, {});
 
     const maxUpperRound = Math.max(...Object.keys(upperRounds).map(Number), 0);
     const maxLowerRound = Math.max(...Object.keys(lowerRounds).map(Number), 0);
+    const upperRoundEntries: Array<[string, BracketSlot[]]> = Object.entries(upperRounds);
+    const lowerRoundEntries: Array<[string, BracketSlot[]]> = Object.entries(lowerRounds);
 
     return (
         <div className="relative w-full bg-[#0a0a0f] rounded-3xl overflow-hidden border border-white/5 min-h-[600px]">
@@ -160,7 +178,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
                                 })}
                             </svg>
 
-                            {Object.entries(upperRounds).sort(([a], [b]) => Number(a) - Number(b)).map(([roundNum, slots]) => (
+                            {upperRoundEntries.sort(([a], [b]) => Number(a) - Number(b)).map(([roundNum, slots]) => (
                                 <div key={roundNum} className="flex flex-col gap-y-10 justify-around py-10" style={{ height: (MATCH_HEIGHT + MATCH_VERTICAL_SPACING) * Math.pow(2, maxUpperRound - 1) }}>
                                     <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4 text-center">Round {roundNum}</h4>
                                     {slots.sort((a, b) => a.position - b.position).map(slot => (
@@ -169,8 +187,8 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
                                                 matchId={slot.slotId}
                                                 roundNumber={slot.roundNumber}
                                                 matchStatus={slot.status}
-                                                team1={slot.team1Id ? (typeof slot.team1Id === 'object' ? { name: (slot.team1Id as any).name, logo: (slot.team1Id as any).logo } : { name: `Team ${slot.team1Id.slice(-4)}` }) : undefined}
-                                                team2={slot.team2Id ? (typeof slot.team2Id === 'object' ? { name: (slot.team2Id as any).name, logo: (slot.team2Id as any).logo } : { name: `Team ${slot.team2Id.slice(-4)}` }) : undefined}
+                                                team1={teamFromRef(slot.team1Id)}
+                                                team2={teamFromRef(slot.team2Id)}
                                                 onClick={isAdmin ? () => handleForceWin(slot.slotId, '1') : undefined}
                                             />
                                         </div>
@@ -178,19 +196,19 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
                                 </div>
                             ))}
 
-                            {grandFinalSlot && (
+                            {grandFinalSlot !== null ? (
                                 <div className="flex flex-col items-center justify-center pl-20 border-l border-white/5">
                                     <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-8">Grand Final</div>
                                     <BracketNode
                                         matchId={grandFinalSlot.slotId}
                                         roundNumber={grandFinalSlot.roundNumber}
                                         matchStatus={grandFinalSlot.status}
-                                        team1={grandFinalSlot.team1Id ? (typeof grandFinalSlot.team1Id === 'object' ? { name: (grandFinalSlot.team1Id as any).name, logo: (grandFinalSlot.team1Id as any).logo } : { name: `Team ${grandFinalSlot.team1Id.slice(-4)}` }) : undefined}
-                                        team2={grandFinalSlot.team2Id ? (typeof grandFinalSlot.team2Id === 'object' ? { name: (grandFinalSlot.team2Id as any).name, logo: (grandFinalSlot.team2Id as any).logo } : { name: `Team ${grandFinalSlot.team2Id.slice(-4)}` }) : undefined}
-                                        onClick={isAdmin ? () => handleForceWin(grandFinalSlot!.slotId, '1') : undefined}
+                                        team1={teamFromRef(grandFinalSlot.team1Id)}
+                                        team2={teamFromRef(grandFinalSlot.team2Id)}
+                                        onClick={isAdmin ? () => handleForceWin(grandFinalSlot.slotId, '1') : undefined}
                                     />
                                 </div>
-                            )}
+                            ) : null}
 
                             {/* Winner / Champion */}
                             <div className="flex flex-col items-center justify-center pl-20">
@@ -199,7 +217,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
                                     <div className="relative w-40 h-40 rounded-full bg-gradient-to-b from-[#141419] to-black border-2 border-[#00ff88]/30 flex flex-col items-center justify-center p-6 text-center">
                                         <Trophy className="w-12 h-12 text-[#00ff88] mb-3 drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]" />
                                         <span className="text-[10px] font-black text-[#00ff88] uppercase tracking-[0.2em] mb-1">Champion</span>
-                                        <span className="text-sm font-black text-white uppercase">{typeof bracket.championId === 'object' ? (bracket.championId as any).name : (bracket.championId || 'TBD')}</span>
+                                        <span className="text-sm font-black text-white uppercase">{championName(bracket.championId)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -211,7 +229,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
                         <div className="flex flex-col gap-4 mt-20 border-t border-white/5 pt-20">
                             <h3 className="text-xs font-black text-white/20 uppercase tracking-[0.3em] pl-4">Lower Bracket</h3>
                             <div className="flex gap-x-[120px] items-center relative">
-                                {Object.entries(lowerRounds).sort(([a], [b]) => Number(a) - Number(b)).map(([roundNum, slots]) => (
+                                {lowerRoundEntries.sort(([a], [b]) => Number(a) - Number(b)).map(([roundNum, slots]) => (
                                     <div key={roundNum} className="flex flex-col gap-y-10 justify-around py-10">
                                         <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4 text-center">LB Round {Number(roundNum) - maxUpperRound}</h4>
                                         {slots.sort((a, b) => a.position - b.position).map(slot => (
@@ -220,8 +238,8 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ tournament, isAdm
                                                     matchId={slot.slotId}
                                                     roundNumber={slot.roundNumber}
                                                     matchStatus={slot.status}
-                                                    team1={slot.team1Id ? (typeof slot.team1Id === 'object' ? { name: (slot.team1Id as any).name, logo: (slot.team1Id as any).logo } : { name: `Team ${slot.team1Id.slice(-4)}` }) : undefined}
-                                                    team2={slot.team2Id ? (typeof slot.team2Id === 'object' ? { name: (slot.team2Id as any).name, logo: (slot.team2Id as any).logo } : { name: `Team ${slot.team2Id.slice(-4)}` }) : undefined}
+                                                    team1={teamFromRef(slot.team1Id)}
+                                                    team2={teamFromRef(slot.team2Id)}
                                                     onClick={isAdmin ? () => handleForceWin(slot.slotId, '1') : undefined}
                                                 />
                                             </div>

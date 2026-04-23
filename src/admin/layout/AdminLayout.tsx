@@ -4,6 +4,7 @@ import {
     LayoutDashboard, Users, Trophy, Settings, LogOut, Menu,
     MessageSquare, Gamepad2, Ticket, Handshake,
     Zap, Newspaper, ShieldCheck, Archive, Wand2, Coins,
+    Gem, Layers,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -48,20 +49,13 @@ const NAV_GROUPS = [
     },
     {
         label: 'Inventory',
-        items: [
-            { to: '/admin/nft-inventory', icon: Archive, label: 'NFT Inventory' },
-            { to: '/admin/settings', icon: Settings, label: 'Hub Configuration' },
-            { to: '/admin/games', icon: Gamepad2, label: 'Games & Modes' },
-            { to: '/admin/settings/api', icon: Box, label: 'API Keys' },
-        ],
+        items: [{ to: '/admin/nft-inventory', icon: Archive, label: 'NFT Inventory' }],
     },
     {
-        label: 'System',
         label: 'Marketplace & NFTs',
         items: [
             { to: '/admin/settings', icon: Settings, label: 'Settings' },
             { to: '/admin/trading', icon: Zap, label: 'Trading Floor' },
-            { to: '/admin/nft-manager', icon: Box, label: 'Marketplace Manager' },
             { to: '/admin/nft-avatars', icon: Users, label: 'Avatar Studio' },
             { to: '/admin/nft-collections', icon: Layers, label: 'Collections' },
         ],

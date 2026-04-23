@@ -13,6 +13,7 @@ import {
     Bookmark,
     Sparkles,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -211,7 +212,7 @@ function NavSectionLabel({
 
 interface NavItemProps {
     to: string;
-    icon: React.ComponentType<{ size?: number; className?: string }>;
+    icon: LucideIcon;
     label: string;
     isOpen: boolean;
 }

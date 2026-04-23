@@ -52,7 +52,7 @@ export default function TicketDetails() {
             <div className="min-h-screen bg-[#0e0e0e] flex flex-col items-center justify-center p-6 text-center text-zinc-300">
                 <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-3">Ticket Not Found</h2>
                 <p className="text-zinc-500 mb-6">No ticket data found for this identifier.</p>
-                <Button onClick={() => navigate('/player/my-tickets')}>Back to My Tickets</Button>
+                <Button onClick={() => navigate('/player/tickets')}>Back to My Tickets</Button>
             </div>
         );
     }

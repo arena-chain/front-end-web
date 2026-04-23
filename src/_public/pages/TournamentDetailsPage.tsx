@@ -8,7 +8,6 @@ import { MOCK_TOURNAMENTS } from '../data/tournamentData';
 import tournamentService from '../../services/tournamentService';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { placeholderImage } from '../../lib/placeholderImage';
-import type { Tournament as _ApiTournament } from '../../models/tournament';
 
 // Helper to bridge types if needed, though we'll try to use API type primarily
 interface TournamentDisplay {
@@ -23,8 +22,33 @@ interface TournamentDisplay {
     prize: string;
     location: string;
     teams: { id: string; name: string; logo: string }[];
-    bracket: any[];
+    bracket: BracketMatch[];
     checkAuth?: boolean;
+}
+
+type BracketTeam = { id: string; name: string; logo: string };
+type BracketMatch = {
+    id: string;
+    round: string;
+    date: string;
+    time: string;
+    team1?: BracketTeam | null;
+    team2?: BracketTeam | null;
+    score1?: number | string | null;
+    score2?: number | string | null;
+    winner?: BracketTeam | { id?: string } | null;
+};
+
+function normalizeApiTeam(team: unknown): { id: string; name: string; logo: string } {
+    if (team && typeof team === 'object') {
+        const t = team as { _id?: string; id?: string; name?: string; logo?: string };
+        return {
+            id: t._id ?? t.id ?? '',
+            name: t.name ?? 'Team',
+            logo: t.logo ?? '',
+        };
+    }
+    return { id: String(team ?? ''), name: 'Team', logo: '' };
 }
 
 export default function TournamentDetailsPage() {
@@ -60,7 +84,7 @@ export default function TournamentDetailsPage() {
                 description: apiData.description || 'No description available.',
                 prize: `$${apiData.prizePool?.toLocaleString() || '0'}`,
                 location: 'Online / TBD', // API might not have location yet
-                teams: apiData.teams?.map((t: any) => ({ id: t._id || t, name: 'Team', logo: '' })) || [], // Populate if teams are objects
+                teams: apiData.teams?.map(normalizeApiTeam) || [],
                 bracket: [], // API specific bracket logic needed later
                 checkAuth: true // Flag to check auth on booking
             };
@@ -316,7 +340,7 @@ export default function TournamentDetailsPage() {
 }
 
 // Sub-components for Bracket
-function BracketColumn({ title, matches, className = "" }: { title: string, matches: any[], className?: string }) {
+function BracketColumn({ title, matches, className = "" }: { title: string, matches: BracketMatch[], className?: string }) {
     return (
         <div className="flex-1 flex flex-col">
             <h4 className="text-center font-bold text-text-muted uppercase text-sm mb-6">{title}</h4>
@@ -329,7 +353,7 @@ function BracketColumn({ title, matches, className = "" }: { title: string, matc
     );
 }
 
-function MatchCard({ match }: { match: any }) {
+function MatchCard({ match }: { match: BracketMatch }) {
     const isUpcoming = !match.score1 && !match.score2;
 
     return (

@@ -3,10 +3,9 @@ import axios from 'axios';
 import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-    Swords, Clock, Trophy, Zap, Target,
-    ChevronRight, Flame, Star, Activity,
-    Users, Crown,
-    Globe, Search, X, Smartphone, Monitor, ArrowRight, ShieldCheck, Cpu
+    Swords, Clock, Zap, Target,
+    Flame, Activity,
+    Globe, Search, X, Smartphone, Monitor
 } from 'lucide-react';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { getApiBase } from '../../lib/apiBase';
@@ -18,18 +17,6 @@ import {
 } from '../../services/friendshipPresence.service';
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-
-// ─── Rank config ─────────────────────────────────────────────────────────────
-
-const RANK_CONFIG: Record<string, { emoji: string; color: string; min: number; max: number; next: string }> = {
-    Radiant:  { emoji: '👑', color: '#ffd700', min: 4000, max: 5000, next: '' },
-    Immortal: { emoji: '💀', color: '#ff4655', min: 3500, max: 4000, next: 'Radiant' },
-    Diamond:  { emoji: '💎', color: '#a855f7', min: 2500, max: 3500, next: 'Immortal' },
-    Platinum: { emoji: '🔷', color: '#3b82f6', min: 2000, max: 2500, next: 'Diamond' },
-    Gold:     { emoji: '🥇', color: '#f59e0b', min: 1500, max: 2000, next: 'Platinum' },
-    Silver:   { emoji: '🥈', color: '#94a3b8', min: 1000, max: 1500, next: 'Gold' },
-    Bronze:   { emoji: '🥉', color: '#b45309', min:  500, max: 1000, next: 'Silver' },
-};
 
 interface PlayerStats {
     elo: number;
@@ -65,6 +52,23 @@ interface OnlinePlayer {
     game?: string;
     details?: string;
     elo: number;
+    region?: string;
+}
+
+interface UserListEntry {
+    _id?: string;
+    role?: string;
+    isActive?: boolean;
+    nickname?: string;
+    avatar?: string;
+    region?: string;
+}
+
+interface ChannelListEntry {
+    owner?: string | { _id?: string };
+    ownerId?: string;
+    game?: string;
+    title?: string;
 }
 
 type AppModalType = 'match' | 'scrims' | null;
@@ -88,7 +92,7 @@ export default function PlayerDashboard() {
             const API = getApiBase();
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             try {
-                const [meRes, profileRes, allPlayersRes] = await Promise.allSettled([
+                const [meRes, profileRes, allPlayersRes, usersRes, channelsRes] = await Promise.allSettled([
                     axios.get(`${API}/player/me`, { headers }),
                     axios.get(`${API}/auth/profile`, { headers }),
                     axios.get(`${API}/player`, { headers }),
@@ -99,8 +103,24 @@ export default function PlayerDashboard() {
                 const me = meRes.status === 'fulfilled' ? meRes.value.data : null;
                 const myUser = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
                 const allPlayers = allPlayersRes.status === 'fulfilled' && Array.isArray(allPlayersRes.value.data) ? allPlayersRes.value.data : [];
-                const allUsers = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value.data) ? usersRes.value.data : [];
-                const allChannels = channelsRes.status === 'fulfilled' && Array.isArray(channelsRes.value.data) ? channelsRes.value.data : [];
+                const allUsers: UserListEntry[] =
+                    usersRes.status === 'fulfilled' && Array.isArray(usersRes.value.data) ? usersRes.value.data : [];
+                const allChannels: ChannelListEntry[] =
+                    channelsRes.status === 'fulfilled' && Array.isArray(channelsRes.value.data) ? channelsRes.value.data : [];
+
+                const liveByOwner = new Map<string, { game?: string }>();
+                for (const ch of allChannels) {
+                    const ownerRaw = ch.owner ?? ch.ownerId;
+                    const ownerId =
+                        typeof ownerRaw === 'object' && ownerRaw && '_id' in ownerRaw
+                            ? String((ownerRaw as { _id?: string })._id)
+                            : typeof ownerRaw === 'string'
+                              ? ownerRaw
+                              : '';
+                    if (ownerId) {
+                        liveByOwner.set(ownerId, { game: ch.game || ch.title });
+                    }
+                }
 
                 setPlayerStats({
                     elo: me?.elo ?? 2854, // Mock if 0
@@ -146,11 +166,13 @@ export default function PlayerDashboard() {
                     }
                 });
 
+                setPlayerProfilesByUser(profileMap);
+
                 const mappedOnline: OnlinePlayer[] = allUsers
-                    .filter((u: any) => u?.role === 'player' && u?.isActive && u?._id !== myUserId)
+                    .filter((u) => u?.role === 'player' && u?.isActive && u?._id && String(u._id) !== String(myUserId))
                     .slice(0, 30)
-                    .map((u: any) => {
-                        const prof = playerProfilesByUser.get(String(u._id));
+                    .map((u) => {
+                        const prof = profileMap[String(u._id)];
                         const isLive = liveByOwner.has(String(u._id));
                         const rankText = prof?.rank || 'Unranked';
                         const rankEmoji = rankText.toLowerCase().includes('diamond') ? '💎'
@@ -296,15 +318,16 @@ export default function PlayerDashboard() {
         });
 
     return (
-        <div className="flex gap-8 h-full animate-fade-in-up overflow-hidden p-6 lg:p-0">
-            {appModal && <AppRequiredModal type={appModal} onClose={() => setAppModal(null)} />}
+        <div className="relative h-full overflow-hidden rounded-[28px]" aria-busy={statsLoading}>
+            <div className="relative z-10 flex gap-8 h-full animate-fade-in-up overflow-hidden p-6 lg:p-0">
+                {appModal && <AppRequiredModal type={appModal} onClose={() => setAppModal(null)} />}
 
             {/* ── Main content ─────────────────────────────────────────── */}
             <div className="flex flex-col gap-8 flex-1 min-w-0 overflow-y-auto pr-2 custom-scrollbar">
 
                 {/* ── Hero Banner ──────────────────────────────────────────── */}
                 <div className="relative overflow-hidden rounded-[40px] border border-white/10 shrink-0 bg-[#060606] shadow-2xl">
-                    <div className="absolute inset-0 bg-[#00ff87]/5 blur-[120px] -mr-40 -mt-40 rounded-full" />
+                    <div className="absolute inset-0 bg-primary/10 blur-[120px] -mr-40 -mt-40 rounded-full" />
 
                     {/* Hex grid */}
                     <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -317,16 +340,16 @@ export default function PlayerDashboard() {
                     <div className="relative p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-10">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <div className="px-3 py-1 rounded-sm bg-[#00ff87]/10 border border-[#00ff87]/20 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] animate-pulse" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-[#00ff87] italic">System Online</span>
+                                <div className="px-3 py-1 rounded-sm bg-primary/10 border border-primary/25 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-primary italic">System Online</span>
                                 </div>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Protocol Node: 0xF4...A2</span>
                             </div>
 
                             <div className="space-y-2">
                                 <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter text-white leading-tight uppercase">
-                                    READY TO <span className="text-[#00ff87] drop-shadow-[0_0_40px_rgba(0,255,135,0.4)]">DOMINATE?</span>
+                                    READY TO <span className="text-primary drop-shadow-[0_0_40px_rgba(0,255,136,0.4)]">DOMINATE?</span>
                                 </h1>
                                 <p className="text-sm text-white/30 font-bold uppercase tracking-widest leading-relaxed max-w-lg italic">
                                     Initiate matchmaking protocol and claim your legacy on the global decentralized ledger.
@@ -336,7 +359,7 @@ export default function PlayerDashboard() {
                             <div className="flex items-center gap-4 pt-4">
                                 <button
                                     onClick={() => setAppModal('match')}
-                                    className="h-16 px-10 rounded-2xl bg-[#00ff87] text-black font-black italic uppercase text-xs tracking-[0.3em] shadow-[0_15px_40px_rgba(0,255,135,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                                    className="h-16 px-10 rounded-2xl bg-primary text-black font-black italic uppercase text-xs tracking-[0.3em] shadow-[0_15px_40px_rgba(0,255,136,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
                                 >
                                     <Swords size={18} /> INITIALIZE MATCH
                                 </button>
@@ -366,10 +389,9 @@ export default function PlayerDashboard() {
                         </div>
                     </div>
                 </div>
-            </div>
 
             {/* ── Quick Stats row ───────────────────────────────────────── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
                 <HudStat
                     icon={<Target size={18} />}
                     label="Win Rate"
@@ -405,48 +427,42 @@ export default function PlayerDashboard() {
             </div>
 
             {/* ── Middle split ──────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 flex-1 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-3 flex-1 min-h-0">
 
                 {/* Performance chart */}
                 <div className="min-h-0">
                     <PerformanceChart data={chartData} />
                 </div>
 
-                {/* ── Secondary Grid ────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8 flex-1 min-h-0">
-
-                    {/* Visual Performance Matrix */}
-                    <div className="bg-[#111] border border-white/5 rounded-[40px] p-10 space-y-8 shadow-xl">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-black italic tracking-widest uppercase flex items-center gap-3">
-                                <Cpu size={20} className="text-[#00ff87]" /> PERFORMANCE_MATRIX
-                            </h3>
-                            <div className="flex items-center gap-4">
-                                <button className="text-[9px] font-black uppercase tracking-widest text-[#00ff87]">LIVE_FEED</button>
-                                <button className="text-[9px] font-black uppercase tracking-widest text-white/20">HISTORICAL</button>
+                {/* Right column: Recent Matches + Live Ecosystem */}
+                <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+                    <div className="bg-[#080b10]/90 border border-white/10 rounded-[22px] overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Swords size={16} className="text-[#00ff87]" />
+                                <span className="text-[10px] font-black uppercase tracking-widest italic">RECENT MATCHES</span>
                             </div>
+                            <button onClick={() => navigate('/player/matches')} className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 hover:text-[#00ff87] transition-all">VIEW ALL</button>
                         </div>
-                        <div className="h-64">
-                            <PerformanceChart data={chartData} />
+                        <div className="p-4">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-white/25">
+                                {recentMatches.length === 0 ? 'No recent matches available.' : `${recentMatches.length} recent matches loaded.`}
+                            </p>
                         </div>
                     </div>
 
-                    {/* Right column: Recent Logs & Action List */}
-                    <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-
-                        {/* COMBAT LOGS */}
-                        <div className="bg-[#111] border border-white/5 rounded-[32px] overflow-hidden shadow-xl">
-                            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Swords size={16} className="text-[#00ff87]" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest italic">RECENT_COMBAT_LOGS</span>
-                                </div>
-                                <button onClick={() => navigate('/player/matches')} className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 hover:text-[#00ff87] transition-all">VIEW_FULL_RECORD</button>
+                    <div className="bg-[#080b10]/90 border border-white/10 rounded-[22px] overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Zap size={14} className="text-[#eab308]" />
+                                <span className="text-[10px] font-black uppercase tracking-widest italic">LIVE ECOSYSTEM</span>
                             </div>
-                            <div className="flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full"
-                                style={{ background: 'rgba(0,255,0,0.08)', color: '#00ff00', border: '1px solid rgba(0,255,0,0.15)' }}>
+                            <span
+                                className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full"
+                                style={{ background: 'rgba(0,255,0,0.08)', color: '#00ff00', border: '1px solid rgba(0,255,0,0.15)' }}
+                            >
                                 Dynamic
-                            </div>
+                            </span>
                         </div>
                         <div className="p-3 space-y-2">
                             {[
@@ -454,7 +470,7 @@ export default function PlayerDashboard() {
                                 { label: 'Players in live channels', value: onlinePlayers.filter((p) => p.status === 'in-game').length },
                                 { label: 'Recent matches loaded', value: recentMatches.length },
                             ].map((item) => (
-                                <div key={item.label} className="rounded-xl p-3 transition-all border border-white/5 bg-white/[0.02]">
+                                <div key={item.label} className="rounded-xl p-3 transition-all border border-white/10 bg-black/45">
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="text-[11px] text-white/75">{item.label}</span>
                                         <span className="text-[11px] font-black text-primary">{item.value}</span>
@@ -463,57 +479,19 @@ export default function PlayerDashboard() {
                             ))}
                         </div>
                     </div>
-
-                        {/* QUICK ACCESS GRID */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <QuickNavCard icon={<Trophy size={18} />} label="LEAGUES" color="#a855f7" onClick={() => navigate('/player/leagues')} />
-                            <QuickNavCard icon={<Users size={18} />} label="TOURNEYS" color="#3b82f6" onClick={() => navigate('/player/tournaments')} />
-                        </div>
-                    </div>
                 </div>
             </div>
-
+            </div>
             {/* Offline/Online Panel */}
-            <OnlinePanel players={onlinePlayers} />
-        </div>
-    );
-}
-
-function ProtocolHudStat({ icon, label, value, sub, color }: any) {
-    return (
-        <div className="bg-[#111] border border-white/5 rounded-[32px] p-7 space-y-4 hover:border-white/15 transition-all shadow-xl group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 blur-[40px] opacity-10 rounded-full" style={{ background: color }} />
-            <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center">
-                    {icon}
-                </div>
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 italic">{label}</span>
-            </div>
-            <div>
-                <p className="text-3xl font-black italic tracking-tighter text-white" style={{ textShadow: `0 0 30px ${color}30` }}>{value}</p>
-                <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1 italic">{sub}</p>
+                <OnlinePanel players={onlinePlayers} onOpenFriends={() => navigate('/player/friends')} />
             </div>
         </div>
-    );
-}
-
-function QuickNavCard({ icon, label, color, onClick }: any) {
-    return (
-        <button
-            onClick={onClick}
-            className="bg-[#111] border border-white/5 p-6 rounded-[28px] flex flex-col items-center gap-3 hover:border-white/10 transition-all group shadow-lg"
-        >
-            <div className="p-3 rounded-xl bg-white/5 text-white/20 group-hover:text-white group-hover:bg-white/10 transition-all" style={{ color: `${color}80` }}>
-                {icon}
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-hover:text-white transition-all italic">{label}</span>
-        </button>
     );
 }
 
 // ─── Online Players Panel (right) ────────────────────────────────────────────
 
-function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
+function OnlinePanel({ players, onOpenFriends }: { players: OnlinePlayer[]; onOpenFriends: () => void }) {
     const [filter, setFilter] = useState<'all' | 'in-game' | 'online' | 'offline'>('all');
     const [search, setSearch] = useState('');
 
@@ -532,19 +510,24 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
     const regionFlag: Record<string, string> = { EU: '🇪🇺', NA: '🇺🇸', AS: '🌏', AF: '🌍' };
 
     return (
-        <div className="w-72 shrink-0 flex flex-col gap-6 h-full overflow-hidden hidden xl:flex">
-            <div className="bg-[#111] border border-white/5 rounded-[40px] flex-1 flex flex-col overflow-hidden shadow-2xl">
-                <div className="p-8 border-b border-white/5 space-y-6">
-                    <div className="flex items-center justify-between">
+        <div className="w-72 shrink-0 flex flex-col gap-3 h-full overflow-hidden hidden xl:flex">
+            <div className="bg-[#080b10]/90 border border-white/10 rounded-[24px] flex-1 flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+                <div className="p-4 border-b border-white/10 space-y-4">
+                    <button
+                        type="button"
+                        onClick={onOpenFriends}
+                        className="flex w-full items-center justify-between rounded-lg transition-colors hover:bg-white/[0.04] px-1 py-0.5"
+                        title="Open friends"
+                    >
                         <div className="flex items-center gap-3">
                             <Globe size={18} className="text-[#00ff87]" />
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">OPERATORS</span>
                         </div>
                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
                             style={{ background: 'rgba(0,255,0,0.08)', color: '#00ff00', border: '1px solid rgba(0,255,0,0.15)' }}>
-                            {onlineCount} online
+                            {inGameCount} live · {onlineCount} online
                         </span>
-                    </div>
+                    </button>
                     
                     <div className="relative">
                         <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
@@ -552,7 +535,7 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder="ENCRYPTED_ID..."
-                            className="w-full bg-white/5 border border-white/5 rounded-2xl py-3 pl-10 pr-4 text-[10px] font-black tracking-widest text-white placeholder:text-white/10 focus:outline-none focus:border-[#00ff87]/20 transition-all"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-[10px] font-black tracking-widest text-white placeholder:text-white/10 focus:outline-none focus:border-[#00ff87]/25 transition-all"
                         />
                     </div>
 
@@ -582,10 +565,16 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                 {/* Player list */}
                 <div className="flex-1 overflow-y-auto">
                     {visible.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-10 gap-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                        <button
+                            type="button"
+                            onClick={onOpenFriends}
+                            className="flex w-full flex-col items-center justify-center py-10 gap-2 transition-colors hover:text-white/45"
+                            style={{ color: 'rgba(255,255,255,0.2)' }}
+                            title="Open friends"
+                        >
                             <Search size={20} />
                             <p className="text-[10px] font-bold uppercase tracking-widest">No players found</p>
-                        </div>
+                        </button>
                     ) : visible.map((p, i) => (
                         <div key={p.id}
                             className="flex items-center gap-2.5 px-4 py-2.5 transition-colors cursor-pointer group"
@@ -616,7 +605,7 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                                     <span className="text-[11px] font-black text-white truncate group-hover:text-primary transition-colors" style={{ '--tw-text-opacity': 1 } as React.CSSProperties}>
                                         {p.name}
                                     </span>
-                                    <span className="text-[9px] shrink-0">{regionFlag[p.region]}</span>
+                                    <span className="text-[9px] shrink-0">{regionFlag[p.region ?? 'EU']}</span>
                                 </div>
                                 <div className="text-[9px] font-bold truncate" style={{
                                     color:
@@ -707,8 +696,10 @@ function HudStat({ icon, label, value, sub, color }: {
     color: string;
 }) {
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] p-4 group hover:border-white/15 transition-all duration-200"
-            style={{ background: '#0a0a0a' }}>
+        <div
+            className="relative overflow-hidden rounded-[14px] border border-white/10 p-3.5 group hover:border-white/20 transition-all duration-200 bg-[#080b10]/90 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+        >
+            <div className="absolute left-0 right-0 top-0 h-[1px] opacity-70" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
             {/* Subtle corner glow */}
             <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 style={{ background: color, transform: 'translate(30%, -30%)' }} />
@@ -719,10 +710,10 @@ function HudStat({ icon, label, value, sub, color }: {
                 </div>
                 <span className="text-[9px] font-black uppercase tracking-widest text-white/25">{label}</span>
             </div>
-            <div className="text-2xl font-black text-white leading-none mb-1" style={{ textShadow: `0 0 20px ${color}30` }}>
+            <div className="text-4xl font-black text-white leading-none mb-1 tracking-tight" style={{ textShadow: `0 0 20px ${color}30` }}>
                 {value}
             </div>
-            <div className="text-[10px] font-bold text-white/30 uppercase tracking-wide">{sub}</div>
+            <div className="text-[9px] font-bold text-white/35 uppercase tracking-wide">{sub}</div>
 
             {/* Bottom accent line */}
             <div className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-2xl opacity-40"
@@ -775,7 +766,7 @@ function AppRequiredModal({ type, onClose }: { type: 'match' | 'scrims'; onClose
     );
 }
 
-function AppCard({ icon, title, desc }: any) {
+function AppCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
     return (
         <div className="p-6 bg-white/[0.03] border border-white/5 rounded-3xl space-y-4 group hover:border-[#00ff87]/30 transition-all cursor-pointer">
             <div className="text-white/20 group-hover:text-[#00ff87] transition-colors">{icon}</div>

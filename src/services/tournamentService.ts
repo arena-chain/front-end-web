@@ -5,7 +5,7 @@ import type {
     AddPhaseDto,
     UpdatePhaseStatusDto,
 } from '../models/tournament';
-import { PhaseName } from '../models/tournament';
+import { PhaseName, TournamentStatus } from '../models/tournament';
 import { getApiBase } from '../lib/apiBase';
 
 // Backend controller path (intentional spelling: `tournements`)
@@ -78,7 +78,7 @@ class TournamentService {
                     const errorData = await response.json();
                     console.error('Backend error details:', errorData);
                     errorMessage = errorData.message || JSON.stringify(errorData);
-                } catch (e) {
+                } catch {
                     // Response is not JSON
                 }
                 throw new Error(`Failed to create tournament: ${errorMessage}`);
@@ -229,14 +229,14 @@ class TournamentService {
      * Block a tournament (admin action) — sets status to BLOCKED and closes registration
      */
     async blockTournament(id: string): Promise<Tournament> {
-        return this.updateTournament(id, { status: 'BLOCKED' as any, registrationOpen: false });
+        return this.updateTournament(id, { status: TournamentStatus.BLOCKED, registrationOpen: false });
     }
 
     /**
      * Unblock a tournament (admin action) — reverts status to CANCELLED so it stays visible but not active
      */
     async unblockTournament(id: string): Promise<Tournament> {
-        return this.updateTournament(id, { status: 'CANCELLED' as any });
+        return this.updateTournament(id, { status: TournamentStatus.CANCELLED });
     }
 }
 

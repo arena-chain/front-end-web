@@ -7,7 +7,7 @@ const PRIMARY_NAV_LINKS: { to: string; label: string; icon: LucideIcon }[] = [
     { to: '/player/dashboard', label: 'Play', icon: Gamepad2 },
     { to: '/player/friends', label: 'Friends', icon: Users },
     { to: '/player/tournaments', label: 'Tournaments', icon: Trophy },
-    { to: '/player/my-tickets', label: 'My Tickets', icon: Ticket },
+    { to: '/player/tickets', label: 'My Tickets', icon: Ticket },
     { to: '/player/matches', label: 'Match History', icon: History },
     { to: '/player/leagues', label: 'Leagues', icon: Award },
     { to: '/player/channel', label: 'Studio & clips', icon: Clapperboard },

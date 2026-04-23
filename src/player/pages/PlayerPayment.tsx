@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck, CreditCard, Lock, ArrowLeft, Ticket } from 'lucide-react';
 import { Button } from '../../components/ui/core';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
     CardElement,
@@ -70,9 +70,10 @@ const CheckoutForm = ({ amount, onPaymentSuccess }: { amount: number; onPaymentS
                 setError(`Payment not completed (status: ${result.paymentIntent?.status || 'unknown'}).`);
                 setIsProcessing(false);
             }
-        } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred');
-            toast.error(err.message || 'An unexpected error occurred');
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'An unexpected error occurred';
+            setError(msg);
+            toast.error(msg);
             setIsProcessing(false);
         }
     };
@@ -120,40 +121,68 @@ const CheckoutForm = ({ amount, onPaymentSuccess }: { amount: number; onPaymentS
     );
 };
 
+type PaymentLocationState = {
+    planId?: string;
+    billingCycle?: 'monthly' | 'yearly';
+    type?: string;
+    ticketData?: {
+        tournamentId: string;
+        tournamentName?: string;
+        ticketName: string;
+        price: number;
+    };
+};
+
+type OrderDetails = {
+    name: string;
+    subtext: string;
+    price: number;
+    kind: 'Subscription' | 'Ticket';
+};
+
 export default function PlayerPayment() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { planId, billingCycle } = location.state || { planId: 'pro', billingCycle: 'monthly' };
-    const [isProcessing, setIsProcessing] = useState(false);
+    const state = (location.state || {}) as PaymentLocationState;
+    const planId = state.planId ?? 'pro';
+    const billingCycle = state.billingCycle ?? 'monthly';
+    const isTicket = state.type === 'ticket';
+    const ticketData = state.ticketData;
 
+    const getOrderDetails = (): OrderDetails => {
+        if (isTicket && ticketData) {
+            return {
+                name: ticketData.ticketName,
+                subtext: ticketData.tournamentName || 'Tournament ticket',
+                price: Number(ticketData.price) || 0,
+                kind: 'Ticket',
+            };
+        }
         if (planId === 'elite') {
             return {
                 name: 'Elite Plan',
                 subtext: `${billingCycle === 'monthly' ? 'Monthly' : 'Yearly'} Billing`,
                 price: billingCycle === 'monthly' ? 19.99 : 199.99,
-                type: 'Subscription'
+                kind: 'Subscription',
             };
         }
         return {
             name: 'Arena Plus',
             subtext: `${billingCycle === 'monthly' ? 'Monthly' : 'Yearly'} Billing`,
             price: billingCycle === 'monthly' ? 9.99 : 99.99,
-            type: 'Subscription'
+            kind: 'Subscription',
         };
     };
 
-    const details = getDetails();
-    const tax = details.price * 0.1; // 10% tax
+    const details = getOrderDetails();
+    const tax = details.price * 0.1;
     const total = details.price + tax;
 
     const handleSuccess = async ({ paymentIntentId, paymentStatus }: PaymentSuccessPayload) => {
         if (paymentStatus !== 'succeeded' || !paymentIntentId?.startsWith('pi_')) {
-            toast.error('Payment validation failed. Ticket will not be created.');
+            toast.error(isTicket ? 'Payment validation failed. Ticket will not be created.' : 'Payment validation failed.');
             return;
         }
-    const plan = getPlanDetails();
-    const tax = plan.price * 0.1; // 10% tax
-    const total = plan.price + tax;
 
         try {
             await paymentService.confirmPayment({
@@ -161,32 +190,35 @@ export default function PlayerPayment() {
                 amount: total,
                 currency: 'usd',
                 context: isTicket ? 'ticket' : 'subscription',
-                ticketData: isTicket
-                    ? {
-                        tournamentId: ticketData?.tournamentId,
-                        ticketName: ticketData?.ticketName,
-                    }
-                    : undefined,
+                ticketData:
+                    isTicket && ticketData
+                        ? {
+                              tournamentId: ticketData.tournamentId,
+                              ticketName: ticketData.ticketName,
+                          }
+                        : undefined,
             });
-        } catch (error: any) {
-            // Don't block booking if backend has no dedicated payment-record endpoint.
-            console.warn('Payment record endpoint unavailable:', error?.message || error);
+        } catch (error: unknown) {
+            console.warn(
+                'Payment record endpoint unavailable:',
+                error instanceof Error ? error.message : error,
+            );
         }
 
-        if (isTicket) {
+        if (isTicket && ticketData) {
             try {
                 const bookedTickets = await ticketService.bookTicket(
                     ticketData.tournamentId,
                     ticketData.ticketName,
                     1,
-                    paymentIntentId
+                    paymentIntentId,
                 );
                 toast.success('Ticket Purchased Successfully!');
-                navigate('/player/my-tickets', {
+                navigate('/player/tickets', {
                     state: { recentPurchase: Array.isArray(bookedTickets) ? bookedTickets : [bookedTickets] },
                 });
-            } catch (err: any) {
-                toast.error(err?.message || 'Payment succeeded but booking failed.');
+            } catch (err: unknown) {
+                toast.error(err instanceof Error ? err.message : 'Payment succeeded but booking failed.');
                 console.error('Booking failed after payment success:', err);
             }
         } else {

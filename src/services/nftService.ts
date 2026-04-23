@@ -43,13 +43,29 @@ export interface NftTransaction {
     createdAt: string;
 }
 
-const mapItemToAvatar = (item: any): NftAvatar => ({
+/** Marketplace / ownership list item shape from API (populated `nftId`). */
+type NftListItemApi = {
+    _id: string;
+    nftId?: {
+        name?: string;
+        imageUrl?: string;
+        description?: string;
+        rarity?: NftRarity;
+        price?: number;
+    };
+    ownerId?: NftAvatar['ownerId'];
+    status?: string;
+    listPrice?: number;
+    createdAt: string;
+};
+
+const mapItemToAvatar = (item: NftListItemApi): NftAvatar => ({
     _id: item._id,
     name: item.nftId?.name || 'Unknown',
     image: item.nftId?.imageUrl || '',
     description: item.nftId?.description || '',
-    rarity: item.nftId?.rarity || 'COMMON',
-    price: item.nftId?.price || 0,
+    rarity: item.nftId?.rarity ?? 'COMMON',
+    price: item.nftId?.price ?? 0,
     ownerId: item.ownerId,
     listed: item.status === 'LISTED',
     listPrice: item.listPrice,
@@ -84,8 +100,7 @@ export const nftService = {
         axios.post(`${API}/nft/${nftId}/unlist`, {}, auth()).then(r => r.data),
 
     buy: (nftId: string): Promise<NftAvatar> =>
-        axios.post(`${API}/nft/${nftId}/buy`, {}, auth()).then(r => r.data),
-        axios.post(`${API}/nft/${nftId}/buy`, {}, auth()).then(r => mapItemToAvatar(r.data)),
+        axios.post(`${API}/nft/${nftId}/buy`, {}, auth()).then((r) => mapItemToAvatar(r.data)),
 
     getHistory: (limit = 20): Promise<NftTransaction[]> =>
         axios.get(`${API}/nft/transactions/history`, { ...auth(), params: { limit } }).then(r => r.data),

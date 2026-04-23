@@ -711,12 +711,16 @@ function TeamsPanel({ season }: { season: Season }) {
         setBusy(true);
         try {
             const seedTrim = seed.trim();
-            const seedNum = seedTrim === '' ? undefined : Number(seedTrim);
             const payload: { seasonId: string; teamId: string; seed?: number } = {
                 seasonId,
                 teamId: teamIdToRegister,
             };
-            if (Number.isFinite(seedNum) && seedNum >= 1) payload.seed = Math.floor(seedNum);
+            if (seedTrim !== '') {
+                const parsedSeed = Number(seedTrim);
+                if (Number.isFinite(parsedSeed) && parsedSeed >= 1) {
+                    payload.seed = Math.floor(parsedSeed);
+                }
+            }
 
             await registerTeam(payload);
             toast.success('Team registered');

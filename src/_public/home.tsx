@@ -8,6 +8,7 @@ import homeCover from '../assets/home_cover.jpg';
 import valorantCover from '../assets/valorant_cover.jpg';
 import lolCover from '../assets/lol.jpg';
 import riotLogo from '../assets/riot-games-logo.svg';
+import steamLogo from '../assets/steam.png';
 
 import { NewsSection } from './components/NewsSection';
 import { HomeTournaments } from './components/HomeTournaments';

@@ -72,13 +72,33 @@ export default function ScouterRecommendations() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!scouterId) return;
-        setLoading(true);
-        scoutingService
-            .listRecommendationsByScouter(scouterId)
-            .then(setRecommendations)
-            .catch(() => setRecommendations([]))
-            .finally(() => setLoading(false));
+        let cancelled = false;
+        if (!scouterId) {
+            queueMicrotask(() => {
+                if (cancelled) return;
+                setLoading(false);
+                setRecommendations([]);
+            });
+            return () => {
+                cancelled = true;
+            };
+        }
+        void (async () => {
+            await Promise.resolve();
+            if (cancelled) return;
+            setLoading(true);
+            try {
+                const list = await scoutingService.listRecommendationsByScouter(scouterId);
+                if (!cancelled) setRecommendations(list);
+            } catch {
+                if (!cancelled) setRecommendations([]);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
     }, [scouterId]);
 
     return (

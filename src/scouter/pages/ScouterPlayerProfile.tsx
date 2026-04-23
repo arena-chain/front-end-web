@@ -158,8 +158,15 @@ export default function ScouterPlayerProfile() {
     const [prospectSaving, setProspectSaving] = useState(false);
     const [recommendSubmitting, setRecommendSubmitting] = useState(false);
     const [reportForm, setReportForm] = useState({ rating: 85, strengths: '', weaknesses: '', notes: '', recommendedRole: '' });
-    const [prospectForm, setProspectForm] = useState({ prospectLevel: ProspectLevel.UNKNOWN, priority: ProspectPriority.MEDIUM });
-    const [recommendForm, setRecommendForm] = useState({ organizationId: '', recommendationLevel: RecommendationLevel.STRONGLY_RECOMMEND, message: '' });
+    const [prospectForm, setProspectForm] = useState<{
+        prospectLevel: ProspectLevel;
+        priority: ProspectPriority;
+    }>({ prospectLevel: ProspectLevel.UNKNOWN, priority: ProspectPriority.MEDIUM });
+    const [recommendForm, setRecommendForm] = useState<{
+        organizationId: string;
+        recommendationLevel: RecommendationLevel;
+        message: string;
+    }>({ organizationId: '', recommendationLevel: RecommendationLevel.STRONGLY_RECOMMEND, message: '' });
     const [recommendTeams, setRecommendTeams] = useState<TeamListItem[]>([]);
     const [recommendTeamsLoading, setRecommendTeamsLoading] = useState(false);
     const [recommendTeamsError, setRecommendTeamsError] = useState<string | null>(null);

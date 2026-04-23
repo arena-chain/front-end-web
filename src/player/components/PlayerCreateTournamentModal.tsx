@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Globe, User, ChevronDown, Info, Loader2 } from 'lucide-react';
 import { Button, Input } from '../../components/ui/core';
 import catalogService from '../../services/catalogService';
@@ -61,6 +62,15 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
         }
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const handleCreate = () => {
@@ -93,25 +103,26 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
         });
     };
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={onClose} />
 
-            <div className="relative w-full max-w-xl bg-[#141419] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+            <div className="relative w-full max-w-2xl max-h-[92vh] bg-[#11131a]/95 border border-white/12 rounded-3xl overflow-hidden shadow-[0_30px_90px_rgba(0,0,0,0.65)] flex flex-col backdrop-blur-2xl">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(0,255,136,0.12),transparent_35%),radial-gradient(circle_at_8%_100%,rgba(147,51,234,0.08),transparent_36%)]" />
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/5">
+                <div className="relative sticky top-0 z-10 flex items-center justify-between p-6 border-b border-white/10 bg-[#11131a]/90 backdrop-blur-xl">
                     <div className="w-8" /> {/* Spacer */}
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Create a Tournament</h2>
-                    <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">Create Tournament</h2>
+                    <button onClick={onClose} className="text-white/40 hover:text-white transition-colors rounded-lg border border-white/10 p-1.5 hover:border-white/20">
                         <X size={24} />
                     </button>
                 </div>
 
-                <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
+                <div className="relative flex-1 min-h-0 p-8 space-y-6 overflow-y-auto scrollbar-hide">
                     {/* Organizer */}
                     <div className="space-y-3">
-                        <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest">Organizer</label>
-                        <div className="flex items-center gap-4 bg-white/[0.03] p-4 rounded-xl border border-white/5">
+                        <label className="block text-[11px] font-black text-white/45 uppercase tracking-widest">Organizer</label>
+                        <div className="flex items-center gap-4 bg-black/30 p-4 rounded-xl border border-white/10">
                             <div className="w-10 h-10 rounded-lg bg-white/5 overflow-hidden flex items-center justify-center border border-white/10">
                                 {selectedOrganizer?.avatarUrl ? (
                                     <img src={selectedOrganizer.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -122,14 +133,14 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
                             <div className="flex-1">
                                 <p className="text-sm font-bold text-white tracking-tight">{selectedOrganizer?.username || 'Select Organizer'}</p>
                             </div>
-                            <button className="text-[10px] font-black text-[#00ff88] uppercase tracking-widest hover:underline">CHANGE</button>
+                            <button className="text-[11px] font-black text-primary uppercase tracking-widest hover:underline">CHANGE</button>
                         </div>
                         {errors.organizer && <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">{errors.organizer}</p>}
                     </div>
 
                     {/* Tournament Name */}
                     <div className="space-y-3">
-                        <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest">Tournament Name</label>
+                        <label className="block text-[11px] font-black text-white/45 uppercase tracking-widest">Tournament Name</label>
                         <Input
                             placeholder="Enter tournament name..."
                             value={formData.name}
@@ -138,7 +149,7 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
                                 if (errors.name) setErrors({ ...errors, name: '' });
                             }}
                             className={cn(
-                                "h-12 bg-white/[0.03] border-white/5 rounded-xl text-white font-bold",
+                                "h-12 bg-black/30 border-white/10 rounded-xl text-white text-sm font-semibold",
                                 errors.name && "border-red-500/50 focus:border-red-500"
                             )}
                         />
@@ -147,7 +158,7 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
 
                     {/* Game */}
                     <div className="space-y-3">
-                        <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest">Game</label>
+                        <label className="block text-[11px] font-black text-white/45 uppercase tracking-widest">Game</label>
                         <div className="relative">
                             {gamesLoading && (
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">
@@ -156,7 +167,7 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
                             )}
                             <select
                                 className={cn(
-                                    "w-full h-12 bg-white/[0.03] border border-white/5 rounded-xl px-4 text-sm font-bold text-white outline-none focus:border-[#00ff88]/50 appearance-none",
+                                    "w-full h-12 bg-black/30 border border-white/10 rounded-xl px-4 text-sm font-semibold text-white outline-none focus:border-primary/50 appearance-none",
                                     errors.gameId && "border-red-500/50",
                                     gamesLoading && "pl-10 opacity-60"
                                 )}
@@ -182,13 +193,13 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
 
                     {/* Region */}
                     <div className="space-y-3">
-                        <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest">Region</label>
+                        <label className="block text-[11px] font-black text-white/45 uppercase tracking-widest">Region</label>
                         <div className="relative">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">
                                 <Globe size={16} />
                             </div>
                             <select
-                                className="w-full h-12 bg-white/[0.03] border border-white/5 rounded-xl pl-12 pr-4 text-sm font-bold text-white outline-none focus:border-[#00ff88]/50 appearance-none"
+                                className="w-full h-12 bg-black/30 border border-white/10 rounded-xl pl-12 pr-4 text-sm font-semibold text-white outline-none focus:border-primary/50 appearance-none"
                                 value={formData.region}
                                 onChange={e => setFormData({ ...formData, region: e.target.value as TournamentRegion })}
                             >
@@ -202,17 +213,17 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
 
                     {/* Game Mode Selector (1vs1 to 5vs5) */}
                     <div className="space-y-3">
-                        <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest">Game Mode</label>
+                        <label className="block text-[11px] font-black text-white/45 uppercase tracking-widest">Game Mode</label>
                         <div className="grid grid-cols-5 gap-2">
                             {GAME_MODES.map(mode => (
                                 <button
                                     key={mode.value}
                                     onClick={() => setFormData({ ...formData, gameMode: mode.value })}
                                     className={cn(
-                                        "h-12 rounded-xl flex items-center justify-center text-[10px] font-black uppercase transition-all",
+                                        "h-11 rounded-xl flex items-center justify-center text-[11px] font-black uppercase transition-all",
                                         formData.gameMode === mode.value
-                                            ? "bg-[#00ff88] text-black shadow-[0_0_15px_rgba(0,255,136,0.3)]"
-                                            : "bg-white/[0.03] text-white/40 border border-white/5 hover:border-white/10"
+                                            ? "bg-primary text-black shadow-[0_0_15px_rgba(0,255,136,0.3)]"
+                                            : "bg-black/30 text-white/40 border border-white/10 hover:border-white/20"
                                     )}
                                 >
                                     {mode.label.split(' ')[0]}
@@ -223,10 +234,10 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
 
                     {/* Tournament Format */}
                     <div className="space-y-3">
-                        <label className="block text-[10px] font-black text-white/40 uppercase tracking-widest">Tournament Format</label>
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex gap-4">
+                        <label className="block text-[11px] font-black text-white/45 uppercase tracking-widest">Tournament Format</label>
+                        <div className="bg-black/30 border border-white/10 rounded-xl p-4 flex gap-4">
                             <Info size={16} className="text-white/20 shrink-0 mt-0.5" />
-                            <p className="text-[10px] text-white/30 font-bold leading-relaxed uppercase tracking-widest">
+                            <p className="text-[11px] text-white/35 font-semibold leading-relaxed uppercase tracking-wide">
                                 An elimination tournament where the loser of each match is immediately eliminated from winning the tournament.
                             </p>
                         </div>
@@ -234,19 +245,19 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-white/5 flex items-center justify-center gap-8">
+                <div className="relative sticky bottom-0 z-10 p-5 border-t border-white/10 bg-[#11131a]/92 backdrop-blur-xl flex items-center justify-center gap-6">
                     <button
                         onClick={onClose}
-                        className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] hover:text-white transition-colors"
+                        className="text-[11px] font-black text-white/45 uppercase tracking-[0.18em] hover:text-white transition-colors"
                     >
                         CANCEL
                     </button>
                     <Button
                         onClick={handleCreate}
                         className={cn(
-                            "h-12 px-10 font-black uppercase tracking-[0.2em] rounded-xl transition-all duration-300",
+                            "h-11 px-8 font-black uppercase tracking-[0.16em] rounded-xl transition-all duration-300",
                             (formData.name && formData.gameId && selectedOrganizer)
-                                ? "bg-[#00ff88] text-black shadow-[0_0_20px_rgba(0,255,136,0.3)] hover:scale-105 active:scale-95"
+                                ? "bg-primary text-black shadow-[0_0_20px_rgba(0,255,136,0.3)] hover:scale-105 active:scale-95"
                                 : "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed"
                         )}
                     >
@@ -254,7 +265,8 @@ const PlayerCreateTournamentModal: React.FC<PlayerCreateTournamentModalProps> = 
                     </Button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

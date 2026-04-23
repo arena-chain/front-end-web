@@ -9,7 +9,7 @@ import type { Game } from '../../../models/game'; // Import Game interface
 interface CreateTournamentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: CreateTournamentDto) => Promise<void>;
+    onSubmit: (data: CreateTournamentDto | FormData) => Promise<void>;
 }
 
 const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, onClose, onSubmit }) => {
@@ -41,7 +41,7 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
         }
     }, [isOpen]);
 
-    const updateField = (field: keyof CreateTournamentDto, value: any) => {
+    const updateField = <K extends keyof CreateTournamentDto>(field: K, value: CreateTournamentDto[K]) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -110,7 +110,7 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
             }
 
             console.log('Submitting tournament data:', payload);
-            await onSubmit(payload as any);
+            await onSubmit(payload);
             onClose();
             // Reset form
             setFormData({ maxTeams: 16, format: TournamentFormat.SINGLE_ELIMINATION, registrationOpen: true });

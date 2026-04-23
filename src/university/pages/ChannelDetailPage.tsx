@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -30,7 +30,7 @@ export default function ChannelDetailPage() {
         const raw = localStorage.getItem('user');
         if (!raw) return null;
         try {
-            return JSON.parse(raw) as { nickname?: string; role?: string };
+            return JSON.parse(raw) as { nickname?: string; role?: string; _id?: string; id?: string };
         } catch {
             return null;
         }
@@ -38,7 +38,7 @@ export default function ChannelDetailPage() {
 
     const isSubscribed = useMemo(() => {
         if (!storedUser || !channel || !channel.subscribers) return false;
-        const userId = (storedUser as any)._id || (storedUser as any).id;
+        const userId = storedUser._id || storedUser.id;
         if (!userId) return false;
         return channel.subscribers.some((id) => String(id) === String(userId));
     }, [storedUser, channel]);
