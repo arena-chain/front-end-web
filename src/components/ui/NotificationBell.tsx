@@ -1,0 +1,205 @@
+import { useState, useRef, useEffect } from 'react';
+import { Bell, X, CheckCheck, Trash2, Archive, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useNotifications } from '../../contexts/NotificationContext';
+import type { AppNotification } from '../../services/notification.service';
+
+const ARCHIVE_THRESHOLD = 100;
+
+function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'Just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+}
+
+const categoryColor: Record<string, string> = {
+    matches: 'border-blue-500',
+    leagues: 'border-purple-400',
+    social: 'border-pink-400',
+    achievements: 'border-yellow-400',
+    streams: 'border-primary',
+    security: 'border-red-400',
+    system: 'border-white/20',
+};
+
+export default function NotificationBell() {
+    const { notifications, unreadCount, markRead, markAllRead, deleteOne, clearAll } =
+        useNotifications();
+    const [open, setOpen] = useState(false);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
+
+    const active = notifications.filter((n) => !n.archived);
+    const hasArchived = notifications.length > active.length || active.length >= ARCHIVE_THRESHOLD;
+
+    // Close on outside click
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    async function handleClick(notif: AppNotification) {
+        if (!notif.isRead) await markRead(notif._id);
+        setOpen(false);
+        if (notif.resourceDeleted) {
+            toast.warning('This content no longer exists');
+            return;
+        }
+        if (notif.link) navigate(notif.link);
+    }
+
+    async function handleDelete(e: React.MouseEvent, id: string) {
+        e.stopPropagation();
+        await deleteOne(id);
+    }
+
+    async function handleClearAll() {
+        await clearAll();
+    }
+
+    async function handleMarkAll() {
+        await markAllRead();
+    }
+
+    return (
+        <div className="relative" ref={panelRef}>
+            {/* Bell Button */}
+            <button
+                id="notification-bell"
+                aria-label="Notifications"
+                aria-expanded={open}
+                onClick={() => setOpen((o) => !o)}
+                className="relative p-2 rounded-xl hover:bg-white/5 text-text-muted hover:text-white transition-colors"
+            >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-0.5 bg-red-500 rounded-full text-[10px] font-black text-white flex items-center justify-center animate-pulse">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                )}
+            </button>
+
+            {/* Dropdown Panel */}
+            {open && (
+                <div className="absolute right-0 top-full mt-3 w-[22rem] bg-[#0c0e11] border border-white/10 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+                        <div>
+                            <p className="text-sm font-black text-white uppercase tracking-wider">
+                                Notifications
+                            </p>
+                            {unreadCount > 0 && (
+                                <p className="text-[10px] text-primary font-bold mt-0.5">
+                                    {unreadCount} unread
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                            {unreadCount > 0 && (
+                                <button
+                                    onClick={handleMarkAll}
+                                    title="Mark all as read"
+                                    className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-primary transition-colors"
+                                >
+                                    <CheckCheck size={15} />
+                                </button>
+                            )}
+                            {active.length > 0 && (
+                                <button
+                                    onClick={handleClearAll}
+                                    title="Clear all"
+                                    className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-red-400 transition-colors"
+                                >
+                                    <Trash2 size={15} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* List */}
+                    <div className="max-h-[26rem] overflow-y-auto">
+                        {active.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-3 text-center px-6">
+                                <Bell size={28} className="text-white/10" />
+                                <p className="text-sm font-bold text-white/30">
+                                    All caught up!
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {active.map((notif) => (
+                                    <NotifItem
+                                        key={notif._id}
+                                        notif={notif}
+                                        onClick={() => void handleClick(notif)}
+                                        onDelete={(e) => void handleDelete(e, notif._id)}
+                                        borderColor={categoryColor[notif.category] ?? 'border-white/10'}
+                                    />
+                                ))}
+                                {hasArchived && (
+                                    <div className="flex items-center gap-2 px-5 py-3 border-t border-white/5 text-white/30">
+                                        <Archive size={13} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">
+                                            Older notifications archived
+                                        </span>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function NotifItem({
+    notif,
+    onClick,
+    onDelete,
+    borderColor,
+}: {
+    notif: AppNotification;
+    onClick: () => void;
+    onDelete: (e: React.MouseEvent) => void;
+    borderColor: string;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className={`w-full text-left flex items-start gap-3 px-4 py-3.5 border-l-2 transition-colors group hover:bg-white/[0.04] ${notif.isRead ? 'border-transparent opacity-60' : borderColor
+                }`}
+        >
+            {notif.resourceDeleted && (
+                <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-black text-white truncate">{notif.title}</p>
+                <p className="text-[11px] text-white/50 mt-0.5 line-clamp-2 leading-snug">
+                    {notif.message}
+                </p>
+                <p className="text-[10px] text-white/25 mt-1 font-bold uppercase tracking-wider">
+                    {timeAgo(notif.createdAt)}
+                </p>
+            </div>
+            <button
+                onClick={onDelete}
+                className="shrink-0 p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-white/10 text-white/30 hover:text-red-400 transition-all"
+                title="Remove"
+            >
+                <X size={12} />
+            </button>
+        </button>
+    );
+}

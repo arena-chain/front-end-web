@@ -1,0 +1,376 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0a;
+  --color-surface: #121212;
+  --color-primary: #00ff00;
+  --color-primary-dark: #00cc00;
+  --color-primary-light: #33ff33;
+  --color-secondary: #1a1a1a;
+  --color-text: #ffffff;
+  --color-text-muted: #a1a1a1;
+
+  /* Scout hub: complements neon green without replacing it */
+  --color-scout-violet: #a78bfa;
+  --color-scout-violet-deep: #7c3aed;
+  --color-scout-cyan: #22d3ee;
+  --color-scout-amber: #fbbf24;
+
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-fade-in-up: fadeInUp 0.8s ease-out forwards;
+  --animate-gradient: gradient 8s linear infinite;
+
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  --animate-spin-slow: spin-slow 8s linear infinite;
+  --animate-slide-in-right: slide-in-right 0.3s ease-out forwards;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 9s ease-in-out infinite;
+  --animate-float-fast: float 4s ease-in-out infinite;
+  --animate-beam: beam-sweep 4s ease-in-out infinite;
+  --animate-flicker: text-flicker 5s linear infinite;
+  --animate-glow-breathe: glow-breathe 2.5s ease-in-out infinite;
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-slide-left: slide-left 0.7s ease-out forwards;
+  --animate-scale-in: scale-in 0.5s ease-out forwards;
+  --animate-fade-stagger-1: fadeInUp 0.8s ease-out 0.1s forwards;
+  --animate-fade-stagger-2: fadeInUp 0.8s ease-out 0.3s forwards;
+  --animate-fade-stagger-3: fadeInUp 0.8s ease-out 0.5s forwards;
+  --animate-fade-stagger-4: fadeInUp 0.8s ease-out 0.7s forwards;
+  --animate-fade-stagger-5: fadeInUp 0.8s ease-out 0.9s forwards;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-24px) scale(1.04); }
+  }
+
+  @keyframes beam-sweep {
+    0% { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateX(400%) skewX(-20deg); opacity: 0; }
+  }
+
+  @keyframes text-flicker {
+    0%, 100% { opacity: 1; text-shadow: 0 0 20px rgba(0,255,0,0.8), 0 0 60px rgba(0,255,0,0.3); }
+    92% { opacity: 1; }
+    93% { opacity: 0.5; text-shadow: none; }
+    94% { opacity: 1; text-shadow: 0 0 20px rgba(0,255,0,0.8); }
+    96% { opacity: 0.7; }
+    97% { opacity: 1; }
+  }
+
+  @keyframes glow-breathe {
+    0%, 100% { box-shadow: 0 0 15px rgba(0,255,0,0.3), 0 0 30px rgba(0,255,0,0.1); }
+    50% { box-shadow: 0 0 35px rgba(0,255,0,0.7), 0 0 70px rgba(0,255,0,0.3), 0 0 120px rgba(0,255,0,0.1); }
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @keyframes slide-left {
+    from { opacity: 0; transform: translateX(-40px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes grid-move {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(40px); }
+  }
+
+  --animate-grid-move: grid-move 14s linear infinite;
+
+  @keyframes radar-scan {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  --animate-radar: radar-scan 4s linear infinite;
+  --animate-count: count-up 0.6s ease-out forwards;
+}
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 10, 10, 10;
+  --background-end-rgb: 0, 0, 0;
+}
+
+body {
+  color: var(--color-text);
+  background: linear-gradient(to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility input-field {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background-color: rgb(30 41 59 / 0.8);
+  border: 1px solid rgb(71 85 105 / 0.6);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+  &:focus {
+    border-color: rgb(99 102 241 / 0.6);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  option {
+    background-color: #1e293b;
+    color: #fff;
+  }
+}
+
+@utility label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(148 163 184);
+  margin-bottom: 0.375rem;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Date input calendar icon styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Firefox date input */
+input[type="date"] {
+  color-scheme: dark;
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes esports-grid-breathe {
+  0%, 100% {
+    opacity: 0.6;
+    filter: brightness(0.9);
+  }
+  50% {
+    opacity: 0.86;
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes esports-energy-flow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 155% 155%;
+  }
+}
+
+@keyframes esports-node-activate {
+  0%, 80%, 100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.78);
+  }
+  16% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  32% {
+    opacity: 0.12;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+@keyframes esports-light-sweep {
+  0%, 70% {
+    transform: translateX(-140%);
+    opacity: 0;
+  }
+  76% {
+    opacity: 0.3;
+  }
+  90% {
+    opacity: 0.22;
+  }
+  100% {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+}
+
+@keyframes player-hex-breathe {
+  0%, 100% {
+    opacity: 0.12;
+    filter: brightness(0.9);
+  }
+  50% {
+    opacity: 0.26;
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes player-ambient-glow {
+  0%, 100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes player-hex-line-breathe {
+  0%, 100% {
+    stroke-opacity: 0.45;
+    filter: brightness(0.86);
+  }
+  50% {
+    stroke-opacity: 0.95;
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes player-hex-line-breathe-strong {
+  0%, 100% {
+    stroke-opacity: 0.3;
+    filter: brightness(0.88);
+  }
+  50% {
+    stroke-opacity: 1;
+    filter: brightness(1.28);
+  }
+}
+
+@keyframes player-hex-rgb-surface {
+  0% {
+    filter: hue-rotate(0deg) saturate(1.05) brightness(0.95);
+  }
+  25% {
+    filter: hue-rotate(75deg) saturate(1.15) brightness(1.02);
+  }
+  50% {
+    filter: hue-rotate(150deg) saturate(1.18) brightness(1.08);
+  }
+  75% {
+    filter: hue-rotate(235deg) saturate(1.14) brightness(1.02);
+  }
+  100% {
+    filter: hue-rotate(360deg) saturate(1.05) brightness(0.95);
+  }
+}
+
+/* NFT Avatar Studio: room for native <select> chevron so labels don’t collide */
+.studio-select {
+  padding-inline-end: 2rem;
+}
