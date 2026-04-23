@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Users, Globe, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, Globe, Trash2, LockKeyhole, LockKeyholeOpen } from 'lucide-react';
 import { Button, Badge } from '../../components/ui/core';
 import type { Tournament } from '../../models/tournament';
 import { TournamentStatus } from '../../models/tournament';
+import { toast } from 'sonner';
 import tournamentService from '../../services/tournamentService';
 import TournamentBracket from '../components/tournaments/TournamentBracket';
 import { placeholderImage } from '../../lib/placeholderImage';
@@ -74,6 +75,31 @@ export default function TournamentDetails() {
         }
     };
 
+    const handleBlock = async () => {
+        if (!tournament) return;
+        const isBlocked = tournament.status === TournamentStatus.BLOCKED;
+        const confirmMsg = isBlocked
+            ? `Unblock "${tournament.name}"? It will be visible again but marked as Cancelled.`
+            : `Block "${tournament.name}"? Registration will close and the tournament will be suspended.`;
+        if (!window.confirm(confirmMsg)) return;
+        setIsUpdating(true);
+        try {
+            const updated = isBlocked
+                ? await tournamentService.unblockTournament(tournament._id)
+                : await tournamentService.blockTournament(tournament._id);
+            setTournament(updated);
+            setSelectedStatus(updated.status);
+            toast.success(`Tournament ${isBlocked ? 'unblocked' : 'blocked'} successfully!`);
+        } catch (error) {
+            console.error('Failed to block/unblock tournament:', error);
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            toast.error(`Error: ${msg}`);
+            alert(`Failed to update tournament: ${msg}`);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen bg-[#121212] text-white">
@@ -107,22 +133,28 @@ export default function TournamentDetails() {
 
     const getStatusVariant = (status: TournamentStatus) => {
         switch (status) {
+            case TournamentStatus.PENDING_APPROVAL: return 'warning';
             case TournamentStatus.OPEN_REGISTRATION: return 'primary';
             case TournamentStatus.ONGOING: return 'info';
             case TournamentStatus.COMPLETED: return 'secondary';
             case TournamentStatus.CANCELLED: return 'danger';
+            case TournamentStatus.REJECTED: return 'danger';
+            case TournamentStatus.BLOCKED: return 'danger';
             default: return 'warning';
         }
     };
 
     const getValidTransitions = (currentStatus: TournamentStatus): TournamentStatus[] => {
         switch (currentStatus) {
+            case TournamentStatus.PENDING_APPROVAL:
+                return [TournamentStatus.PENDING_APPROVAL, TournamentStatus.DRAFT, TournamentStatus.OPEN_REGISTRATION, TournamentStatus.REJECTED];
             case TournamentStatus.DRAFT:
                 return [TournamentStatus.DRAFT, TournamentStatus.OPEN_REGISTRATION, TournamentStatus.CANCELLED];
             case TournamentStatus.OPEN_REGISTRATION:
                 return [TournamentStatus.OPEN_REGISTRATION, TournamentStatus.ONGOING, TournamentStatus.CANCELLED];
             case TournamentStatus.ONGOING:
                 return [TournamentStatus.ONGOING, TournamentStatus.COMPLETED, TournamentStatus.CANCELLED];
+            case TournamentStatus.REJECTED:
             case TournamentStatus.COMPLETED:
             case TournamentStatus.CANCELLED:
                 return [currentStatus];
@@ -286,12 +318,22 @@ export default function TournamentDetails() {
                     <div className="relative flex items-center justify-between mb-12 px-4 max-w-4xl mx-auto">
                         <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-white/10 -z-10" />
                         {[
+                            { status: TournamentStatus.PENDING_APPROVAL, label: 'Approval' },
                             { status: TournamentStatus.DRAFT, label: 'Draft' },
                             { status: TournamentStatus.OPEN_REGISTRATION, label: 'Registration' },
                             { status: TournamentStatus.ONGOING, label: 'Ongoing' },
                             { status: TournamentStatus.COMPLETED, label: 'Completed' },
                         ].map((step, index) => {
-                            const statusOrder = [TournamentStatus.DRAFT, TournamentStatus.OPEN_REGISTRATION, TournamentStatus.ONGOING, TournamentStatus.COMPLETED, TournamentStatus.CANCELLED];
+                            const statusOrder = [
+                                TournamentStatus.PENDING_APPROVAL,
+                                TournamentStatus.REJECTED,
+                                TournamentStatus.DRAFT,
+                                TournamentStatus.OPEN_REGISTRATION,
+                                TournamentStatus.ONGOING,
+                                TournamentStatus.COMPLETED,
+                                TournamentStatus.CANCELLED,
+                                TournamentStatus.BLOCKED
+                            ];
                             const currentIndex = statusOrder.indexOf(tournament.status);
                             const stepIndex = index;
                             const isCompleted = stepIndex < currentIndex;
@@ -347,11 +389,12 @@ export default function TournamentDetails() {
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                             <p className="text-sm text-blue-400">
                                 <strong>Status Guide:</strong><br />
+                                • PENDING APPROVAL: Tournament is waiting for admin validation<br />
                                 • DRAFT: Tournament is being prepared (not visible to players)<br />
                                 • OPEN_REGISTRATION: Players can register and buy tickets<br />
                                 • ONGOING: Tournament is currently in progress<br />
                                 • COMPLETED: Tournament has finished<br />
-                                • CANCELLED: Tournament has been cancelled (refunds logic triggered)
+                                • CANCELLED/REJECTED: Tournament has been stopped or denied
                             </p>
                         </div>
                     </div>
@@ -360,6 +403,36 @@ export default function TournamentDetails() {
                 <div className="bg-[#1A1D21] border border-white/5 rounded-xl p-6">
                     <h3 className="text-xl font-bold text-white mb-6">Danger Zone</h3>
                     <div className="flex flex-col gap-4">
+                        {/* Block / Unblock */}
+                        <div className={`flex items-center justify-between p-4 border rounded-lg ${tournament.status === TournamentStatus.BLOCKED
+                            ? 'border-green-500/20 bg-green-500/5'
+                            : 'border-red-500/20 bg-red-500/5'
+                            }`}>
+                            <div>
+                                <h4 className="text-white font-bold">
+                                    {tournament.status === TournamentStatus.BLOCKED ? '🔓 Unblock Tournament' : '🔒 Block Tournament'}
+                                </h4>
+                                <p className="text-sm text-text-muted">
+                                    {tournament.status === TournamentStatus.BLOCKED
+                                        ? 'Restore this tournament — will be set back to Cancelled status.'
+                                        : 'Suspend this tournament — closes registration and freezes all activity.'}
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                className={tournament.status === TournamentStatus.BLOCKED
+                                    ? '!text-green-400 !border-green-500/20 hover:!bg-green-500/10'
+                                    : '!text-red-400 !border-red-500/20 hover:!bg-red-500/10'}
+                                onClick={handleBlock}
+                                disabled={isUpdating}
+                            >
+                                {tournament.status === TournamentStatus.BLOCKED
+                                    ? <><LockKeyholeOpen className="w-4 h-4 mr-2" /> Unblock</>
+                                    : <><LockKeyhole className="w-4 h-4 mr-2" /> Block</>}
+                            </Button>
+                        </div>
+
+                        {/* Delete */}
                         <div className="flex items-center justify-between p-4 border border-red-500/20 bg-red-500/5 rounded-lg">
                             <div>
                                 <h4 className="text-white font-bold">Delete Tournament</h4>
@@ -420,6 +493,53 @@ export default function TournamentDetails() {
                             <h1 className="text-5xl font-black text-white leading-tight shadow-black drop-shadow-xl">{tournament.name}</h1>
                         </div>
                         {/* Action Buttons could go here */}
+                        {tournament.status === TournamentStatus.PENDING_APPROVAL && (
+                            <div className="flex gap-4 mb-2">
+                                <Button
+                                    className="bg-green-600 hover:bg-green-700 text-white min-w-[120px] font-bold"
+                                    onClick={async () => {
+                                        if (window.confirm('Approve this tournament?')) {
+                                            setIsUpdating(true);
+                                            try {
+                                                const updated = await tournamentService.updateTournamentStatus(tournament._id, TournamentStatus.OPEN_REGISTRATION);
+                                                setTournament(updated);
+                                                setSelectedStatus(updated.status);
+                                                toast.success('Tournament approved!');
+                                            } catch (err) {
+                                                toast.error('Failed to approve');
+                                            } finally {
+                                                setIsUpdating(false);
+                                            }
+                                        }
+                                    }}
+                                    disabled={isUpdating}
+                                >
+                                    Approve
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="border-red-500 text-red-500 hover:bg-red-500/10 min-w-[120px] font-bold"
+                                    onClick={async () => {
+                                        if (window.confirm('Reject this tournament?')) {
+                                            setIsUpdating(true);
+                                            try {
+                                                const updated = await tournamentService.updateTournamentStatus(tournament._id, TournamentStatus.REJECTED);
+                                                setTournament(updated);
+                                                setSelectedStatus(updated.status);
+                                                toast.success('Tournament rejected');
+                                            } catch (err) {
+                                                toast.error('Failed to reject');
+                                            } finally {
+                                                setIsUpdating(false);
+                                            }
+                                        }
+                                    }}
+                                    disabled={isUpdating}
+                                >
+                                    Reject
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

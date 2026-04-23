@@ -32,6 +32,30 @@ export interface AssignNftDto {
     playerId: string;
 }
 
+export interface NftTransaction {
+    _id: string;
+    nftItemId: { _id: string; nftId: { name: string; imageUrl: string } };
+    fromUserId?: { _id: string; username: string; nickname?: string };
+    toUserId?: { _id: string; username: string; nickname?: string };
+    type: 'MINT' | 'LIST' | 'UNLIST' | 'SALE' | 'TRANSFER' | 'BURN';
+    price: number;
+    currency: string;
+    createdAt: string;
+}
+
+const mapItemToAvatar = (item: any): NftAvatar => ({
+    _id: item._id,
+    name: item.nftId?.name || 'Unknown',
+    image: item.nftId?.imageUrl || '',
+    description: item.nftId?.description || '',
+    rarity: item.nftId?.rarity || 'COMMON',
+    price: item.nftId?.price || 0,
+    ownerId: item.ownerId,
+    listed: item.status === 'LISTED',
+    listPrice: item.listPrice,
+    createdAt: item.createdAt,
+});
+
 export const nftService = {
     // Admin
     getAll: (): Promise<NftAvatar[]> =>
@@ -61,4 +85,8 @@ export const nftService = {
 
     buy: (nftId: string): Promise<NftAvatar> =>
         axios.post(`${API}/nft/${nftId}/buy`, {}, auth()).then(r => r.data),
+        axios.post(`${API}/nft/${nftId}/buy`, {}, auth()).then(r => mapItemToAvatar(r.data)),
+
+    getHistory: (limit = 20): Promise<NftTransaction[]> =>
+        axios.get(`${API}/nft/transactions/history`, { ...auth(), params: { limit } }).then(r => r.data),
 };

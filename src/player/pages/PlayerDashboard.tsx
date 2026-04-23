@@ -20,6 +20,7 @@ import {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 // ─── Rank config ─────────────────────────────────────────────────────────────
+
 const RANK_CONFIG: Record<string, { emoji: string; color: string; min: number; max: number; next: string }> = {
     Radiant:  { emoji: '👑', color: '#ffd700', min: 4000, max: 5000, next: '' },
     Immortal: { emoji: '💀', color: '#ff4655', min: 3500, max: 4000, next: 'Radiant' },
@@ -91,11 +92,15 @@ export default function PlayerDashboard() {
                     axios.get(`${API}/player/me`, { headers }),
                     axios.get(`${API}/auth/profile`, { headers }),
                     axios.get(`${API}/player`, { headers }),
+                    axios.get(`${API}/users`, { headers }),
+                    axios.get(`${API}/channel`),
                 ]);
 
                 const me = meRes.status === 'fulfilled' ? meRes.value.data : null;
                 const myUser = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
                 const allPlayers = allPlayersRes.status === 'fulfilled' && Array.isArray(allPlayersRes.value.data) ? allPlayersRes.value.data : [];
+                const allUsers = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value.data) ? usersRes.value.data : [];
+                const allChannels = channelsRes.status === 'fulfilled' && Array.isArray(channelsRes.value.data) ? channelsRes.value.data : [];
 
                 setPlayerStats({
                     elo: me?.elo ?? 2854, // Mock if 0
@@ -140,7 +145,31 @@ export default function PlayerDashboard() {
                         };
                     }
                 });
-                setPlayerProfilesByUser(profileMap);
+
+                const mappedOnline: OnlinePlayer[] = allUsers
+                    .filter((u: any) => u?.role === 'player' && u?.isActive && u?._id !== myUserId)
+                    .slice(0, 30)
+                    .map((u: any) => {
+                        const prof = playerProfilesByUser.get(String(u._id));
+                        const isLive = liveByOwner.has(String(u._id));
+                        const rankText = prof?.rank || 'Unranked';
+                        const rankEmoji = rankText.toLowerCase().includes('diamond') ? '💎'
+                            : rankText.toLowerCase().includes('platinum') ? '🏆'
+                                : rankText.toLowerCase().includes('gold') ? '⚡'
+                                    : '🥈';
+                        return {
+                            id: String(u._id),
+                            name: u.nickname || 'Player',
+                            avatar: u.avatar || u.nickname || String(u._id).slice(-6),
+                            rank: rankText,
+                            rankEmoji,
+                            status: isLive ? 'in-game' : 'online',
+                            game: liveByOwner.get(String(u._id))?.game,
+                            region: u.region || 'EU',
+                            elo: Number(prof?.elo ?? 0),
+                        };
+                    });
+                setOnlinePlayers(mappedOnline);
             } catch {
                 setPlayerStats({ elo: 0, rank: 'Unranked' });
                 setRecentMatches([]);
@@ -276,13 +305,13 @@ export default function PlayerDashboard() {
                 {/* ── Hero Banner ──────────────────────────────────────────── */}
                 <div className="relative overflow-hidden rounded-[40px] border border-white/10 shrink-0 bg-[#060606] shadow-2xl">
                     <div className="absolute inset-0 bg-[#00ff87]/5 blur-[120px] -mr-40 -mt-40 rounded-full" />
-                    
+
                     {/* Hex grid */}
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-                         style={{ 
+                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                         style={{
                             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45v-30z' fill-rule='evenodd' stroke='%23fff' stroke-width='1' fill='none'/%3E%3C/svg%3E")`,
-                            backgroundSize: '40px' 
-                         }} 
+                            backgroundSize: '40px'
+                         }}
                     />
 
                     <div className="relative p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-10">
@@ -294,7 +323,7 @@ export default function PlayerDashboard() {
                                 </div>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Protocol Node: 0xF4...A2</span>
                             </div>
-                            
+
                             <div className="space-y-2">
                                 <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter text-white leading-tight uppercase">
                                     READY TO <span className="text-[#00ff87] drop-shadow-[0_0_40px_rgba(0,255,135,0.4)]">DOMINATE?</span>
@@ -323,13 +352,13 @@ export default function PlayerDashboard() {
                         {/* Rank card - high fid */}
                         <div className="bg-[#111] border border-[#a855f7]/30 rounded-[32px] p-10 flex flex-col items-center text-center shadow-2xl relative overflow-hidden group">
                            <div className="absolute top-0 right-0 w-20 h-20 bg-[#a855f7]/10 blur-[50px] rounded-full" />
-                           
+
                            <div className="text-6xl mb-4 drop-shadow-[0_10px_30px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform duration-500">
                                💎
                            </div>
                            <h3 className="text-3xl font-black italic tracking-tighter text-white uppercase">DIAMOND III</h3>
                            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#a855f7] mt-1 italic">2,854 ELO // SYNCED</div>
-                           
+
                            <div className="w-48 h-2 bg-white/5 rounded-full mt-6 overflow-hidden">
                                <div className="h-full bg-gradient-to-r from-[#a855f7]/50 to-[#a855f7] rounded-full" style={{ width: '74%' }} />
                            </div>
@@ -337,6 +366,7 @@ export default function PlayerDashboard() {
                         </div>
                     </div>
                 </div>
+            </div>
 
             {/* ── Quick Stats row ───────────────────────────────────────── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
@@ -384,7 +414,7 @@ export default function PlayerDashboard() {
 
                 {/* ── Secondary Grid ────────────────────────────────────────── */}
                 <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8 flex-1 min-h-0">
-                    
+
                     {/* Visual Performance Matrix */}
                     <div className="bg-[#111] border border-white/5 rounded-[40px] p-10 space-y-8 shadow-xl">
                         <div className="flex items-center justify-between">
@@ -403,7 +433,7 @@ export default function PlayerDashboard() {
 
                     {/* Right column: Recent Logs & Action List */}
                     <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-                        
+
                         {/* COMBAT LOGS */}
                         <div className="bg-[#111] border border-white/5 rounded-[32px] overflow-hidden shadow-xl">
                             <div className="p-6 border-b border-white/5 flex items-center justify-between">
@@ -469,7 +499,7 @@ function ProtocolHudStat({ icon, label, value, sub, color }: any) {
 
 function QuickNavCard({ icon, label, color, onClick }: any) {
     return (
-        <button 
+        <button
             onClick={onClick}
             className="bg-[#111] border border-white/5 p-6 rounded-[28px] flex flex-col items-center gap-3 hover:border-white/10 transition-all group shadow-lg"
         >
@@ -482,6 +512,7 @@ function QuickNavCard({ icon, label, color, onClick }: any) {
 }
 
 // ─── Online Players Panel (right) ────────────────────────────────────────────
+
 function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
     const [filter, setFilter] = useState<'all' | 'in-game' | 'online' | 'offline'>('all');
     const [search, setSearch] = useState('');
@@ -497,6 +528,8 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
         const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
         return matchFilter && matchSearch;
     });
+
+    const regionFlag: Record<string, string> = { EU: '🇪🇺', NA: '🇺🇸', AS: '🌏', AF: '🌍' };
 
     return (
         <div className="w-72 shrink-0 flex flex-col gap-6 h-full overflow-hidden hidden xl:flex">
@@ -515,10 +548,10 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                     
                     <div className="relative">
                         <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
-                        <input 
+                        <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="ENCRYPTED_ID..." 
+                            placeholder="ENCRYPTED_ID..."
                             className="w-full bg-white/5 border border-white/5 rounded-2xl py-3 pl-10 pr-4 text-[10px] font-black tracking-widest text-white placeholder:text-white/10 focus:outline-none focus:border-[#00ff87]/20 transition-all"
                         />
                     </div>
@@ -539,24 +572,35 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                                         ? f === 'in-game' ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(0,255,0,0.2)'
                                         : '1px solid transparent',
                                 }}>
-                                {f === 'all' ? 'All' : f === 'in-game' ? '🎮 Game' : f === 'online' ? '● Online' : '○ Offline'}
+                                {f === 'all' ? 'All' : f === 'in-game' ? '🎮' : '●'}
+                                {f === 'all' ? '' : f === 'in-game' ? ' Game' : ' Online'}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                    {visible.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between p-4 rounded-2xl hover:bg-white/[0.02] transition-all group cursor-pointer">
-                            <div className="flex items-center gap-4">
-                                <div className="relative">
-                                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10">
-                                        <img src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${p.name}`} className="w-full h-full object-cover" />
-                                    </div>
-                                    <span className={cn(
-                                        "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[#111]",
-                                        p.status === 'in-game' ? "bg-[#a855f7]" : "bg-[#00ff87]"
-                                    )} />
+                {/* Player list */}
+                <div className="flex-1 overflow-y-auto">
+                    {visible.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                            <Search size={20} />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">No players found</p>
+                        </div>
+                    ) : visible.map((p, i) => (
+                        <div key={p.id}
+                            className="flex items-center gap-2.5 px-4 py-2.5 transition-colors cursor-pointer group"
+                            style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                            {/* Avatar */}
+                            <div className="relative shrink-0">
+                                <div className="w-8 h-8 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                                    <img
+                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.avatar}`}
+                                        className="w-full h-full bg-black"
+                                        alt={p.name}
+                                    />
                                 </div>
                                 {/* Status dot */}
                                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black"
@@ -572,6 +616,7 @@ function OnlinePanel({ players }: { players: OnlinePlayer[] }) {
                                     <span className="text-[11px] font-black text-white truncate group-hover:text-primary transition-colors" style={{ '--tw-text-opacity': 1 } as React.CSSProperties}>
                                         {p.name}
                                     </span>
+                                    <span className="text-[9px] shrink-0">{regionFlag[p.region]}</span>
                                 </div>
                                 <div className="text-[9px] font-bold truncate" style={{
                                     color:
@@ -687,6 +732,7 @@ function HudStat({ icon, label, value, sub, color }: {
 }
 
 // ─── App Required Modal ───────────────────────────────────────────────────────
+
 function AppRequiredModal({ type, onClose }: { type: 'match' | 'scrims'; onClose: () => void }) {
     const isScrims = type === 'scrims';
 
@@ -694,7 +740,7 @@ function AppRequiredModal({ type, onClose }: { type: 'match' | 'scrims'; onClose
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl" onClick={onClose}>
             <div className="relative w-full max-w-lg bg-[#060606] border border-white/10 rounded-[48px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]" onClick={e => e.stopPropagation()}>
                 <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45v-30z' fill-rule='evenodd' stroke='%23fff' stroke-width='1' fill='none'/%3E%3C/svg%3E")`, backgroundSize: '40px' }} />
-                
+
                 <button onClick={onClose} className="absolute top-8 right-8 text-white/20 hover:text-white transition-all"><X size={24} /></button>
 
                 <div className="p-12 text-center space-y-8">
@@ -708,8 +754,8 @@ function AppRequiredModal({ type, onClose }: { type: 'match' | 'scrims'; onClose
                         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#00ff87] italic">Protocol Upgrade Required</p>
                         <h2 className="text-4xl font-black italic tracking-tighter text-white uppercase">{isScrims ? "SCRIM_V2 ACCESS" : "MATCHMAKING_v4"}</h2>
                         <p className="text-sm text-white/30 font-bold uppercase tracking-widest leading-relaxed">
-                            {isScrims 
-                                ? "Advanced team coordination and competitive planning are restricted to the ArenaChain native desktop and mobile environments." 
+                            {isScrims
+                                ? "Advanced team coordination and competitive planning are restricted to the ArenaChain native desktop and mobile environments."
                                 : "Low-latency real-time matchmaking requires a direct neural link via the ArenaChain mobile or desktop application."}
                         </p>
                     </div>

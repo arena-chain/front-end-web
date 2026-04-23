@@ -22,9 +22,11 @@ import { OUTFIT_MODEL_CATALOG, resolveOutfitModelUrl } from '../avatar/outfitCat
 import { weaponsForGame, type WeaponEntry } from '../avatar/weaponCatalog';
 import {
     nftCoreService, nftCollectionService, nftAttributeService, nftMintService,
+    nftMarketplaceService,
     NFT_CATEGORIES, NFT_RARITIES, RARITY_COLORS, RARITY_GRADIENTS,
     getImageUrl,
     type Nft, type NftCollection, type NftAttribute, type NftCategory, type NftRarity,
+    type NftItem,
 } from '../../services/nftAdminService';
 
 /** Base body GLBs from backend uploads (fallback when no game-specific agent is selected). */
@@ -40,12 +42,12 @@ function resolveAvatarBodyGlbUrl(gender: string): string {
 // ─── Rarity tailwind helpers ─────────────────────────────────────────────────
 
 const RARITY_TW: Record<NftRarity, { bg: string; border: string; text: string; glow: string }> = {
-    COMMON:    { bg: 'bg-gray-500/10', border: 'border-gray-500/20', text: 'text-gray-400', glow: '' },
-    UNCOMMON:  { bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-400', glow: 'shadow-[0_0_20px_rgba(76,175,80,0.15)]' },
-    RARE:      { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', glow: 'shadow-[0_0_20px_rgba(33,150,243,0.15)]' },
-    EPIC:      { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400', glow: 'shadow-[0_0_25px_rgba(156,39,176,0.2)]' },
+    COMMON: { bg: 'bg-gray-500/10', border: 'border-gray-500/20', text: 'text-gray-400', glow: '' },
+    UNCOMMON: { bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-400', glow: 'shadow-[0_0_20px_rgba(76,175,80,0.15)]' },
+    RARE: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', glow: 'shadow-[0_0_20px_rgba(33,150,243,0.15)]' },
+    EPIC: { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400', glow: 'shadow-[0_0_25px_rgba(156,39,176,0.2)]' },
     LEGENDARY: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400', glow: 'shadow-[0_0_30px_rgba(255,152,0,0.25)]' },
-    MYTHIC:    { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400', glow: 'shadow-[0_0_35px_rgba(244,67,54,0.3)]' },
+    MYTHIC: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400', glow: 'shadow-[0_0_35px_rgba(244,67,54,0.3)]' },
 };
 
 const STAT_ICONS: Record<string, React.ReactNode> = {
@@ -134,6 +136,8 @@ export default function NftManager() {
 
     const [nfts, setNfts] = useState<Nft[]>([]);
     const [collections, setCollections] = useState<NftCollection[]>([]);
+    const [marketplaceItems, setMarketplaceItems] = useState<NftItem[]>([]);
+    const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState<NftCategory | 'ALL'>('ALL');
@@ -176,9 +180,13 @@ export default function NftManager() {
             const [nftData, colData] = await Promise.all([
                 nftCoreService.getAll(filters),
                 nftCollectionService.getAll(),
+                nftMarketplaceService.getAdminListings(),
+                nftMarketplaceService.getStats(),
             ]);
             setNfts(nftData);
             setCollections(colData);
+            setMarketplaceItems(mktData);
+            setStats(statsData);
         } catch (e) {
             console.error('Failed to load NFTs', e);
         } finally {
@@ -205,6 +213,25 @@ export default function NftManager() {
             setSelectedNft(detail);
         } catch {
             setSelectedNft({ ...nft, attributes: nft.attributes || [] });
+        }
+    };
+
+    const handleToggleFeatured = async (itemId: string) => {
+        try {
+            await nftMarketplaceService.toggleFeatured(itemId);
+            load();
+        } catch (e) {
+            console.error('Failed to toggle featured', e);
+        }
+    };
+
+    const handleForceUnlist = async (itemId: string) => {
+        if (!confirm('Force unlist this item? The owner will keep the item but it will no longer be for sale.')) return;
+        try {
+            await nftMarketplaceService.forceUnlist(itemId);
+            load();
+        } catch (e) {
+            console.error('Failed to force unlist', e);
         }
     };
 
@@ -286,6 +313,12 @@ export default function NftManager() {
                         >
                             NFT Inventory
                         </button>
+                        <button
+                            onClick={() => setActiveView('marketplace')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'marketplace' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white'}`}
+                        >
+                            Marketplace & Moderation
+                        </button>
                     </div>
                     <button
                         onClick={() => {
@@ -301,6 +334,40 @@ export default function NftManager() {
                     </button>
                 </div>
             </div>
+
+            {/* ═══ Professional Stats Dashboard ═══ */}
+            {stats && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-surface border border-white/5 p-4 rounded-2xl flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><BarChart3 size={24} /></div>
+                        <div>
+                            <p className="text-text-muted text-[10px] font-black uppercase tracking-widest">Market Volume</p>
+                            <p className="text-white text-xl font-black">{stats.totalVolume} AC</p>
+                        </div>
+                    </div>
+                    <div className="bg-surface border border-white/5 p-4 rounded-2xl flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500"><Box size={24} /></div>
+                        <div>
+                            <p className="text-text-muted text-[10px] font-black uppercase tracking-widest">Active Listings</p>
+                            <p className="text-white text-xl font-black">{stats.totalListed}</p>
+                        </div>
+                    </div>
+                    <div className="bg-surface border border-white/5 p-4 rounded-2xl flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500"><Zap size={24} /></div>
+                        <div>
+                            <p className="text-text-muted text-[10px] font-black uppercase tracking-widest">7D Sales</p>
+                            <p className="text-white text-xl font-black">{stats.recentSales}</p>
+                        </div>
+                    </div>
+                    <div className="bg-surface border border-white/5 p-4 rounded-2xl flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500"><Diamond size={24} /></div>
+                        <div>
+                            <p className="text-text-muted text-[10px] font-black uppercase tracking-widest">Floor Price</p>
+                            <p className="text-white text-xl font-black">{stats.floorPrice} AC</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {activeView === 'studio' && (
                 <div className="space-y-4">
@@ -480,6 +547,16 @@ export default function NftManager() {
                     </div>
                 </div>
             )}
+
+
+            {/* Create Modal */}
+            {showCreate && (
+                <CreateNftModal
+                    collections={collections}
+                    onClose={() => setShowCreate(false)}
+                    onCreated={(nft) => { setShowCreate(false); load(); viewDetail(nft); }}
+                />
+            )}
         </div>
     );
 }
@@ -488,6 +565,7 @@ export default function NftManager() {
 // AVATAR STUDIO
 // ═══════════════════════════════════════════════════════════════════════════════
 
+type AvatarLayerKey = 'base' | 'hair' | 'ears' | 'outfit' | 'accessory';
 type AvatarLayer = { file: File | null; preview: string | null };
 type AvatarLayers = Record<AvatarLayerKey, AvatarLayer>;
 type AvatarView = 'front' | 'side' | 'back';
@@ -983,7 +1061,7 @@ function Studio({ onDraftCreated, studioMode, selectedGame, selectedItemType, ne
                                 </div>
                             </div>
                         )}
-                        
+
                     </div>
 
                     {studioMode === 'weapon' && (
@@ -1681,13 +1759,17 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
         const el = viewerRef.current;
         if (!el) return;
 
-        const mv = el as ModelViewerElement;
+        const mv = el as unknown as {
+            updateFraming?: () => Promise<void>;
+            cameraOrbit?: string;
+        };
 
         const onLoad = () => {
             setModelFailed(false);
             void (async () => {
                 try {
                     await mv.updateFraming?.();
+                    mv.cameraOrbit = cameraOrbit;
                 } catch {
                     /* ignore framing errors */
                 }
@@ -1922,12 +2004,14 @@ function AvatarPreviewCard({ view, config, layers, compact = false, fullBleed = 
                         <button
                             type="button"
                             onClick={() => stepZoom('in')}
+                            className="h-7 w-7 rounded-lg border border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
                             title="Zoom in"
                             className="flex-1 rounded-lg border border-white/10 py-1.5 text-sm font-bold leading-none text-white/60 transition-all hover:bg-white/10 hover:text-white"
                         >+</button>
                         <button
                             type="button"
                             onClick={() => stepZoom('out')}
+                            className="h-7 w-7 rounded-lg border border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
                             title="Zoom out"
                             className="flex-1 rounded-lg border border-white/10 py-1.5 text-sm font-bold leading-none text-white/60 transition-all hover:bg-white/10 hover:text-white"
                         >−</button>

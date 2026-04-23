@@ -1,11 +1,4 @@
 import { useState, useEffect } from 'react';
-import { 
-    Search, ShieldCheck, Zap, Gem, 
-    Calendar, MapPin, Ticket as TicketIcon,
-    ChevronRight, LayoutGrid, List
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '../../components/ui/core';
 import ticketService from '../../services/ticketService';
 import type { Ticket } from '../../models/ticket';
 import { QRCodeSVG } from 'qrcode.react';
@@ -42,12 +35,12 @@ export default function MyTickets() {
     }, []);
 
     const filteredTickets = tickets.filter(t => {
-        const matchesSearch = 
+        const matchesSearch =
             t.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (typeof t.tournament !== 'string' && t.tournament?.name.toLowerCase().includes(searchQuery.toLowerCase()));
-        
+
         const matchesFilter = filter === 'ALL' || t.status === filter;
-        
+
         return matchesSearch && matchesFilter;
     });
 
@@ -57,10 +50,12 @@ export default function MyTickets() {
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#00ff87]/5 blur-[120px] rounded-full" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full" />
-                <div className="absolute inset-0 opacity-[0.02]" 
-                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45v-30z' fill-rule='evenodd' stroke='%23fff' stroke-width='1' fill='none'/%3E%3C/svg%3E")`, backgroundSize: '30px' }} 
+                <div className="absolute inset-0 opacity-[0.02]"
+                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45v-30z' fill-rule='evenodd' stroke='%23fff' stroke-width='1' fill='none'/%3E%3C/svg%3E")`, backgroundSize: '30px' }}
                 />
             </div>
+        );
+    }
 
             <div className="max-w-7xl mx-auto relative z-10 space-y-10">
                 {/* Header Section */}
@@ -77,16 +72,16 @@ export default function MyTickets() {
                             Manage your authenticated tournament passes and NFT tickets in one high-security interface.
                         </p>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-1.5 flex gap-1">
-                            <button 
+                            <button
                                 onClick={() => setViewMode('grid')}
                                 className={cn("p-2.5 rounded-xl transition-all", viewMode === 'grid' ? "bg-white/10 text-[#00ff87]" : "text-white/30 hover:text-white")}
                             >
                                 <LayoutGrid size={18} />
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setViewMode('list')}
                                 className={cn("p-2.5 rounded-xl transition-all", viewMode === 'list' ? "bg-white/10 text-[#00ff87]" : "text-white/30 hover:text-white")}
                             >
@@ -100,7 +95,7 @@ export default function MyTickets() {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div className="md:col-span-8 relative group">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#00ff87] transition-colors" size={18} />
-                        <input 
+                        <input
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="SEARCH ENCRYPTED LEDGER..."
@@ -114,8 +109,8 @@ export default function MyTickets() {
                                 onClick={() => setFilter(f as any)}
                                 className={cn(
                                     "flex-1 rounded-2xl border text-[9px] font-black uppercase tracking-widest transition-all",
-                                    filter === f 
-                                        ? "bg-[#00ff87]/10 border-[#00ff87]/40 text-[#00ff87]" 
+                                    filter === f
+                                        ? "bg-[#00ff87]/10 border-[#00ff87]/40 text-[#00ff87]"
                                         : "bg-white/5 border-white/10 text-white/30 hover:border-white/20"
                                 )}
                             >
@@ -128,7 +123,7 @@ export default function MyTickets() {
                 {/* Content Area */}
                 <AnimatePresence mode="wait">
                     {loading ? (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                         >
@@ -137,27 +132,27 @@ export default function MyTickets() {
                             ))}
                         </motion.div>
                     ) : filteredTickets.length > 0 ? (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             className={cn(
-                                viewMode === 'grid' 
-                                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                                viewMode === 'grid'
+                                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                                     : "space-y-4"
                             )}
                         >
                             {filteredTickets.map((ticket, idx) => (
-                                <TicketCard 
-                                    key={ticket._id} 
-                                    ticket={ticket} 
-                                    index={idx} 
+                                <TicketCard
+                                    key={ticket._id}
+                                    ticket={ticket}
+                                    index={idx}
                                     viewMode={viewMode}
                                     onClick={() => navigate(`/player/tickets/${ticket._id}`)}
                                 />
                             ))}
                         </motion.div>
                     ) : (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                             className="py-32 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] bg-white/[0.01]"
                         >
@@ -166,8 +161,8 @@ export default function MyTickets() {
                             </div>
                             <h3 className="text-xl font-black italic tracking-widest text-white/40 uppercase">No Assets Detected</h3>
                             <p className="text-white/20 text-[10px] font-bold tracking-widest mt-2 uppercase">Your vault is currently empty</p>
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => navigate('/player/market')}
                                 className="mt-8 border-white/10 hover:border-[#00ff87] hover:text-[#00ff87]"
                             >
@@ -239,26 +234,26 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
         >
             {/* Holographic Overlay Effect */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-700 mix-blend-color-dodge"
-                 style={{ 
+                 style={{
                     background: 'linear-gradient(135deg, transparent 0%, rgba(0,255,135,0.05) 50%, transparent 100%)',
                     backgroundSize: '200% 200%'
-                 }} 
+                 }}
             />
 
             {/* Banner Image */}
             <div className="h-44 shrink-0 relative overflow-hidden bg-black">
                 {tournament?.bannerImageUrl ? (
-                    <img 
-                        src={tournament.bannerImageUrl} 
-                        className="w-full h-full object-cover opacity-60 group-hover:scale-110 group-hover:opacity-40 transition-all duration-1000" 
+                    <img
+                        src={tournament.bannerImageUrl}
+                        className="w-full h-full object-cover opacity-60 group-hover:scale-110 group-hover:opacity-40 transition-all duration-1000"
                         alt="Venue"
                     />
                 ) : (
                     <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-black opacity-40" />
                 )}
-                
+
                 <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent" />
-                
+
                 {/* Status Badge */}
                 <div className="absolute top-4 left-4 z-20">
                     <div className={cn(
@@ -286,7 +281,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                     <h3 className="text-2xl font-black italic tracking-tighter uppercase text-white group-hover:text-[#00ff87] transition-colors leading-[1.1]">
                         {tournament?.name || 'Tournament Access Pass'}
                     </h3>
-                    
+
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-white/40 text-[10px] font-bold tracking-widest uppercase">
                             <Calendar size={14} className="text-white/20" />
@@ -307,7 +302,7 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                             {accessId}
                         </p>
                     </div>
-                    
+
                     <div className="relative group/qr">
                         <div className="absolute -inset-2 bg-[#00ff87]/20 blur-xl opacity-0 group-hover/qr:opacity-100 transition-opacity" />
                         <div className="relative bg-white p-1.5 rounded-xl transition-all duration-300 group-hover:scale-110">

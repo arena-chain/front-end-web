@@ -465,40 +465,40 @@ export default function ChannelStudioPage() {
             </section>
 
             <div className="mx-auto max-w-[1600px] space-y-8 px-4 py-8 sm:space-y-10 sm:px-8">
-                    <p className="rounded-xl border border-primary/20 bg-primary/[0.06] px-4 py-3 text-xs leading-relaxed text-white/75">
-                        <strong className="text-primary">Visibilité publique</strong> des VOD : réglages dans{' '}
-                        <strong className="text-white">Mes vidéos</strong>. Clips : menu <strong className="text-white">Highlights</strong>.
-                    </p>
+                <p className="rounded-xl border border-primary/20 bg-primary/[0.06] px-4 py-3 text-xs leading-relaxed text-white/75">
+                    <strong className="text-primary">Visibilité publique</strong> des VOD : réglages dans{' '}
+                    <strong className="text-white">Mes vidéos</strong>. Clips : menu <strong className="text-white">Highlights</strong>.
+                </p>
 
 
 
-            {/* Même grille que pour un viewer (YouTube / Twitch) — uniquement les VOD publiées */}
-            <section
-                id="channel-videos"
-                className="scroll-mt-28 space-y-6 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.75)] md:p-8"
-            >
-                <div>
-                    <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
-                        <Film size={14} /> Chaîne — vidéos publiées
-                    </div>
-                    <div className="flex flex-wrap items-end justify-between gap-3">
-                        <div>
-                            <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
-                                Bibliothèque visible par les visiteurs
-                            </h2>
-                            <p className="text-sm text-white/45 mt-1 max-w-2xl leading-relaxed">
-                                Liste complète des enregistrements <strong className="text-white/70">publics sur la chaîne</strong>
-                                — la même qu’un autre joueur voit sur votre page studio ou sur le live. Style proche{' '}
-                                <strong className="text-white/50">YouTube / Twitch</strong>, sans quitter cette page.
-                            </p>
+                {/* Même grille que pour un viewer (YouTube / Twitch) — uniquement les VOD publiées */}
+                <section
+                    id="channel-videos"
+                    className="scroll-mt-28 space-y-6 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.75)] md:p-8"
+                >
+                    <div>
+                        <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
+                            <Film size={14} /> Chaîne — vidéos publiées
                         </div>
-                        {!studioVideosLoading && studioVideos.length > 0 && (
-                            <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest shrink-0">
-                                {studioVideos.length} vidéo{studioVideos.length > 1 ? 's' : ''}
-                            </Badge>
-                        )}
+                        <div className="flex flex-wrap items-end justify-between gap-3">
+                            <div>
+                                <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
+                                    Bibliothèque visible par les visiteurs
+                                </h2>
+                                <p className="text-sm text-white/45 mt-1 max-w-2xl leading-relaxed">
+                                    Liste complète des enregistrements <strong className="text-white/70">publics sur la chaîne</strong>
+                                    — la même qu’un autre joueur voit sur votre page studio ou sur le live. Style proche{' '}
+                                    <strong className="text-white/50">YouTube / Twitch</strong>, sans quitter cette page.
+                                </p>
+                            </div>
+                            {!studioVideosLoading && studioVideos.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest shrink-0">
+                                    {studioVideos.length} vidéo{studioVideos.length > 1 ? 's' : ''}
+                                </Badge>
+                            )}
+                        </div>
                     </div>
-                </div>
 
                 {studioVideosLoading && studioVideos.length === 0 ? (
                     <div className="py-16 flex justify-center">
@@ -580,85 +580,85 @@ export default function ChannelStudioPage() {
                 )}
             </section>
 
-            {/* Highlights — horizontal gallery + modal (clip + comments side panel) */}
-            <section
-                id="channel-clips"
-                className="scroll-mt-28 space-y-6 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.75)] md:p-8"
-            >
-                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
-                            <Sparkles size={14} /> Highlights auto
+                {/* Highlights — horizontal gallery + modal (clip + comments side panel) */}
+                <section
+                    id="channel-clips"
+                    className="scroll-mt-28 space-y-6 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c0e11]/60 p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.75)] md:p-8"
+                >
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-2 text-primary/90 text-xs font-black uppercase tracking-widest mb-2">
+                                <Sparkles size={14} /> Highlights auto
+                            </div>
+                            <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
+                                Vos clips
+                            </h2>
+                            <p className="text-sm text-white/45 mt-1 max-w-xl">
+                                Faites défiler <strong className="text-white/70">horizontalement</strong> pour voir vos clips côte à côte. Ouvrez un clip :{' '}
+                                <strong className="text-white/70">vidéo à gauche</strong>, commentaires à droite. Dans la fenêtre : flèches ou{' '}
+                                <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">←</kbd>{' '}
+                                <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">→</kbd> /{' '}
+                                <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">↑</kbd>{' '}
+                                <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">↓</kbd> pour passer au clip suivant ou précédent.
+                            </p>
                         </div>
-                        <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
-                            Vos clips
-                        </h2>
-                        <p className="text-sm text-white/45 mt-1 max-w-xl">
-                            Faites défiler <strong className="text-white/70">horizontalement</strong> pour voir vos clips côte à côte. Ouvrez un clip :{' '}
-                            <strong className="text-white/70">vidéo à gauche</strong>, commentaires à droite. Dans la fenêtre : flèches ou{' '}
-                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">←</kbd>{' '}
-                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">→</kbd> /{' '}
-                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">↑</kbd>{' '}
-                            <kbd className="px-1 py-0.5 rounded bg-white/10 text-[10px]">↓</kbd> pour passer au clip suivant ou précédent.
-                        </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="!px-3"
+                                onClick={() => scrollHighlightsHorizontal('left')}
+                                aria-label="Défiler la liste vers la gauche"
+                            >
+                                <ChevronLeft size={18} />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="!px-3"
+                                onClick={() => scrollHighlightsHorizontal('right')}
+                                aria-label="Défiler la liste vers la droite"
+                            >
+                                <ChevronRight size={18} />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => void loadMyHighlights()}
+                                disabled={highlightsLoading}
+                                isLoading={highlightsLoading}
+                            >
+                                Actualiser
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="!px-3"
-                            onClick={() => scrollHighlightsHorizontal('left')}
-                            aria-label="Défiler la liste vers la gauche"
-                        >
-                            <ChevronLeft size={18} />
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="!px-3"
-                            onClick={() => scrollHighlightsHorizontal('right')}
-                            aria-label="Défiler la liste vers la droite"
-                        >
-                            <ChevronRight size={18} />
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => void loadMyHighlights()}
-                            disabled={highlightsLoading}
-                            isLoading={highlightsLoading}
-                        >
-                            Actualiser
-                        </Button>
-                    </div>
-                </div>
 
-                {highlightsLoading && myHighlights.length === 0 ? (
-                    <div className="py-16 flex justify-center">
-                        <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                    </div>
-                ) : myHighlights.length === 0 ? (
-                    <div className="py-12 text-center text-white/40 text-sm rounded-2xl border border-dashed border-white/10">
-                        Aucun clip encore. Uploadez une vidéo et attendez la fin du traitement (Redis / worker),
-                        puis actualisez.
-                    </div>
-                ) : (
-                    <div className="w-full">
-                        <div
-                            ref={highlightsScrollRef}
-                            className="flex flex-row gap-4 overflow-x-auto overflow-y-visible scroll-smooth snap-x snap-mandatory py-1 pb-3 -mx-1 px-1 [scrollbar-width:thin] [scrollbar-color:rgba(0,255,135,0.35)_transparent] [-webkit-overflow-scrolling:touch]"
-                        >
-                            {myHighlights.map((h) => (
-                                <button
-                                    key={h._id}
-                                    type="button"
-                                    onClick={() => setSelectedHighlight(h)}
-                                    className="group/card shrink-0 snap-start text-left w-[200px] sm:w-[220px] rounded-2xl border border-white/10 bg-black/50 overflow-hidden hover:border-primary/45 hover:shadow-[0_0_28px_rgba(0,255,135,0.14)] transition-all duration-300"
-                                >
-                                    <div className="relative aspect-[9/16] w-full bg-black">
+                    {highlightsLoading && myHighlights.length === 0 ? (
+                        <div className="py-16 flex justify-center">
+                            <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        </div>
+                    ) : myHighlights.length === 0 ? (
+                        <div className="py-12 text-center text-white/40 text-sm rounded-2xl border border-dashed border-white/10">
+                            Aucun clip encore. Uploadez une vidéo et attendez la fin du traitement (Redis / worker),
+                            puis actualisez.
+                        </div>
+                    ) : (
+                        <div className="w-full">
+                            <div
+                                ref={highlightsScrollRef}
+                                className="flex flex-row gap-4 overflow-x-auto overflow-y-visible scroll-smooth snap-x snap-mandatory py-1 pb-3 -mx-1 px-1 [scrollbar-width:thin] [scrollbar-color:rgba(0,255,135,0.35)_transparent] [-webkit-overflow-scrolling:touch]"
+                            >
+                                {myHighlights.map((h) => (
+                                    <button
+                                        key={h._id}
+                                        type="button"
+                                        onClick={() => setSelectedHighlight(h)}
+                                        className="group/card shrink-0 snap-start text-left w-[200px] sm:w-[220px] rounded-2xl border border-white/10 bg-black/50 overflow-hidden hover:border-primary/45 hover:shadow-[0_0_28px_rgba(0,255,135,0.14)] transition-all duration-300"
+                                    >
+                                        <div className="relative aspect-[9/16] w-full bg-black">
                                             <video
                                                 src={resolveBackendAssetUrl(h.clipUrl)}
                                                 className="w-full h-full object-cover opacity-92 group-hover/card:opacity-100"
@@ -685,10 +685,10 @@ export default function ChannelStudioPage() {
                                         </div>
                                     </button>
                                 ))}
+                            </div>
                         </div>
-                    </div>
-                )}
-            </section>
+                    )}
+                </section>
             </div>
 
             {customizeOpen ? (
@@ -747,184 +747,184 @@ export default function ChannelStudioPage() {
                                 onSubmit={handleCustomizeSubmit}
                                 className="relative space-y-8 overflow-hidden rounded-2xl border border-white/10 bg-[#0c0e11]/90 p-5 shadow-xl backdrop-blur-xl sm:p-6"
                             >
-                    <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-                    <div className="space-y-8">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Configuration Identité</label>
-                            </div>
-                            <div className="grid grid-cols-1 gap-6">
-                                <div className="relative group/input">
-                                    <Input
-                                        className="w-full h-16 bg-[#16191d]/50 border-white/5 rounded-2xl px-8 text-lg font-bold placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10"
-                                        placeholder="Nom de votre chaîne"
-                                        value={draftForm.name}
-                                        onChange={(event) => setDraftForm((current) => ({ ...current, name: event.target.value }))}
-                                        required
-                                    />
-                                    <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
-                                </div>
-                                <div className="relative group/input">
-                                    <Textarea
-                                        rows={4}
-                                        className="w-full bg-[#16191d]/50 border-white/5 rounded-2xl px-8 py-6 text-base font-medium placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10 resize-none"
-                                        placeholder="Décrivez l'univers de votre studio..."
-                                        value={draftForm.description}
-                                        onChange={(event) => setDraftForm((current) => ({ ...current, description: event.target.value }))}
-                                    />
-                                    <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
-                                </div>
-                            </div>
-                        </div>
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                            <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Configuration Identité</label>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-6">
+                                            <div className="relative group/input">
+                                                <Input
+                                                    className="w-full h-16 bg-[#16191d]/50 border-white/5 rounded-2xl px-8 text-lg font-bold placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10"
+                                                    placeholder="Nom de votre chaîne"
+                                                    value={draftForm.name}
+                                                    onChange={(event) => setDraftForm((current) => ({ ...current, name: event.target.value }))}
+                                                    required
+                                                />
+                                                <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
+                                            </div>
+                                            <div className="relative group/input">
+                                                <Textarea
+                                                    rows={4}
+                                                    className="w-full bg-[#16191d]/50 border-white/5 rounded-2xl px-8 py-6 text-base font-medium placeholder:text-white/5 focus:ring-primary/20 focus:border-primary/40 transition-all duration-300 hover:border-white/10 resize-none"
+                                                    placeholder="Décrivez l'univers de votre studio..."
+                                                    value={draftForm.description}
+                                                    onChange={(event) => setDraftForm((current) => ({ ...current, description: event.target.value }))}
+                                                />
+                                                <div className="absolute inset-0 rounded-2xl ring-1 ring-primary/0 group-focus-within/input:ring-primary/20 transition-all pointer-events-none" />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Galerie d'Avatars</label>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="hidden sm:block text-[10px] text-primary font-black uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full border border-primary/10">8 Modèles Pro</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCustomAvatar(!showCustomAvatar)}
-                                        className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomAvatar ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                    >
-                                        {showCustomAvatar ? 'Utiliser la galerie' : 'URL Personnalisée'}
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-4 sm:grid-cols-4 xl:grid-cols-8 gap-4">
-                                {PREDEFINED_AVATARS.map((url, i) => (
-                                    <button
-                                        key={i}
-                                        type="button"
-                                        onClick={() => {
-                                            setDraftForm(f => ({ ...f, avatarUrl: url }));
-                                            setShowCustomAvatar(false);
-                                        }}
-                                        className={`relative aspect-square rounded-2xl border-2 transition-all duration-500 group overflow-hidden hover:scale-105 active:scale-95 ${!showCustomAvatar && draftForm.avatarUrl === url ? 'border-primary shadow-[0_0_30px_rgba(0,255,135,0.2)] ring-4 ring-primary/10' : 'border-white/5 hover:border-white/20'}`}
-                                    >
-                                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${url})` }} />
-                                        {!showCustomAvatar && draftForm.avatarUrl === url && (
-                                            <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in zoom-in duration-300">
-                                                <div className="bg-primary text-black p-1 rounded-full shadow-2xl">
-                                                    <Check className="w-4 h-4 font-black" />
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                                <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Galerie d'Avatars</label>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="hidden sm:block text-[10px] text-primary font-black uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full border border-primary/10">8 Modèles Pro</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCustomAvatar(!showCustomAvatar)}
+                                                    className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomAvatar ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
+                                                >
+                                                    {showCustomAvatar ? 'Utiliser la galerie' : 'URL Personnalisée'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-4 sm:grid-cols-4 xl:grid-cols-8 gap-4">
+                                            {PREDEFINED_AVATARS.map((url, i) => (
+                                                <button
+                                                    key={i}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setDraftForm(f => ({ ...f, avatarUrl: url }));
+                                                        setShowCustomAvatar(false);
+                                                    }}
+                                                    className={`relative aspect-square rounded-2xl border-2 transition-all duration-500 group overflow-hidden hover:scale-105 active:scale-95 ${!showCustomAvatar && draftForm.avatarUrl === url ? 'border-primary shadow-[0_0_30px_rgba(0,255,135,0.2)] ring-4 ring-primary/10' : 'border-white/5 hover:border-white/20'}`}
+                                                >
+                                                    <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${url})` }} />
+                                                    {!showCustomAvatar && draftForm.avatarUrl === url && (
+                                                        <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                                                            <div className="bg-primary text-black p-1 rounded-full shadow-2xl">
+                                                                <Check className="w-4 h-4 font-black" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {showCustomAvatar && (
+                                            <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
+                                                    <UserIcon className="w-5 h-5" />
                                                 </div>
+                                                <Input
+                                                    className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
+                                                    placeholder="Lien de votre avatar personnalisé (URL)"
+                                                    value={draftForm.avatarUrl}
+                                                    onChange={(event) => setDraftForm((current) => ({ ...current, avatarUrl: event.target.value }))}
+                                                />
                                             </div>
                                         )}
-                                    </button>
-                                ))}
-                            </div>
-                            {showCustomAvatar && (
-                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
-                                        <UserIcon className="w-5 h-5" />
                                     </div>
-                                    <Input
-                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
-                                        placeholder="Lien de votre avatar personnalisé (URL)"
-                                        value={draftForm.avatarUrl}
-                                        onChange={(event) => setDraftForm((current) => ({ ...current, avatarUrl: event.target.value }))}
-                                    />
-                                </div>
-                            )}
-                        </div>
 
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Tags & Catégories Gaming</label>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCustomCategories(!showCustomCategories)}
-                                    className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomCategories ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                >
-                                    {showCustomCategories ? 'Masquer' : 'Perso'}
-                                </button>
-                            </div>
-                            <div className="flex flex-wrap gap-2.5">
-                                {PREDEFINED_CATEGORIES.map(cat => {
-                                    const isSelected = draftForm.categories.split(',').map(s => s.trim()).includes(cat);
-                                    return (
-                                        <button
-                                            key={cat}
-                                            type="button"
-                                            onClick={() => {
-                                                const currentCats = draftForm.categories.split(',').map(s => s.trim()).filter(Boolean);
-                                                if (isSelected) {
-                                                    setDraftForm(f => ({ ...f, categories: currentCats.filter(c => c !== cat).join(', ') }));
-                                                } else {
-                                                    setDraftForm(f => ({ ...f, categories: [...currentCats, cat].join(', ') }));
-                                                }
-                                            }}
-                                            className={`px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all duration-300 transform active:scale-95 ${isSelected
-                                                ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(0,255,135,0.3)]'
-                                                : 'bg-white/5 border-white/5 text-white/30 hover:bg-white/10 hover:border-white/20 hover:text-white/60'
-                                                }`}
-                                        >
-                                            <span className="flex items-center gap-2">
-                                                {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 text-primary" />}
-                                                {cat}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            {showCustomCategories && (
-                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
-                                        <Hash className="w-5 h-5" />
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                                <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Tags & Catégories Gaming</label>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCustomCategories(!showCustomCategories)}
+                                                className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomCategories ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
+                                            >
+                                                {showCustomCategories ? 'Masquer' : 'Perso'}
+                                            </button>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2.5">
+                                            {PREDEFINED_CATEGORIES.map(cat => {
+                                                const isSelected = draftForm.categories.split(',').map(s => s.trim()).includes(cat);
+                                                return (
+                                                    <button
+                                                        key={cat}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const currentCats = draftForm.categories.split(',').map(s => s.trim()).filter(Boolean);
+                                                            if (isSelected) {
+                                                                setDraftForm(f => ({ ...f, categories: currentCats.filter(c => c !== cat).join(', ') }));
+                                                            } else {
+                                                                setDraftForm(f => ({ ...f, categories: [...currentCats, cat].join(', ') }));
+                                                            }
+                                                        }}
+                                                        className={`px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all duration-300 transform active:scale-95 ${isSelected
+                                                            ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(0,255,135,0.3)]'
+                                                            : 'bg-white/5 border-white/5 text-white/30 hover:bg-white/10 hover:border-white/20 hover:text-white/60'
+                                                            }`}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3 text-primary" />}
+                                                            {cat}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {showCustomCategories && (
+                                            <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
+                                                    <Hash className="w-5 h-5" />
+                                                </div>
+                                                <Input
+                                                    className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
+                                                    placeholder="Catégories libres (séparées par une virgule)"
+                                                    value={draftForm.categories}
+                                                    onChange={(event) => setDraftForm((current) => ({ ...current, categories: event.target.value }))}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                    <Input
-                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
-                                        placeholder="Catégories libres (séparées par une virgule)"
-                                        value={draftForm.categories}
-                                        onChange={(event) => setDraftForm((current) => ({ ...current, categories: event.target.value }))}
-                                    />
-                                </div>
-                            )}
-                        </div>
 
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
-                                    <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Design de Bannière</label>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCustomBanner(!showCustomBanner)}
-                                    className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomBanner ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                >
-                                    {showCustomBanner ? 'Masquer URL' : 'Ajouter une URL'}
-                                </button>
-                            </div>
-                            {showCustomBanner && (
-                                <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
-                                        <ImageIcon className="w-5 h-5" />
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,135,0.5)]" />
+                                                <label className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Design de Bannière</label>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCustomBanner(!showCustomBanner)}
+                                                className={`text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomBanner ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
+                                            >
+                                                {showCustomBanner ? 'Masquer URL' : 'Ajouter une URL'}
+                                            </button>
+                                        </div>
+                                        {showCustomBanner && (
+                                            <div className="relative group/input animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within/input:text-primary transition-colors z-20">
+                                                    <ImageIcon className="w-5 h-5" />
+                                                </div>
+                                                <Input
+                                                    className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
+                                                    placeholder="Lien de l'image de votre bannière (URL)"
+                                                    value={draftForm.bannerUrl}
+                                                    onChange={(event) => setDraftForm((current) => ({ ...current, bannerUrl: event.target.value }))}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                    <Input
-                                        className="h-14 pl-14 bg-[#16191d]/30 border-white/5 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-white/5"
-                                        placeholder="Lien de l'image de votre bannière (URL)"
-                                        value={draftForm.bannerUrl}
-                                        onChange={(event) => setDraftForm((current) => ({ ...current, bannerUrl: event.target.value }))}
-                                    />
                                 </div>
-                            )}
-                        </div>
-                    </div>
 
-                    <div className="pt-6">
-                        <Button type="submit" size="lg" isLoading={saving} className="w-full h-16 rounded-[2rem] text-sm font-black uppercase tracking-widest shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all duration-500">
-                            {channel ? 'Sauvegarder les modifications' : 'Lancer mon Studio'}
-                        </Button>
-                    </div>
+                                <div className="pt-6">
+                                    <Button type="submit" size="lg" isLoading={saving} className="w-full h-16 rounded-[2rem] text-sm font-black uppercase tracking-widest shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all duration-500">
+                                        {channel ? 'Sauvegarder les modifications' : 'Lancer mon Studio'}
+                                    </Button>
+                                </div>
                             </form>
                         </div>
                     </div>

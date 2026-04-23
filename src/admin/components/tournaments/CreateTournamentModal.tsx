@@ -92,6 +92,8 @@ const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, o
                     endDate: formData.endDate || new Date(),
                     maxTeams: formData.maxTeams || 16,
                     format: formData.format || TournamentFormat.SINGLE_ELIMINATION,
+                    region: TournamentRegion.GLOBAL,
+                    gameMode: GameMode.SQUAD_5,
                     prizePool: formData.prizePool || 0,
                     firstPlace: formData.firstPlace || 0,
                     secondPlace: formData.secondPlace || 0,

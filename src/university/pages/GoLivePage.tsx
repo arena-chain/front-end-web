@@ -9,7 +9,8 @@ import { streamService, type StreamRecord } from '../../services/stream.service'
 import type { Socket } from 'socket.io-client';
 import { getStreamCategory, sortLiveStreams, type LiveSortMode } from '../../lib/streamBrowse';
 import { cn } from '../../lib/utils';
-import { Link2, Monitor, Radio, Sparkles, Tv, Check, Calendar, Clock } from 'lucide-react';
+import { Link2, Monitor, Radio, Sparkles, Tv, Check, Copy, Trash2, Plus, Zap, Activity, Mic, MicOff, Video, VideoOff, Maximize, Upload, X } from 'lucide-react';
+import { resolveBackendAssetUrl } from '../../lib/apiBase';
 
 const PREDEFINED_TAGS = [
     'Gaming', 'Live', 'Competitive', 'Chill', 'Education',
@@ -35,9 +36,15 @@ export default function GoLivePage() {
     const [saving, setSaving] = useState(false);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [broadcastMode, setBroadcastMode] = useState<'screen' | 'camera' | 'screen-camera' | null>(null);
+    const [isMicMuted, setIsMicMuted] = useState(false);
+    const [isCamMuted, setIsCamMuted] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [isScheduled, setIsScheduled] = useState(false);
     const [savedSortMode, setSavedSortMode] = useState<LiveSortMode>('date-desc');
+    const [isSetupOpen, setIsSetupOpen] = useState(true);
+    const [isScheduled, setIsScheduled] = useState(false);
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [forceStart, setForceStart] = useState(false);
 
     const sortedSavedStreams = useMemo(
         () => sortLiveStreams(streams, savedSortMode),
@@ -51,6 +58,7 @@ export default function GoLivePage() {
 
         return streams.find((stream) => stream.isLive) ?? streams[0] ?? null;
     }, [selectedStreamId, streams]);
+
     const embed = getStreamEmbed(
         pickPreferredStreamUrl(
             form.streamUrl,
@@ -59,6 +67,32 @@ export default function GoLivePage() {
             currentStream?.playbackUrl,
         ),
     );
+
+    const { isFutureScheduled, timeUntilStart } = useMemo(() => {
+        if (!isScheduled || !form.scheduledStartTime) {
+            return { isFutureScheduled: false, timeUntilStart: '' };
+        }
+        const start = new Date(form.scheduledStartTime);
+        if (Number.isNaN(start.getTime())) {
+            return { isFutureScheduled: false, timeUntilStart: '' };
+        }
+        const diff = start.getTime() - currentTime.getTime();
+        if (diff <= 0) {
+            return { isFutureScheduled: false, timeUntilStart: '' };
+        }
+
+        const totalSeconds = Math.floor(diff / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        return {
+            isFutureScheduled: true,
+            timeUntilStart: `${hours > 0 ? `${hours}h ` : ''}${minutes}m ${seconds}s`
+        };
+    }, [isScheduled, form.scheduledStartTime, currentTime]);
+
+    const isLiveDisabled = isFutureScheduled && !forceStart;
     const watchUrl = channel ? `${window.location.origin}/watch/${channel._id}` : '';
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
@@ -146,8 +180,13 @@ export default function GoLivePage() {
             iceServersRef.current = servers;
         });
 
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+
         return () => {
-            stopRealtimeBroadcast(false);
+            clearInterval(timer);
+            void stopRealtimeBroadcast(false);
         };
     }, []);
 
@@ -162,10 +201,12 @@ export default function GoLivePage() {
             setChannel(myChannel);
             setStreams(myStreams);
             const initialStream = myStreams.find((stream) => stream.isLive) ?? myStreams[0] ?? null;
-            setSelectedStreamId(initialStream?._id ?? null);
-            fillFormFromStream(initialStream);
+            if (initialStream) {
+                setSelectedStreamId(initialStream._id);
+                fillFormFromStream(initialStream);
+            }
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to load creator data');
+            toast.error(error instanceof Error ? error.message : 'Loading failed');
         } finally {
             setLoading(false);
         }
@@ -204,14 +245,21 @@ export default function GoLivePage() {
                 saved = await streamService.startStream(saved._id);
             }
 
-            if (!makeLive && saved.isLive) {
-                saved = await streamService.endStream(saved._id);
+            let saved: StreamRecord;
+            if (currentStream && (currentStream.isLive || selectedStreamId)) {
+                saved = await streamService.update(currentStream._id, streamData);
+                toast.success('Live details updated');
+            } else {
+                saved = await streamService.create(streamData);
+                setSelectedStreamId(saved._id);
+                toast.success('Stream draft created');
             }
 
-            setStreams((previous) => [saved, ...previous.filter((item) => item._id !== saved._id)]);
-            setSelectedStreamId(saved._id);
-            fillFormFromStream(saved);
-            toast.success(makeLive ? 'Stream is live. Your watch link is ready.' : 'Stream draft saved');
+            setStreams((previous) => [
+                saved,
+                ...previous.filter((item) => item._id !== saved._id),
+            ]);
+            setIsSetupOpen(false);
             return saved;
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to save stream');
@@ -354,7 +402,7 @@ export default function GoLivePage() {
             await peer.setLocalDescription(offer);
             socket.emit('signal-offer', {
                 targetId: viewerId,
-                channelId,
+                channelId: channel?._id,
                 description: offer,
             });
         });
@@ -397,6 +445,117 @@ export default function GoLivePage() {
         return socket;
     }
 
+    function cleanupPeer(viewerId: string) {
+        const peer = peerConnectionsRef.current.get(viewerId);
+        if (peer) {
+            peer.close();
+            peerConnectionsRef.current.delete(viewerId);
+        }
+        pendingIceCandidatesRef.current.delete(viewerId);
+    }
+
+    async function replaceTrackInPeers(newStream: MediaStream) {
+        const videoTrack = newStream.getVideoTracks()[0];
+        const audioTrack = newStream.getAudioTracks()[0];
+
+        for (const peer of peerConnectionsRef.current.values()) {
+            const senders = peer.getSenders();
+            const videoSender = senders.find(s => s.track?.kind === 'video');
+            const audioSender = senders.find(s => s.track?.kind === 'audio');
+
+            if (videoSender && videoTrack) await videoSender.replaceTrack(videoTrack);
+            if (audioSender && audioTrack) await audioSender.replaceTrack(audioTrack);
+        }
+    }
+
+    async function toggleMic() {
+        const newState = !isMicMuted;
+        setIsMicMuted(newState);
+        if (localStreamRef.current) {
+            localStreamRef.current.getAudioTracks().forEach(t => t.enabled = !newState);
+        }
+        toast.info(newState ? 'Microphone muet' : 'Microphone activé');
+    }
+
+    async function toggleCam() {
+        const newState = !isCamMuted;
+        setIsCamMuted(newState);
+        if (localStreamRef.current) {
+            localStreamRef.current.getVideoTracks().forEach(t => t.enabled = !newState);
+        }
+        toast.info(newState ? 'Caméra désactivée' : 'Caméra activée');
+    }
+
+    async function toggleFullscreen() {
+        if (!localVideoRef.current) return;
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+        } else {
+            await localVideoRef.current.requestFullscreen();
+        }
+    }
+
+    async function createScreenCameraBroadcastStream(): Promise<MediaStream> {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+        sourceStreamsRef.current = [screenStream, cameraStream];
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1920;
+        canvas.height = 1080;
+        compositeCanvasRef.current = canvas;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            throw new Error('Could not get 2d context for composite broadcast');
+        }
+
+        const screenVideo = document.createElement('video');
+        screenVideo.srcObject = screenStream;
+        void screenVideo.play();
+
+        const cameraVideo = document.createElement('video');
+        cameraVideo.srcObject = cameraStream;
+        void cameraVideo.play();
+
+        const render = () => {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(cameraVideo, canvas.width - 420, canvas.height - 320, 400, 300);
+            compositeFrameRef.current = requestAnimationFrame(render);
+        };
+        render();
+
+        const compositeVideoTrack = canvas.captureStream(30).getVideoTracks()[0];
+        const combinedAudioContext = new AudioContext();
+        const destination = combinedAudioContext.createMediaStreamDestination();
+
+        if (screenStream.getAudioTracks().length > 0) {
+            combinedAudioContext.createMediaStreamSource(screenStream).connect(destination);
+        }
+        if (cameraStream.getAudioTracks().length > 0) {
+            combinedAudioContext.createMediaStreamSource(cameraStream).connect(destination);
+        }
+
+        const compositeStream = new MediaStream([compositeVideoTrack, ...destination.stream.getAudioTracks()]);
+
+        compositeStream.getVideoTracks()[0].onended = () => {
+            void stopRealtimeBroadcast(true);
+        };
+
+        return compositeStream;
+    }
+
+    function stopCompositeRenderer() {
+        if (compositeFrameRef.current) {
+            cancelAnimationFrame(compositeFrameRef.current);
+            compositeFrameRef.current = null;
+        }
+        compositeCanvasRef.current = null;
+    }
+
     async function startRealtimeBroadcast(mode: 'screen' | 'camera' | 'screen-camera') {
         if (!channel) {
             toast.error('Create your channel first');
@@ -407,6 +566,8 @@ export default function GoLivePage() {
         if (!saved) {
             return;
         }
+        // If already broadcasting the same mode, do nothing
+        if (isBroadcasting && broadcastMode === mode) return;
 
         try {
             const stream = mode === 'screen'
@@ -415,16 +576,34 @@ export default function GoLivePage() {
                     ? await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                     : await createScreenCameraBroadcastStream();
 
-            localStreamRef.current = stream;
-            await attachLocalPreview(stream);
+            // Apply current mute states to new tracks
+            newStream.getAudioTracks().forEach(t => t.enabled = !isMicMuted);
+            newStream.getVideoTracks().forEach(t => t.enabled = !isCamMuted);
 
-            if (mode !== 'screen-camera') {
-                stream.getVideoTracks().forEach((track) => {
-                    track.onended = () => {
-                        void stopRealtimeBroadcast(true);
-                    };
-                });
-            }
+            if (isBroadcasting) {
+                // SWITCHING MODE
+                await replaceTrackInPeers(newStream);
+
+                // Stop old tracks
+                if (localStreamRef.current) {
+                    localStreamRef.current.getTracks().forEach(t => t.stop());
+                }
+                sourceStreamsRef.current.forEach(s => s.getTracks().forEach(t => t.stop()));
+
+                localStreamRef.current = newStream;
+                await attachLocalPreview(newStream);
+                setBroadcastMode(mode);
+                toast.success(`Mode switched to ${mode}`);
+            } else {
+                // STARTING FRESH
+                const saved = await saveStream(true);
+                if (!saved) {
+                    newStream.getTracks().forEach(t => t.stop());
+                    return;
+                }
+
+                localStreamRef.current = newStream;
+                await attachLocalPreview(newStream);
 
             const socket = await ensureSocket();
             const joinBroadcasterChannel = () => {
@@ -434,21 +613,25 @@ export default function GoLivePage() {
                 });
             };
 
-            if (socket.connected) {
-                joinBroadcasterChannel();
-            } else {
-                socket.once('connect', joinBroadcasterChannel);
+                if (socket.connected) {
+                    joinBroadcasterChannel();
+                } else {
+                    socket.once('connect', joinBroadcasterChannel);
+                }
+
+                setBroadcastMode(mode);
+                setIsBroadcasting(true);
+                toast.success('Live broadcast started');
             }
 
-            setBroadcastMode(mode);
-            setIsBroadcasting(true);
-            toast.success(
-                mode === 'screen'
-                    ? 'Screen sharing is live'
-                    : mode === 'camera'
-                        ? 'Camera live is active'
-                        : 'Screen and camera live is active',
-            );
+            // Set up onended for new main stream tracks
+            if (mode !== 'screen-camera') {
+                newStream.getVideoTracks().forEach((track) => {
+                    track.onended = () => {
+                        void stopRealtimeBroadcast(true);
+                    };
+                });
+            }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not start live broadcast');
         }
@@ -552,8 +735,12 @@ export default function GoLivePage() {
                         </p>
                     </div>
 
-                    <div className="flex flex-col items-end gap-5 shrink-0">
-                        {channel && (
+                {channel && (
+                    <div className="flex justify-center pt-4">
+                        <div className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-500 bg-[#141414]",
+                            currentStream?.isLive ? "border-primary/50 shadow-[0_0_10px_rgba(34,197,94,0.15)]" : "border-white/5"
+                        )}>
                             <div className={cn(
                                 "flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-500 shadow-xl",
                                 currentStream?.isLive
@@ -724,19 +911,55 @@ export default function GoLivePage() {
                                                     );
                                                 })}
                                             </div>
-                                            <p className="text-[9px] text-white/20 font-medium italic ml-2">Ces tags aideront les spectateurs à découvrir votre contenu dans l'arène.</p>
-                                        </div>
 
-                                        <div className="md:col-span-2 pt-4">
-                                            <div className="p-8 rounded-[2rem] bg-black/40 border border-white/5 space-y-6">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="space-y-1">
-                                                        <h4 className="text-sm font-black text-white uppercase tracking-wider italic">Planification du Direct</h4>
-                                                        <p className="text-[11px] text-text-muted/60 font-medium">Annoncez votre live à l'avance pour votre communauté.</p>
+                                            {/* Advanced Metadata Fields */}
+                                            <div className="md:col-span-2 pt-4 space-y-4">
+                                                <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                                                <div className="flex items-center gap-2 px-1">
+                                                    <Zap className="w-3 h-3 text-primary/60" />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/60 italic">Advanced Metadata (Tunneling & Preview)</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/30 ml-1 italic">Preview URL (Source externe)</label>
+                                                        <Input
+                                                            placeholder="rtmp:// ou https://..."
+                                                            className="h-10 bg-black/20 border-white/5 rounded-lg px-4 text-[10px] font-bold focus:ring-primary/10"
+                                                            value={form.streamUrl}
+                                                            onChange={(e) => setForm(f => ({ ...f, streamUrl: e.target.value }))}
+                                                        />
                                                     </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/30 ml-1 italic">Playback URL (Source HLS/DASH)</label>
+                                                        <Input
+                                                            placeholder="https://.../playlist.m3u8"
+                                                            className="h-10 bg-black/20 border-white/5 rounded-lg px-4 text-[10px] font-bold focus:ring-primary/10"
+                                                            value={form.playbackUrl}
+                                                            onChange={(e) => setForm(f => ({ ...f, playbackUrl: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-2 space-y-2">
+                                                        <label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Vignette du Stream (16:9)</label>
+                                                        <ThumbnailUpload
+                                                            value={form.thumbnailUrl}
+                                                            onChange={(url) => setForm(f => ({ ...f, thumbnailUrl: url }))}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Planification</label>
+                                                <div className="flex items-center gap-4 h-12 px-4 rounded-xl bg-black/20 border border-white/5">
+                                                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest flex-1">Activer le rappel</span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => setIsScheduled(!isScheduled)}
+                                                        onClick={() => {
+                                                            const next = !isScheduled;
+                                                            setIsScheduled(next);
+                                                            if (next && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                                                                void Notification.requestPermission();
+                                                            }
+                                                        }}
                                                         className={cn(
                                                             "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
                                                             isScheduled ? "bg-primary" : "bg-white/10"
@@ -748,6 +971,8 @@ export default function GoLivePage() {
                                                         )} />
                                                     </button>
                                                 </div>
+                                            </div>
+                                        </div>
 
                                                 {isScheduled && (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-500">
@@ -843,55 +1068,88 @@ export default function GoLivePage() {
 
                                 <div className="p-8 space-y-6">
                                     {isBroadcasting && (
-                                        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 animate-in fade-in zoom-in duration-500">
-                                            <div className="flex items-center justify-between gap-4">
-                                                <div className="space-y-1">
-                                                    <p className="text-white font-black text-sm uppercase tracking-tight">Signal Actif</p>
-                                                    <p className="text-[11px] text-text-muted leading-tight">
-                                                        {broadcastMode === 'screen' ? 'Partage d\'écran' : broadcastMode === 'camera' ? 'Webcam actue' : 'Composite Mix'} diffusé aux spectateurs.
-                                                    </p>
-                                                </div>
-                                                <Badge className="bg-primary text-black font-black text-[10px] px-4 rounded-lg uppercase tracking-widest shadow-[0_0_20px_rgba(34,197,94,0.3)]">WEBRTC LIVE</Badge>
-                                            </div>
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded-full border border-red-500/20">
+                                            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                                            <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Signal Actif</span>
                                         </div>
                                     )}
-                                    {isBroadcasting && (
-                                        <video
-                                            ref={localVideoRef}
-                                            autoPlay
-                                            muted
-                                            playsInline
-                                            controls
-                                            className="w-full aspect-video rounded-2xl border border-primary/20 bg-black"
-                                        />
-                                    )}
-                                    {embed?.type === 'iframe' && (
-                                        <iframe
-                                            src={embed.src}
-                                            title="Live preview"
-                                            className="w-full aspect-video rounded-2xl border border-white/10 bg-black"
-                                            allow="autoplay; fullscreen"
-                                        />
-                                    )}
-                                    {embed?.type === 'video' && (
-                                        <video src={embed.src} controls className="w-full aspect-video rounded-2xl border border-white/10 bg-black" />
-                                    )}
-                                    {embed?.type === 'link' && (
-                                        <a href={embed.src} target="_blank" rel="noreferrer" className="block p-4 rounded-2xl border border-white/10 text-primary">
-                                            Open external player
-                                        </a>
-                                    )}
-                                    {!embed && (
-                                        <div className="relative aspect-video overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#141820] via-black to-[#0a0c10] ring-1 ring-inset ring-white/[0.04]">
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
-                                                <div className="rounded-full border border-primary/25 bg-primary/5 p-3 text-primary">
-                                                    <Tv className="h-8 w-8 opacity-80" />
+                                </div>
+
+                                <div className="space-y-6">
+                                    {/* Video Preview Container (16:9) */}
+                                    <div className="relative aspect-video rounded-xl bg-black border border-white/5 overflow-hidden group shadow-inner">
+                                        {isBroadcasting ? (
+                                            <div className="relative w-full h-full">
+                                                <video
+                                                    ref={localVideoRef}
+                                                    autoPlay
+                                                    muted
+                                                    playsInline
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                {/* Broadcast Status & Controls Overlay */}
+                                                <div className="absolute top-4 right-4 flex items-center gap-2">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); void toggleFullscreen(); }}
+                                                        className="p-2 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 text-white hover:text-primary transition-colors"
+                                                    >
+                                                        <Maximize className="w-3.5 h-3.5" />
+                                                    </button>
                                                 </div>
-                                                <p className="text-sm font-semibold text-white/80">Aucun aperçu</p>
-                                                <p className="max-w-xs text-xs text-text-muted">
-                                                    Ajoute une URL de lecture valide pour prévisualiser le lecteur, ou lance un mode
-                                                    WebRTC ci-contre.
-                                                </p>
+
+                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl">
+                                                    <button
+                                                        onClick={() => void toggleMic()}
+                                                        className={cn(
+                                                            "p-2.5 rounded-xl transition-all duration-300",
+                                                            isMicMuted ? "bg-red-500/20 text-red-500 hover:bg-red-500/30" : "bg-white/5 text-white hover:bg-white/10 hover:text-primary"
+                                                        )}
+                                                    >
+                                                        {isMicMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                                    </button>
+                                                    <div className="w-px h-4 bg-white/10" />
+                                                    <div className="flex items-center gap-2 px-3">
+                                                        <Activity className="w-3 h-3 text-primary animate-pulse" />
+                                                        <span className="text-[9px] font-black text-white uppercase tracking-widest whitespace-nowrap">
+                                                            {broadcastMode === 'screen' ? 'Capture Écran' : broadcastMode === 'camera' ? 'Webcam Live' : 'Studio Mixte'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-px h-4 bg-white/10" />
+                                                    <button
+                                                        onClick={() => void toggleCam()}
+                                                        className={cn(
+                                                            "p-2.5 rounded-xl transition-all duration-300",
+                                                            isCamMuted ? "bg-red-500/20 text-red-500 hover:bg-red-500/30" : "bg-white/5 text-white hover:bg-white/10 hover:text-primary"
+                                                        )}
+                                                    >
+                                                        {isCamMuted ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : embed ? (
+                                            <div className="w-full h-full">
+                                                {embed.type === 'iframe' && (
+                                                    <iframe
+                                                        src={embed.src}
+                                                        title="Live preview"
+                                                        className="w-full h-full border-none"
+                                                        allow="autoplay; fullscreen"
+                                                    />
+                                                )}
+                                                {embed.type === 'video' && (
+                                                    <video src={embed.src} controls className="w-full h-full object-contain bg-black" />
+                                                )}
+                                                {embed.type === 'link' && (
+                                                    <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-3">
+                                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                                                            <Tv className="w-6 h-6 text-primary" />
+                                                        </div>
+                                                        <p className="text-[10px] font-black text-white uppercase tracking-widest">Aperçu Externe</p>
+                                                        <a href={embed.src} target="_blank" rel="noreferrer" className="text-[9px] text-primary hover:underline truncate max-w-full italic px-4">
+                                                            {embed.src}
+                                                        </a>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}

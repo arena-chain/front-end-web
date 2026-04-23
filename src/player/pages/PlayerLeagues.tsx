@@ -466,6 +466,17 @@ export default function PlayerLeagues() {
                                                     : 'Select a league with seasons to see scheduled broadcasts.'}
                                             </p>
                                         </div>
+                                        {live && stream && (
+                                            <a
+                                                href={stream}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-black"
+                                            >
+                                                <Play size={14} />
+                                                Open stream
+                                            </a>
+                                        )}
                                     </div>
                                 );
                             })()}

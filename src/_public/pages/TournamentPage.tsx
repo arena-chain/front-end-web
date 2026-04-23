@@ -179,7 +179,7 @@ function OverviewTab({ season, stages, teams, matches }: { season: Season; stage
             <div className="lg:col-span-2 space-y-6">
                 {/* Format */}
                 <div className="bg-[#1a1e28] border border-white/8 rounded-2xl p-5">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Tournament Format</h3>
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4"></h3>
                     <div className="space-y-3">
                         {stages.length === 0 ? (
                             <p className="text-slate-500 text-sm">Format details will be announced.</p>

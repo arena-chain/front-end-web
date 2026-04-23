@@ -33,7 +33,7 @@ export default function NewsPage() {
 
     const filteredNews = news.filter(item => {
         const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                             item.sourceName.toLowerCase().includes(searchQuery.toLowerCase());
+            item.sourceName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
         return matchesSearch && matchesCategory;
     });
@@ -66,8 +66,8 @@ export default function NewsPage() {
                             />
                         </div>
                         <div className="flex gap-2 p-2">
-                             {['all', 'patch_notes', 'esports', 'community'].map(cat => (
-                                 <button
+                            {['all', 'patch_notes', 'esports', 'community'].map(cat => (
+                                <button
                                     key={cat}
                                     onClick={() => setCategoryFilter(cat)}
                                     className={cn(
@@ -76,10 +76,10 @@ export default function NewsPage() {
                                             ? "bg-primary text-black shadow-[0_0_15px_rgba(59,245,39,0.3)]"
                                             : "hover:bg-white/5 text-text-muted"
                                     )}
-                                 >
+                                >
                                     {cat.replace('_', ' ')}
-                                 </button>
-                             ))}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -96,7 +96,7 @@ export default function NewsPage() {
                             <div className="py-20 text-center text-text-muted space-y-4">
                                 <Search className="w-16 h-16 mx-auto opacity-10" />
                                 <p className="text-xl">No transmissions found on this frequency.</p>
-                                <Button onClick={() => {setSearchQuery(''); setCategoryFilter('all');}}>Clear Filters</Button>
+                                <Button onClick={() => { setSearchQuery(''); setCategoryFilter('all'); }}>Clear Filters</Button>
                             </div>
                         ) : (
                             filteredNews.map((article) => (

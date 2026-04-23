@@ -36,7 +36,7 @@ export default function WatchChannelPage() {
     const [chatInput, setChatInput] = useState('');
     const [reactionCounts, setReactionCounts] = useState<ReactionSummary>({});
     const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
-    const [, setLoading] = useState(true);
+    const [_loading, setLoading] = useState(true);
     const [publicUploads, setPublicUploads] = useState<VideoRecord[]>([]);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [remotePlaybackBlocked, setRemotePlaybackBlocked] = useState(false);
@@ -59,6 +59,19 @@ export default function WatchChannelPage() {
             return null;
         }
     }, []);
+
+    const isSubscribed = useMemo(() => {
+        if (!storedUser || !channel || !channel.subscribers) {
+            return false;
+        }
+
+        const userId = (storedUser as any)._id || (storedUser as any).id;
+        if (!userId) {
+            return false;
+        }
+
+        return channel.subscribers.some((id) => String(id) === String(userId));
+    }, [storedUser, channel]);
 
     function formatMessageDate(value?: string) {
         if (!value) {
@@ -316,11 +329,13 @@ export default function WatchChannelPage() {
             setStreams(streamData);
             setChatMessages(messageData);
 
+            // Fetch public uploads for the channel owner
             const owner = channelData?.ownerId;
             const ownerId =
                 owner && typeof owner === 'object' && '_id' in owner
                     ? String((owner as { _id: string })._id)
-                    : null;
+                    : typeof owner === 'string' ? owner : null;
+
             if (ownerId) {
                 try {
                     const uploads = await videoService.list({
@@ -338,6 +353,31 @@ export default function WatchChannelPage() {
             toast.error(error instanceof Error ? error.message : 'Failed to load channel');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function toggleSubscription() {
+        if (!storedUser) {
+            toast.error('Vous devez être connecté pour vous abonner');
+            return;
+        }
+
+        if (!channel) {
+            return;
+        }
+
+        try {
+            if (isSubscribed) {
+                const updated = await channelService.unsubscribe(channel._id);
+                setChannel(updated);
+                toast.success('Désabonnement réussi');
+            } else {
+                const updated = await channelService.subscribe(channel._id);
+                setChannel(updated);
+                toast.success('Abonnement réussi !');
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Une erreur est survenue');
         }
     }
 
@@ -415,11 +455,20 @@ export default function WatchChannelPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button size="lg" className="rounded-2xl px-10 bg-primary text-black font-black uppercase tracking-widest text-xs italic hover:scale-105 transition-all shadow-xl shadow-primary/10">
-                                S'abonner
+                            <Button
+                                size="lg"
+                                onClick={toggleSubscription}
+                                className={cn(
+                                    "rounded-2xl px-10 font-black uppercase tracking-widest text-xs italic transition-all shadow-xl",
+                                    isSubscribed
+                                        ? "bg-white/10 text-white hover:bg-white/20 shadow-white/5"
+                                        : "bg-primary text-black hover:scale-105 shadow-primary/10"
+                                )}
+                            >
+                                {isSubscribed ? 'Abonné' : "S'abonner"}
                             </Button>
                             <Button variant="outline" className="rounded-2xl px-4 border-white/10 hover:bg-white/5">
-                                <Heart size={18} />
+                                <Heart size={18} className={isSubscribed ? 'fill-primary text-primary' : ''} />
                             </Button>
                         </div>
                     </div>
@@ -659,7 +708,7 @@ export default function WatchChannelPage() {
                                     {message.senderNickname}
                                 </span>
                                 <span className="text-[9px] font-bold text-white/10 uppercase tracking-widest shrink-0">
-                                    {new Date(message.createdAt ?? 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(message.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
                             <p className="text-[13px] text-white/60 font-medium leading-relaxed bg-[#16181d]/30 p-2 rounded-xl border border-transparent group-hover/msg:border-white/5 transition-all">

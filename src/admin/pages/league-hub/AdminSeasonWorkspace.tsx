@@ -30,36 +30,36 @@ import {
 } from '../../../services/adminLeagueService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const fmt  = (d: string) => new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+const fmt = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
 function tName(t: unknown): string {
     if (!t) return '?';
-    if (typeof t === 'object' && 'name' in t) return (t as {name:string}).name;
+    if (typeof t === 'object' && 'name' in t) return (t as { name: string }).name;
     if (typeof t === 'string') return t.slice(-5);
     return '?';
 }
 function tId(t: unknown): string {
     if (!t) return '';
     if (typeof t === 'string') return t;
-    if (typeof t === 'object' && '_id' in t) return (t as {_id:string})._id;
+    if (typeof t === 'object' && '_id' in t) return (t as { _id: string })._id;
     return '';
 }
 
-const S_CLS: Record<string,string> = {
-    PLANNED:'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    ONGOING:'bg-green-500/10 text-green-400 border-green-500/20',
-    FINISHED:'bg-white/5 text-gray-400 border-white/10',
-    SCHEDULED:'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    COMPLETED:'bg-green-500/10 text-green-400 border-green-500/20',
-    FORFEIT:'bg-red-500/10 text-red-400 border-red-500/20',
-    CANCELLED:'bg-white/5 text-gray-400 border-white/10',
-    ACTIVE:'bg-green-500/10 text-green-400 border-green-500/20',
-    READY:'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    PENDING:'bg-white/5 text-gray-400 border-white/10',
-    DRAFT:'bg-white/5 text-gray-400 border-white/10',
-    LIVE:'bg-green-500/10 text-green-400 border-green-500/20',
-    WITHDRAWN:'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    DISQUALIFIED:'bg-red-500/10 text-red-400 border-red-500/20',
+const S_CLS: Record<string, string> = {
+    PLANNED: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    ONGOING: 'bg-green-500/10 text-green-400 border-green-500/20',
+    FINISHED: 'bg-white/5 text-gray-400 border-white/10',
+    SCHEDULED: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    COMPLETED: 'bg-green-500/10 text-green-400 border-green-500/20',
+    FORFEIT: 'bg-red-500/10 text-red-400 border-red-500/20',
+    CANCELLED: 'bg-white/5 text-gray-400 border-white/10',
+    ACTIVE: 'bg-green-500/10 text-green-400 border-green-500/20',
+    READY: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    PENDING: 'bg-white/5 text-gray-400 border-white/10',
+    DRAFT: 'bg-white/5 text-gray-400 border-white/10',
+    LIVE: 'bg-green-500/10 text-green-400 border-green-500/20',
+    WITHDRAWN: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    DISQUALIFIED: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
 // ─── Shared Section Card (Liquipedia-style) ───────────────────────────────────
@@ -112,7 +112,7 @@ function TournamentInfoCard({ season, leagueName }: { season: Season; leagueName
                             k === 'Status'
                                 ? v === 'ONGOING' ? 'text-green-400' : v === 'FINISHED' ? 'text-gray-400' : 'text-blue-400'
                                 : 'text-white'
-                        }`}>{v}</span>
+                            }`}>{v}</span>
                     </div>
                 ))}
             </div>
@@ -122,8 +122,8 @@ function TournamentInfoCard({ season, leagueName }: { season: Season; leagueName
 
 function SeasonActionsCard({ season, onUpdate }: { season: Season; onUpdate: (s: Season) => void }) {
     const [busy, setBusy] = useState(false);
-    const open  = async () => { setBusy(true); try { onUpdate(await activateSeason(season._id) as Season); toast.success('Season is now LIVE!'); } catch(e){ toast.error(apiErr(e)); } finally { setBusy(false); } };
-    const close = async () => { if (!confirm('Close season?')) return; setBusy(true); try { onUpdate(await closeSeason(season._id) as Season); toast.success('Season closed'); } catch(e){ toast.error(apiErr(e)); } finally { setBusy(false); } };
+    const open = async () => { setBusy(true); try { onUpdate(await activateSeason(season._id) as Season); toast.success('Season is now LIVE!'); } catch (e) { toast.error(apiErr(e)); } finally { setBusy(false); } };
+    const close = async () => { if (!confirm('Close season?')) return; setBusy(true); try { onUpdate(await closeSeason(season._id) as Season); toast.success('Season closed'); } catch (e) { toast.error(apiErr(e)); } finally { setBusy(false); } };
     return (
         <div className="bg-[#13161e] border border-white/8 rounded-2xl overflow-hidden text-sm">
             <div className="px-4 py-2.5 border-b border-white/5 bg-white/[0.015] flex items-center gap-2">
@@ -159,15 +159,15 @@ const EMPTY_OT: OvertimeConfig = { format: 'NONE', enabled: false, maxRoundsPerP
 
 type FullRuleForm = {
     name: string; gameId: string;
-    formatType: 'LEAGUE'|'SWISS'|'KNOCKOUT'; matchType: 'BO1'|'BO3'|'BO5';
+    formatType: 'LEAGUE' | 'SWISS' | 'KNOCKOUT'; matchType: 'BO1' | 'BO3' | 'BO5';
     pointsWin: number; pointsLoss: number; maxTeams: number;
-    tiebreaker: 'POINTS'|'GAME_DIFF'|'HEAD_TO_HEAD';
+    tiebreaker: 'POINTS' | 'GAME_DIFF' | 'HEAD_TO_HEAD';
     forfeitCountsAsLoss: boolean; maxForfeitsBeforeDisqualification: number;
     mapPool: string[]; mapVetoEnabled: boolean;
-    mapVetoFormat: MapVetoFormat; vetoFirstPick: 'HIGHER_SEED'|'LOWER_SEED'|'COIN_FLIP'|'ADMIN';
+    mapVetoFormat: MapVetoFormat; vetoFirstPick: 'HIGHER_SEED' | 'LOWER_SEED' | 'COIN_FLIP' | 'ADMIN';
     ruleUsage: RuleUsage[];
-    sideSelection: 'HIGHER_SEED_CHOOSES'|'KNIFE_ROUND'|'COIN_TOSS'|'VETO_WINNER_CHOOSES'|'FIXED_TEAM_A_ATTACK';
-    scoreSubmissionMethod: 'ADMIN_VERIFIED'|'BOTH_TEAMS_CONFIRM'|'AUTO_FROM_API';
+    sideSelection: 'HIGHER_SEED_CHOOSES' | 'KNIFE_ROUND' | 'COIN_TOSS' | 'VETO_WINNER_CHOOSES' | 'FIXED_TEAM_A_ATTACK';
+    scoreSubmissionMethod: 'ADMIN_VERIFIED' | 'BOTH_TEAMS_CONFIRM' | 'AUTO_FROM_API';
     substitutionsAllowed: boolean; maxSubstitutions: number; emergencySubsOnly: boolean;
     pauseAllowedForDisconnect: boolean; replayConditions: string; remakeConditions: string;
     adminDecisionRequired: boolean; overtimeConfig: OvertimeConfig;
@@ -184,7 +184,7 @@ const DEFAULT_RULE_FORM: FullRuleForm = {
     adminDecisionRequired: false, overtimeConfig: { ...EMPTY_OT },
 };
 
-const ALL_RULE_USAGES: RuleUsage[] = ['REGULAR_SEASON','PLAYOFFS','GRAND_FINAL','PLAY_IN','QUALIFICATION','GROUP_STAGE'];
+const ALL_RULE_USAGES: RuleUsage[] = ['REGULAR_SEASON', 'PLAYOFFS', 'GRAND_FINAL', 'PLAY_IN', 'QUALIFICATION', 'GROUP_STAGE'];
 
 function RuleFormSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
     const [open, setOpen] = useState(defaultOpen);
@@ -200,11 +200,11 @@ function RuleFormSection({ title, children, defaultOpen = true }: { title: strin
 }
 
 function RulesPanel({ seasonId }: { seasonId: string }) {
-    const [rules, setRules]       = useState<SeasonRule[]>([]);
+    const [rules, setRules] = useState<SeasonRule[]>([]);
     const [editingId, setEditingId] = useState<string | 'new' | null>(null);
-    const [form, setForm]         = useState<FullRuleForm>(DEFAULT_RULE_FORM);
+    const [form, setForm] = useState<FullRuleForm>(DEFAULT_RULE_FORM);
     const [mapInput, setMapInput] = useState('');
-    const [busy, setBusy]         = useState(false);
+    const [busy, setBusy] = useState(false);
     const [deleting, setDeleting] = useState<string | null>(null);
     const [games, setGames]       = useState<Game[]>([]);
 
@@ -251,7 +251,6 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
     };
 
     const save = async () => {
-        if (!form.name || !form.gameId) { toast.error('Ruleset name and game are required'); return; }
         setBusy(true);
         try {
             if (editingId === 'new') {
@@ -333,9 +332,9 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
                     </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                    <div><label className="text-[10px] text-gray-500 mb-1 block">Format</label>{sel('formatType',['LEAGUE','SWISS','KNOCKOUT'])}</div>
-                    <div><label className="text-[10px] text-gray-500 mb-1 block">Match Type</label>{sel('matchType',['BO1','BO3','BO5'])}</div>
-                    <div><label className="text-[10px] text-gray-500 mb-1 block">Tiebreaker</label>{sel('tiebreaker',['POINTS','GAME_DIFF','HEAD_TO_HEAD'])}</div>
+                    <div><label className="text-[10px] text-gray-500 mb-1 block">Format</label>{sel('formatType', ['LEAGUE', 'SWISS', 'KNOCKOUT'])}</div>
+                    <div><label className="text-[10px] text-gray-500 mb-1 block">Match Type</label>{sel('matchType', ['BO1', 'BO3', 'BO5'])}</div>
+                    <div><label className="text-[10px] text-gray-500 mb-1 block">Tiebreaker</label>{sel('tiebreaker', ['POINTS', 'GAME_DIFF', 'HEAD_TO_HEAD'])}</div>
                 </div>
             </RuleFormSection>
 
@@ -345,21 +344,21 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
                     <div><label className="text-[10px] text-gray-500 mb-1 block">Win Pts</label>{num('pointsWin')}</div>
                     <div><label className="text-[10px] text-gray-500 mb-1 block">Loss Pts</label>{num('pointsLoss')}</div>
                     <div><label className="text-[10px] text-gray-500 mb-1 block">Max Teams</label>{num('maxTeams')}</div>
-                    <div><label className="text-[10px] text-gray-500 mb-1 block">Max Forfeits</label>{num('maxForfeitsBeforeDisqualification','w-full')}</div>
+                    <div><label className="text-[10px] text-gray-500 mb-1 block">Max Forfeits</label>{num('maxForfeitsBeforeDisqualification', 'w-full')}</div>
                 </div>
-                {chk('forfeitCountsAsLoss','Forfeit counts as a loss in standings')}
+                {chk('forfeitCountsAsLoss', 'Forfeit counts as a loss in standings')}
             </RuleFormSection>
 
             {/* ── MAP SYSTEM ── */}
             <RuleFormSection title="Map System" defaultOpen={false}>
-                {chk('mapVetoEnabled','Map veto enabled')}
+                {chk('mapVetoEnabled', 'Map veto enabled')}
                 {f.mapVetoEnabled && (
                     <div className="grid grid-cols-2 gap-3">
                         <div><label className="text-[10px] text-gray-500 mb-1 block">Veto Format</label>
-                            {sel('mapVetoFormat',['ADMIN_PICK','RANDOM','BAN_BAN_DECIDER','BAN_BAN_PICK_PICK_BAN_BAN_DECIDER','PICK_PICK_DECIDER','BAN_BAN_PICK_PICK_PICK_PICK_DECIDER'])}
+                            {sel('mapVetoFormat', ['ADMIN_PICK', 'RANDOM', 'BAN_BAN_DECIDER', 'BAN_BAN_PICK_PICK_BAN_BAN_DECIDER', 'PICK_PICK_DECIDER', 'BAN_BAN_PICK_PICK_PICK_PICK_DECIDER'])}
                         </div>
                         <div><label className="text-[10px] text-gray-500 mb-1 block">First Pick</label>
-                            {sel('vetoFirstPick',['HIGHER_SEED','LOWER_SEED','COIN_FLIP','ADMIN'])}
+                            {sel('vetoFirstPick', ['HIGHER_SEED', 'LOWER_SEED', 'COIN_FLIP', 'ADMIN'])}
                         </div>
                     </div>
                 )}
@@ -386,10 +385,10 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
             <RuleFormSection title="Match Rules" defaultOpen={false}>
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-[10px] text-gray-500 mb-1 block">Side Selection</label>
-                        {sel('sideSelection',['HIGHER_SEED_CHOOSES','KNIFE_ROUND','COIN_TOSS','VETO_WINNER_CHOOSES','FIXED_TEAM_A_ATTACK'])}
+                        {sel('sideSelection', ['HIGHER_SEED_CHOOSES', 'KNIFE_ROUND', 'COIN_TOSS', 'VETO_WINNER_CHOOSES', 'FIXED_TEAM_A_ATTACK'])}
                     </div>
                     <div><label className="text-[10px] text-gray-500 mb-1 block">Score Submission</label>
-                        {sel('scoreSubmissionMethod',['ADMIN_VERIFIED','BOTH_TEAMS_CONFIRM','AUTO_FROM_API'])}
+                        {sel('scoreSubmissionMethod', ['ADMIN_VERIFIED', 'BOTH_TEAMS_CONFIRM', 'AUTO_FROM_API'])}
                     </div>
                 </div>
                 <div>
@@ -398,7 +397,7 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
                         {ALL_RULE_USAGES.map(u => (
                             <label key={u} className="flex items-center gap-1.5 text-[10px] text-gray-300 cursor-pointer">
                                 <input type="checkbox" checked={f.ruleUsage.includes(u)} onChange={() => toggleUsage(u)} className="rounded" />
-                                {u.replace('_',' ')}
+                                {u.replace('_', ' ')}
                             </label>
                         ))}
                     </div>
@@ -407,11 +406,11 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
 
             {/* ── SUBSTITUTIONS ── */}
             <RuleFormSection title="Substitutions" defaultOpen={false}>
-                {chk('substitutionsAllowed','Allow substitutions during match')}
+                {chk('substitutionsAllowed', 'Allow substitutions during match')}
                 {f.substitutionsAllowed && (
                     <div className="grid grid-cols-2 gap-3">
-                        <div><label className="text-[10px] text-gray-500 mb-1 block">Max Substitutions</label>{num('maxSubstitutions','w-full')}</div>
-                        <div className="flex items-end">{chk('emergencySubsOnly','Emergency subs only')}</div>
+                        <div><label className="text-[10px] text-gray-500 mb-1 block">Max Substitutions</label>{num('maxSubstitutions', 'w-full')}</div>
+                        <div className="flex items-end">{chk('emergencySubsOnly', 'Emergency subs only')}</div>
                     </div>
                 )}
             </RuleFormSection>
@@ -423,7 +422,7 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
                         <select value={f.overtimeConfig.format}
                             onChange={e => setForm(p => ({ ...p, overtimeConfig: { ...p.overtimeConfig, format: e.target.value as OvertimeConfig['format'] } }))}
                             className="w-full bg-[#0d0f14] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none">
-                            {['NONE','VALORANT_OT','CS2_OT'].map(o => <option key={o}>{o}</option>)}
+                            {['NONE', 'VALORANT_OT', 'CS2_OT'].map(o => <option key={o}>{o}</option>)}
                         </select>
                     </div>
                     <div className="flex items-end">
@@ -462,11 +461,11 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
 
             {/* ── OTHER ── */}
             <RuleFormSection title="Other Rules" defaultOpen={false}>
-                {chk('pauseAllowedForDisconnect','Allow pause for disconnect')}
-                {chk('adminDecisionRequired','Admin decision required for disputed outcomes')}
+                {chk('pauseAllowedForDisconnect', 'Allow pause for disconnect')}
+                {chk('adminDecisionRequired', 'Admin decision required for disputed outcomes')}
                 <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] text-gray-500 mb-1 block">Replay Conditions</label>{txt('replayConditions','When a replay is warranted…')}</div>
-                    <div><label className="text-[10px] text-gray-500 mb-1 block">Remake Conditions</label>{txt('remakeConditions','When a remake is warranted…')}</div>
+                    <div><label className="text-[10px] text-gray-500 mb-1 block">Replay Conditions</label>{txt('replayConditions', 'When a replay is warranted…')}</div>
+                    <div><label className="text-[10px] text-gray-500 mb-1 block">Remake Conditions</label>{txt('remakeConditions', 'When a remake is warranted…')}</div>
                 </div>
             </RuleFormSection>
 
@@ -520,9 +519,9 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
                                         ['Win / Loss Pts', `${r.pointsWin} / ${r.pointsLoss}`],
                                         ['Forfeit = Loss', r.forfeitCountsAsLoss ? 'Yes' : 'No'],
                                         ['Max Forfeits', String(r.maxForfeitsBeforeDisqualification)],
-                                        ['Side Selection', r.sideSelection?.replace(/_/g,' ') ?? '—'],
-                                        ['Score Submission', r.scoreSubmissionMethod?.replace(/_/g,' ') ?? '—'],
-                                        ['Rule Usage', (Array.isArray(r.ruleUsage) ? r.ruleUsage : []).map((u: string) => u.replace(/_/g,' ')).join(', ') || '—'],
+                                        ['Side Selection', r.sideSelection?.replace(/_/g, ' ') ?? '—'],
+                                        ['Score Submission', r.scoreSubmissionMethod?.replace(/_/g, ' ') ?? '—'],
+                                        ['Rule Usage', (Array.isArray(r.ruleUsage) ? r.ruleUsage : []).map((u: string) => u.replace(/_/g, ' ')).join(', ') || '—'],
                                     ] as [string, string][]).map(([k, v]) => (
                                         <div key={k} className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
                                             <p className="text-[10px] text-gray-500 mb-1">{k}</p>
@@ -554,13 +553,13 @@ function RulesPanel({ seasonId }: { seasonId: string }) {
     );
 }
 
-type PrizeForm = { totalAmount: number; currency: 'USD'|'EUR'|'TND'|'GBP'; source: 'PLATFORM'|'SPONSORED'|'MIXED'; notes: string; distribution: { rank: number; amount: number; percentage: number }[] };
+type PrizeForm = { totalAmount: number; currency: 'USD' | 'EUR' | 'TND' | 'GBP'; source: 'PLATFORM' | 'SPONSORED' | 'MIXED'; notes: string; distribution: { rank: number; amount: number; percentage: number }[] };
 
 function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string }) {
-    const [pool, setPool]       = useState<PrizePool | null>(null);
+    const [pool, setPool] = useState<PrizePool | null>(null);
     const [editing, setEditing] = useState(false);
-    const [form, setForm]       = useState<PrizeForm>({ totalAmount: 0, currency: 'USD', source: 'PLATFORM', notes: '', distribution: [{ rank: 1, amount: 0, percentage: 0 }] });
-    const [busy, setBusy]       = useState(false);
+    const [form, setForm] = useState<PrizeForm>({ totalAmount: 0, currency: 'USD', source: 'PLATFORM', notes: '', distribution: [{ rank: 1, amount: 0, percentage: 0 }] });
+    const [busy, setBusy] = useState(false);
 
     useEffect(() => {
         getPrizePool(seasonId).then(p => { if (p) { setPool(p); setForm({ totalAmount: p.totalAmount, currency: p.currency, source: p.source, notes: p.notes || '', distribution: p.distribution.map(d => ({ rank: d.rank, amount: d.amount, percentage: d.percentage })) }); } });
@@ -598,11 +597,11 @@ function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string
             <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
                     <label className="text-xs text-gray-400 mb-1 block">Total Amount</label>
-                    <input type="number" value={form.totalAmount} onChange={e => setForm(p=>({...p,totalAmount:+e.target.value}))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00ff00]/40" />
+                    <input type="number" value={form.totalAmount} onChange={e => setForm(p => ({ ...p, totalAmount: +e.target.value }))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00ff00]/40" />
                 </div>
                 <div>
                     <label className="text-xs text-gray-400 mb-1 block">Currency</label>
-                    <select value={form.currency} onChange={e => setForm(p=>({...p,currency:e.target.value as PrizeForm['currency']}))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                    <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value as PrizeForm['currency'] }))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
                         <option>USD</option><option>EUR</option><option>TND</option>
                     </select>
                 </div>
@@ -610,7 +609,7 @@ function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label className="text-xs text-gray-400 mb-1 block">Source</label>
-                    <select value={form.source} onChange={e => setForm(p=>({...p,source:e.target.value as PrizeForm['source']}))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                    <select value={form.source} onChange={e => setForm(p => ({ ...p, source: e.target.value as PrizeForm['source'] }))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
                         <option value="PLATFORM">Platform</option>
                         <option value="SPONSORED">Sponsored</option>
                         <option value="MIXED">Mixed</option>
@@ -618,7 +617,7 @@ function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string
                 </div>
                 <div>
                     <label className="text-xs text-gray-400 mb-1 block">Notes (optional)</label>
-                    <input value={form.notes} onChange={e => setForm(p=>({...p,notes:e.target.value}))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00ff00]/40" />
+                    <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="w-full bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00ff00]/40" />
                 </div>
             </div>
             <div>
@@ -630,7 +629,7 @@ function PrizePanel({ seasonId, leagueId }: { seasonId: string; leagueId: string
                     {form.distribution.map((d, i) => (
                         <div key={i} className="flex items-center gap-2">
                             <span className="w-6 text-center text-xs text-gray-500 font-bold">#{d.rank}</span>
-                            <input type="number" placeholder="Amount" value={d.amount} onChange={e => { const n=[...form.distribution]; n[i]={...n[i],amount:+e.target.value}; setForm(p=>({...p,distribution:n})); }} className="flex-1 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none" />
+                            <input type="number" placeholder="Amount" value={d.amount} onChange={e => { const n = [...form.distribution]; n[i] = { ...n[i], amount: +e.target.value }; setForm(p => ({ ...p, distribution: n })); }} className="flex-1 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none" />
                             <span className="text-xs text-gray-500 w-10 text-right">{form.totalAmount > 0 ? Math.round(+d.amount / +form.totalAmount * 100) : 0}%</span>
                             <button onClick={() => removeRow(i)} className="text-gray-600 hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
                         </div>
@@ -688,10 +687,10 @@ function TeamsPanel({ season }: { season: Season }) {
     const [entries, setEntries]     = useState<SeasonTeamEntry[]>([]);
     const [allTeams, setAllTeams]   = useState<TeamRef[]>([]);
     const [teamsLoaded, setTeamsLoaded] = useState(false);
-    const [selTeam, setSelTeam]     = useState('');
-    const [manualId, setManualId]   = useState('');
-    const [seed, setSeed]           = useState('');
-    const [busy, setBusy]           = useState(false);
+    const [selTeam, setSelTeam] = useState('');
+    const [manualId, setManualId] = useState('');
+    const [seed, setSeed] = useState('');
+    const [busy, setBusy] = useState(false);
 
     const load = useCallback(() => {
         setTeamsLoaded(false);
@@ -733,7 +732,7 @@ function TeamsPanel({ season }: { season: Season }) {
     };
 
     const registered = new Set(entries.map(e => tId(e.teamId)));
-    const available  = allTeams.filter(t => !registered.has(t._id));
+    const available = allTeams.filter(t => !registered.has(t._id));
     const hasDropdown = teamsLoaded && allTeams.length > 0;
     const teamMap = new Map(allTeams.map(t => [t._id, t]));
 
@@ -798,7 +797,7 @@ function TeamsPanel({ season }: { season: Season }) {
                 <div className="bg-[#1a1e28] border border-white/8 rounded-2xl overflow-hidden">
                     <table className="w-full">
                         <thead><tr className="border-b border-white/5">
-                            {['Seed','Team','Status','Qualified From',''].map(h => <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>)}
+                            {['Seed', 'Team', 'Status', 'Qualified From', ''].map(h => <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>)}
                         </tr></thead>
                         <tbody>
                             {entries.map(e => (
@@ -852,7 +851,7 @@ function StagesPanel({ seasonId }: { seasonId: string }) {
         try { await deleteStage(id); toast.success('Stage deleted'); load(); } catch (e) { toast.error(apiErr(e)); }
     };
 
-    const STAGE_CLS: Record<string,string> = { GROUPS:'bg-blue-500/10 text-blue-400 border-blue-500/20', BRACKET:'bg-purple-500/10 text-purple-400 border-purple-500/20', SWISS:'bg-orange-500/10 text-orange-400 border-orange-500/20', LEAGUE:'bg-green-500/10 text-green-400 border-green-500/20' };
+    const STAGE_CLS: Record<string, string> = { GROUPS: 'bg-blue-500/10 text-blue-400 border-blue-500/20', BRACKET: 'bg-purple-500/10 text-purple-400 border-purple-500/20', SWISS: 'bg-orange-500/10 text-orange-400 border-orange-500/20', LEAGUE: 'bg-green-500/10 text-green-400 border-green-500/20' };
 
     return (
         <div className="space-y-4">
@@ -867,27 +866,27 @@ function StagesPanel({ seasonId }: { seasonId: string }) {
                 <div className="bg-[#1a1e28] border border-white/8 rounded-2xl p-4 space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                         <div><label className="text-xs text-gray-400 mb-1 block">Name</label>
-                            <input value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" />
+                            <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" />
                         </div>
                         <div><label className="text-xs text-gray-400 mb-1 block">Type</label>
-                            <select value={form.stageType} onChange={e => setForm(p=>({...p,stageType:e.target.value as Stage['stageType']}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                            <select value={form.stageType} onChange={e => setForm(p => ({ ...p, stageType: e.target.value as Stage['stageType'] }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="GROUPS">Groups</option><option value="BRACKET">Bracket</option><option value="SWISS">Swiss</option><option value="LEAGUE">League</option>
                             </select>
                         </div>
                     </div>
                     <div className="grid grid-cols-4 gap-3">
-                        <div><label className="text-xs text-gray-400 mb-1 block">Order</label><input type="number" value={form.orderIndex} onChange={e=>setForm(p=>({...p,orderIndex:+e.target.value}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
-                        <div><label className="text-xs text-gray-400 mb-1 block">Advance</label><input type="number" value={form.advancementCount} onChange={e=>setForm(p=>({...p,advancementCount:+e.target.value}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
-                        <div><label className="text-xs text-gray-400 mb-1 block">Eliminate</label><input type="number" value={form.eliminationCount} onChange={e=>setForm(p=>({...p,eliminationCount:+e.target.value}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
+                        <div><label className="text-xs text-gray-400 mb-1 block">Order</label><input type="number" value={form.orderIndex} onChange={e => setForm(p => ({ ...p, orderIndex: +e.target.value }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
+                        <div><label className="text-xs text-gray-400 mb-1 block">Advance</label><input type="number" value={form.advancementCount} onChange={e => setForm(p => ({ ...p, advancementCount: +e.target.value }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
+                        <div><label className="text-xs text-gray-400 mb-1 block">Eliminate</label><input type="number" value={form.eliminationCount} onChange={e => setForm(p => ({ ...p, eliminationCount: +e.target.value }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
                         <div></div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                        <div><label className="text-xs text-gray-400 mb-1 block">Start</label><input type="date" value={form.startAt} onChange={e=>setForm(p=>({...p,startAt:e.target.value}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" /></div>
-                        <div><label className="text-xs text-gray-400 mb-1 block">End</label><input type="date" value={form.endAt} onChange={e=>setForm(p=>({...p,endAt:e.target.value}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" /></div>
+                        <div><label className="text-xs text-gray-400 mb-1 block">Start</label><input type="date" value={form.startAt} onChange={e => setForm(p => ({ ...p, startAt: e.target.value }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" /></div>
+                        <div><label className="text-xs text-gray-400 mb-1 block">End</label><input type="date" value={form.endAt} onChange={e => setForm(p => ({ ...p, endAt: e.target.value }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" /></div>
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-white/10 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
-                        <button onClick={add} disabled={busy||!form.name} className="px-5 py-2 rounded-xl bg-[#00ff00] text-black font-bold text-sm disabled:opacity-50 hover:bg-[#00ff00]/90 transition-all">{busy ? 'Creating…' : 'Create Stage'}</button>
+                        <button onClick={add} disabled={busy || !form.name} className="px-5 py-2 rounded-xl bg-[#00ff00] text-black font-bold text-sm disabled:opacity-50 hover:bg-[#00ff00]/90 transition-all">{busy ? 'Creating…' : 'Create Stage'}</button>
                     </div>
                 </div>
             )}
@@ -924,8 +923,8 @@ function StagesPanel({ seasonId }: { seasonId: string }) {
 
 function GroupManager({ stageId, seasonId }: { stageId: string; seasonId: string }) {
     const [groups, setGroups] = useState<Group[]>([]);
-    const [teams, setTeams]   = useState<SeasonTeamEntry[]>([]);
-    const [busy, setBusy]     = useState(false);
+    const [teams, setTeams] = useState<SeasonTeamEntry[]>([]);
+    const [busy, setBusy] = useState(false);
 
     const load = useCallback(() => {
         Promise.all([getGroups(stageId), getSeasonTeams(seasonId)]).then(([g, t]) => { setGroups(g); setTeams(t); });
@@ -976,13 +975,13 @@ function GroupManager({ stageId, seasonId }: { stageId: string; seasonId: string
 }
 
 function RoundsPanel({ seasonId }: { seasonId: string }) {
-    const [rounds, setRounds]   = useState<AdminRound[]>([]);
-    const [stages, setStages]   = useState<Stage[]>([]);
+    const [rounds, setRounds] = useState<AdminRound[]>([]);
+    const [stages, setStages] = useState<Stage[]>([]);
     const [matchMap, setMatchMap] = useState<Record<string, AdminMatch[]>>({});
     const [expanded, setExpanded] = useState<string | null>(null);
     const [genForm, setGenForm] = useState({ weekCount: 5, stageId: '', generateMatches: true, stageType: 'GROUPS' });
     const [showGen, setShowGen] = useState(false);
-    const [busy, setBusy]       = useState(false);
+    const [busy, setBusy] = useState(false);
     const [scoreModal, setScoreModal] = useState<AdminMatch | null>(null);
 
     const load = useCallback(() => {
@@ -1035,13 +1034,13 @@ function RoundsPanel({ seasonId }: { seasonId: string }) {
             {showGen && (
                 <div className="bg-[#1a1e28] border border-white/8 rounded-2xl p-4 space-y-3">
                     <div className="grid grid-cols-3 gap-3">
-                        <div><label className="text-xs text-gray-400 mb-1 block">Week Count</label><input type="number" value={genForm.weekCount} onChange={e=>setGenForm(p=>({...p,weekCount:+e.target.value}))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
+                        <div><label className="text-xs text-gray-400 mb-1 block">Week Count</label><input type="number" value={genForm.weekCount} onChange={e => setGenForm(p => ({ ...p, weekCount: +e.target.value }))} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none text-center" /></div>
                         <div><label className="text-xs text-gray-400 mb-1 block">Stage</label>
-                            <select value={genForm.stageId} onChange={e => { const s=stages.find(s=>s._id===e.target.value); setGenForm(p=>({...p,stageId:e.target.value,stageType:s?.stageType||'GROUPS'})); }} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                                {stages.map(s=><option key={s._id} value={s._id}>{s.name}</option>)}
+                            <select value={genForm.stageId} onChange={e => { const s = stages.find(s => s._id === e.target.value); setGenForm(p => ({ ...p, stageId: e.target.value, stageType: s?.stageType || 'GROUPS' })); }} className="w-full bg-[#0d0f14] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                                {stages.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                             </select>
                         </div>
-                        <div className="flex items-end"><label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mb-2"><input type="checkbox" checked={genForm.generateMatches} onChange={e=>setGenForm(p=>({...p,generateMatches:e.target.checked}))} className="rounded" /> Generate Matches</label></div>
+                        <div className="flex items-end"><label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mb-2"><input type="checkbox" checked={genForm.generateMatches} onChange={e => setGenForm(p => ({ ...p, generateMatches: e.target.checked }))} className="rounded" /> Generate Matches</label></div>
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => setShowGen(false)} className="px-4 py-2 rounded-xl border border-white/10 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
@@ -1062,7 +1061,7 @@ function RoundsPanel({ seasonId }: { seasonId: string }) {
                             </button>
                             <div className="flex items-center gap-1">
                                 {r.status === 'SCHEDULED' && <button onClick={() => patchRound(r._id, 'ONGOING')} className="text-[10px] px-2 py-1 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 font-bold hover:bg-green-500/20 transition-all">Start</button>}
-                                {r.status === 'ONGOING'   && <button onClick={() => patchRound(r._id, 'COMPLETED')} className="text-[10px] px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold hover:bg-blue-500/20 transition-all">Complete</button>}
+                                {r.status === 'ONGOING' && <button onClick={() => patchRound(r._id, 'COMPLETED')} className="text-[10px] px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold hover:bg-blue-500/20 transition-all">Complete</button>}
                                 <button onClick={() => delRound(r._id)} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                         </div>
@@ -1070,26 +1069,26 @@ function RoundsPanel({ seasonId }: { seasonId: string }) {
                             <div className="border-t border-white/5 px-5 py-3">
                                 {!(matchMap[r._id]) ? <p className="text-xs text-gray-500">Loading…</p> :
                                     matchMap[r._id].length === 0 ? <p className="text-xs text-gray-600">No matches in this round</p> :
-                                    <div className="space-y-2">
-                                        {matchMap[r._id].map(m => (
-                                            <div key={m._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0 gap-3">
-                                                <div className="flex items-center gap-2 flex-1">
-                                                    <span className="text-sm text-white font-medium truncate">{tName(m.team1Id)}</span>
-                                                    <span className="text-gray-600 text-xs">vs</span>
-                                                    <span className="text-sm text-white font-medium truncate">{tName(m.team2Id)}</span>
+                                        <div className="space-y-2">
+                                            {matchMap[r._id].map(m => (
+                                                <div key={m._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0 gap-3">
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <span className="text-sm text-white font-medium truncate">{tName(m.team1Id)}</span>
+                                                        <span className="text-gray-600 text-xs">vs</span>
+                                                        <span className="text-sm text-white font-medium truncate">{tName(m.team2Id)}</span>
+                                                    </div>
+                                                    {m.status === 'COMPLETED' && (
+                                                        <span className="text-sm font-black text-white tabular-nums flex-shrink-0">{m.team1GamesWon} – {m.team2GamesWon}</span>
+                                                    )}
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${S_CLS[m.status]}`}>{m.status}</span>
+                                                    {m.status !== 'COMPLETED' && m.status !== 'CANCELLED' && (
+                                                        <button onClick={() => setScoreModal(m)} className="text-[10px] px-2 py-1 rounded-lg bg-[#00ff00]/10 text-[#00ff00] border border-[#00ff00]/20 font-bold hover:bg-[#00ff00]/20 transition-all flex-shrink-0">
+                                                            Submit Score
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                {m.status === 'COMPLETED' && (
-                                                    <span className="text-sm font-black text-white tabular-nums flex-shrink-0">{m.team1GamesWon} – {m.team2GamesWon}</span>
-                                                )}
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${S_CLS[m.status]}`}>{m.status}</span>
-                                                {m.status !== 'COMPLETED' && m.status !== 'CANCELLED' && (
-                                                    <button onClick={() => setScoreModal(m)} className="text-[10px] px-2 py-1 rounded-lg bg-[#00ff00]/10 text-[#00ff00] border border-[#00ff00]/20 font-bold hover:bg-[#00ff00]/20 transition-all flex-shrink-0">
-                                                        Submit Score
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
                                 }
                             </div>
                         )}
@@ -1110,11 +1109,11 @@ function RoundsPanel({ seasonId }: { seasonId: string }) {
     );
 }
 
-function ScoreModal({ match, onClose, onSubmit }: { match: AdminMatch; onClose: () => void; onSubmit: (dto: { team1GamesWon: number; team2GamesWon: number; games?: {gameNumber:number;winnerId:string;mapName?:string;team1Score?:number;team2Score?:number}[] }) => Promise<void> }) {
+function ScoreModal({ match, onClose, onSubmit }: { match: AdminMatch; onClose: () => void; onSubmit: (dto: { team1GamesWon: number; team2GamesWon: number; games?: { gameNumber: number; winnerId: string; mapName?: string; team1Score?: number; team2Score?: number }[] }) => Promise<void> }) {
     const maxGames = match.format === 'BO5' ? 5 : match.format === 'BO3' ? 3 : 1;
     const [w1, setW1] = useState(0);
     const [w2, setW2] = useState(0);
-    const [maps, setMaps] = useState(Array.from({length: maxGames}, (_, i) => ({ gameNumber: i+1, mapName: '', team1Score: 0, team2Score: 0 })));
+    const [maps, setMaps] = useState(Array.from({ length: maxGames }, (_, i) => ({ gameNumber: i + 1, mapName: '', team1Score: 0, team2Score: 0 })));
     const [busy, setBusy] = useState(false);
 
     const submit = async () => {
@@ -1136,28 +1135,28 @@ function ScoreModal({ match, onClose, onSubmit }: { match: AdminMatch; onClose: 
                 <div className="flex items-center gap-4 mb-5">
                     <div className="flex-1 text-center">
                         <p className="text-xs text-gray-400 mb-2 truncate">{tName(match.team1Id)}</p>
-                        <input type="number" min="0" max={maxGames} value={w1} onChange={e=>setW1(+e.target.value)} className="w-16 bg-[#1a1e28] border border-white/10 rounded-xl text-2xl font-black text-white text-center py-2 focus:outline-none mx-auto block" />
+                        <input type="number" min="0" max={maxGames} value={w1} onChange={e => setW1(+e.target.value)} className="w-16 bg-[#1a1e28] border border-white/10 rounded-xl text-2xl font-black text-white text-center py-2 focus:outline-none mx-auto block" />
                     </div>
                     <span className="text-gray-600 text-xl font-black">:</span>
                     <div className="flex-1 text-center">
                         <p className="text-xs text-gray-400 mb-2 truncate">{tName(match.team2Id)}</p>
-                        <input type="number" min="0" max={maxGames} value={w2} onChange={e=>setW2(+e.target.value)} className="w-16 bg-[#1a1e28] border border-white/10 rounded-xl text-2xl font-black text-white text-center py-2 focus:outline-none mx-auto block" />
+                        <input type="number" min="0" max={maxGames} value={w2} onChange={e => setW2(+e.target.value)} className="w-16 bg-[#1a1e28] border border-white/10 rounded-xl text-2xl font-black text-white text-center py-2 focus:outline-none mx-auto block" />
                     </div>
                 </div>
                 <div className="space-y-2 mb-5">
                     {maps.slice(0, w1 + w2).map((g, i) => (
                         <div key={i} className="flex items-center gap-2">
                             <span className="text-xs text-gray-500 w-12">Game {g.gameNumber}</span>
-                            <input placeholder="Map" value={g.mapName} onChange={e=>{const n=[...maps];n[i]={...n[i],mapName:e.target.value};setMaps(n);}} className="flex-1 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none" />
-                            <input type="number" placeholder="T1" value={g.team1Score||''} onChange={e=>{const n=[...maps];n[i]={...n[i],team1Score:+e.target.value};setMaps(n);}} className="w-12 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center focus:outline-none" />
+                            <input placeholder="Map" value={g.mapName} onChange={e => { const n = [...maps]; n[i] = { ...n[i], mapName: e.target.value }; setMaps(n); }} className="flex-1 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none" />
+                            <input type="number" placeholder="T1" value={g.team1Score || ''} onChange={e => { const n = [...maps]; n[i] = { ...n[i], team1Score: +e.target.value }; setMaps(n); }} className="w-12 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center focus:outline-none" />
                             <span className="text-gray-600">:</span>
-                            <input type="number" placeholder="T2" value={g.team2Score||''} onChange={e=>{const n=[...maps];n[i]={...n[i],team2Score:+e.target.value};setMaps(n);}} className="w-12 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center focus:outline-none" />
+                            <input type="number" placeholder="T2" value={g.team2Score || ''} onChange={e => { const n = [...maps]; n[i] = { ...n[i], team2Score: +e.target.value }; setMaps(n); }} className="w-12 bg-[#1a1e28] border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center focus:outline-none" />
                         </div>
                     ))}
                 </div>
                 <div className="flex gap-3">
                     <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
-                    <button onClick={submit} disabled={busy||w1+w2===0} className="flex-1 py-2.5 rounded-xl bg-[#00ff00] text-black font-bold text-sm disabled:opacity-50 hover:bg-[#00ff00]/90 transition-all">{busy?'Submitting…':'Submit'}</button>
+                    <button onClick={submit} disabled={busy || w1 + w2 === 0} className="flex-1 py-2.5 rounded-xl bg-[#00ff00] text-black font-bold text-sm disabled:opacity-50 hover:bg-[#00ff00]/90 transition-all">{busy ? 'Submitting…' : 'Submit'}</button>
                 </div>
             </div>
         </div>
@@ -1168,22 +1167,22 @@ function StandingsPanel({ seasonId }: { seasonId: string }) {
     const [rows, setRows] = useState<StandingEntry[]>([]);
     const [busy, setBusy] = useState(false);
     useEffect(() => { getAdminStandings(seasonId).then(r => setRows(r.sort((a, b) => a.rank - b.rank))); }, [seasonId]);
-    const recalc = async () => { setBusy(true); try { await recalculateStandings(seasonId); getAdminStandings(seasonId).then(r => setRows(r.sort((a,b)=>a.rank-b.rank))); toast.success('Standings recalculated'); } catch(e){toast.error(apiErr(e));} finally{setBusy(false);} };
+    const recalc = async () => { setBusy(true); try { await recalculateStandings(seasonId); getAdminStandings(seasonId).then(r => setRows(r.sort((a, b) => a.rank - b.rank))); toast.success('Standings recalculated'); } catch (e) { toast.error(apiErr(e)); } finally { setBusy(false); } };
     if (!rows.length) return <div className="text-center py-8 text-gray-600 text-sm">No standings data yet. Submit some match results first.</div>;
     return (
         <div className="space-y-3">
-            <div className="flex justify-end"><button onClick={recalc} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400 hover:text-white transition-all"><RefreshCw className={`w-3.5 h-3.5 ${busy?'animate-spin':''}`} /> Recalculate</button></div>
+            <div className="flex justify-end"><button onClick={recalc} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400 hover:text-white transition-all"><RefreshCw className={`w-3.5 h-3.5 ${busy ? 'animate-spin' : ''}`} /> Recalculate</button></div>
             <div className="bg-[#1a1e28] border border-white/8 rounded-2xl overflow-hidden">
-                <table className="w-full"><thead><tr className="border-b border-white/5">{['#','Team','P','W','L','Pts','GD'].map(h=><th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>)}</tr></thead>
-                <tbody>{rows.map(r=><tr key={r._id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 text-sm font-bold text-gray-400">{r.rank}</td>
-                    <td className="px-4 py-3 text-sm text-white font-medium">{tName(r.teamId)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-400">{r.played}</td>
-                    <td className="px-4 py-3 text-sm text-green-400 font-medium">{r.wins}</td>
-                    <td className="px-4 py-3 text-sm text-red-400 font-medium">{r.losses}</td>
-                    <td className="px-4 py-3 text-sm text-white font-black">{r.points}</td>
-                    <td className="px-4 py-3 text-sm"><span className={r.gameDiff>=0?'text-green-400':'text-red-400'}>{r.gameDiff>=0?'+':''}{r.gameDiff}</span></td>
-                </tr>)}</tbody></table>
+                <table className="w-full"><thead><tr className="border-b border-white/5">{['#', 'Team', 'P', 'W', 'L', 'Pts', 'GD'].map(h => <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>)}</tr></thead>
+                    <tbody>{rows.map(r => <tr key={r._id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
+                        <td className="px-4 py-3 text-sm font-bold text-gray-400">{r.rank}</td>
+                        <td className="px-4 py-3 text-sm text-white font-medium">{tName(r.teamId)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-400">{r.played}</td>
+                        <td className="px-4 py-3 text-sm text-green-400 font-medium">{r.wins}</td>
+                        <td className="px-4 py-3 text-sm text-red-400 font-medium">{r.losses}</td>
+                        <td className="px-4 py-3 text-sm text-white font-black">{r.points}</td>
+                        <td className="px-4 py-3 text-sm"><span className={r.gameDiff >= 0 ? 'text-green-400' : 'text-red-400'}>{r.gameDiff >= 0 ? '+' : ''}{r.gameDiff}</span></td>
+                    </tr>)}</tbody></table>
             </div>
         </div>
     );
@@ -1191,9 +1190,9 @@ function StandingsPanel({ seasonId }: { seasonId: string }) {
 
 function BracketPanel({ seasonId }: { seasonId: string }) {
     const [bracket, setBracket] = useState<AdminBracket | null>(null);
-    const [stages, setStages]   = useState<Stage[]>([]);
+    const [stages, setStages] = useState<Stage[]>([]);
     const [genForm, setGenForm] = useState({ format: 'SINGLE_ELIMINATION', stageId: '' });
-    const [busy, setBusy]       = useState(false);
+    const [busy, setBusy] = useState(false);
 
     useEffect(() => {
         Promise.all([getAdminBracket(seasonId), getStages(seasonId)]).then(([b, s]) => {
@@ -1207,7 +1206,7 @@ function BracketPanel({ seasonId }: { seasonId: string }) {
     const gen = async () => {
         setBusy(true);
         try {
-            const b = await generateBracket({ seasonId, format: genForm.format as 'SINGLE_ELIMINATION'|'DOUBLE_ELIMINATION' });
+            const b = await generateBracket({ seasonId, format: genForm.format as 'SINGLE_ELIMINATION' | 'DOUBLE_ELIMINATION' });
             setBracket(b); toast.success('Bracket generated');
         } catch (e) { toast.error(apiErr(e)); }
         finally { setBusy(false); }
@@ -1225,17 +1224,17 @@ function BracketPanel({ seasonId }: { seasonId: string }) {
                     <p className="text-gray-500 text-sm mb-4">No bracket generated yet</p>
                     <div className="inline-flex flex-col items-center gap-3">
                         <div className="flex items-center gap-3">
-                            <select value={genForm.format} onChange={e=>setGenForm(p=>({...p,format:e.target.value}))} className="bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                            <select value={genForm.format} onChange={e => setGenForm(p => ({ ...p, format: e.target.value }))} className="bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="SINGLE_ELIMINATION">Single Elimination</option>
                                 <option value="DOUBLE_ELIMINATION">Double Elimination</option>
                             </select>
                             {stages.length > 0 && (
-                                <select value={genForm.stageId} onChange={e=>setGenForm(p=>({...p,stageId:e.target.value}))} className="bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                                    {stages.map(s=><option key={s._id} value={s._id}>{s.name}</option>)}
+                                <select value={genForm.stageId} onChange={e => setGenForm(p => ({ ...p, stageId: e.target.value }))} className="bg-[#1a1e28] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                                    {stages.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                                 </select>
                             )}
                         </div>
-                        <button onClick={gen} disabled={busy} className="px-5 py-2.5 rounded-xl bg-[#00ff00] text-black font-bold text-sm hover:bg-[#00ff00]/90 disabled:opacity-50 transition-all">{busy?'Generating…':'Generate Bracket'}</button>
+                        <button onClick={gen} disabled={busy} className="px-5 py-2.5 rounded-xl bg-[#00ff00] text-black font-bold text-sm hover:bg-[#00ff00]/90 disabled:opacity-50 transition-all">{busy ? 'Generating…' : 'Generate Bracket'}</button>
                     </div>
                 </div>
             ) : (
@@ -1243,7 +1242,7 @@ function BracketPanel({ seasonId }: { seasonId: string }) {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Crown className="w-4 h-4 text-yellow-400" />
-                            <p className="font-bold text-white text-sm">{bracket.format.replace('_',' ')}</p>
+                            <p className="font-bold text-white text-sm">{bracket.format.replace('_', ' ')}</p>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${S_CLS[bracket.status]}`}>{bracket.status}</span>
                         </div>
                         {bracket.championId && <span className="text-yellow-400 text-sm font-bold">Champion: {bracket.championId}</span>}
@@ -1264,15 +1263,15 @@ function BracketPanel({ seasonId }: { seasonId: string }) {
                                                             <div className="p-3 text-center text-xs text-gray-600 italic">TBD</div>
                                                         ) : (
                                                             <>
-                                                                <div className={`flex items-center gap-2 px-3 py-2 border-b border-white/5 ${slot.winnerId === slot.team1Id && slot.status==='COMPLETED' ? 'bg-white/5' : ''}`}>
+                                                                <div className={`flex items-center gap-2 px-3 py-2 border-b border-white/5 ${slot.winnerId === slot.team1Id && slot.status === 'COMPLETED' ? 'bg-white/5' : ''}`}>
                                                                     <Shield className="w-3 h-3 text-[#00ff00]/30 flex-shrink-0" />
-                                                                    <span className={`text-xs flex-1 truncate ${slot.winnerId === slot.team1Id && slot.status==='COMPLETED' ? 'text-white font-bold' : 'text-gray-400'}`}>{slot.team1Id ? slot.team1Id.toString().slice(-5) : 'TBD'}</span>
-                                                                    {slot.winnerId === slot.team1Id && slot.status==='COMPLETED' && <Check className="w-3 h-3 text-green-400 flex-shrink-0" />}
+                                                                    <span className={`text-xs flex-1 truncate ${slot.winnerId === slot.team1Id && slot.status === 'COMPLETED' ? 'text-white font-bold' : 'text-gray-400'}`}>{slot.team1Id ? slot.team1Id.toString().slice(-5) : 'TBD'}</span>
+                                                                    {slot.winnerId === slot.team1Id && slot.status === 'COMPLETED' && <Check className="w-3 h-3 text-green-400 flex-shrink-0" />}
                                                                 </div>
-                                                                <div className={`flex items-center gap-2 px-3 py-2 ${slot.winnerId === slot.team2Id && slot.status==='COMPLETED' ? 'bg-white/5' : ''}`}>
+                                                                <div className={`flex items-center gap-2 px-3 py-2 ${slot.winnerId === slot.team2Id && slot.status === 'COMPLETED' ? 'bg-white/5' : ''}`}>
                                                                     <Shield className="w-3 h-3 text-[#00ff00]/30 flex-shrink-0" />
-                                                                    <span className={`text-xs flex-1 truncate ${slot.winnerId === slot.team2Id && slot.status==='COMPLETED' ? 'text-white font-bold' : 'text-gray-400'}`}>{slot.team2Id ? slot.team2Id.toString().slice(-5) : 'TBD'}</span>
-                                                                    {slot.winnerId === slot.team2Id && slot.status==='COMPLETED' && <Check className="w-3 h-3 text-green-400 flex-shrink-0" />}
+                                                                    <span className={`text-xs flex-1 truncate ${slot.winnerId === slot.team2Id && slot.status === 'COMPLETED' ? 'text-white font-bold' : 'text-gray-400'}`}>{slot.team2Id ? slot.team2Id.toString().slice(-5) : 'TBD'}</span>
+                                                                    {slot.winnerId === slot.team2Id && slot.status === 'COMPLETED' && <Check className="w-3 h-3 text-green-400 flex-shrink-0" />}
                                                                 </div>
                                                             </>
                                                         )}
@@ -1296,9 +1295,9 @@ function BracketPanel({ seasonId }: { seasonId: string }) {
 export default function AdminSeasonWorkspace() {
     const { id, seasonId } = useParams<{ id: string; seasonId: string }>();
     const navigate = useNavigate();
-    const [season, setSeason]         = useState<Season | null>(null);
+    const [season, setSeason] = useState<Season | null>(null);
     const [leagueName, setLeagueName] = useState('');
-    const [loading, setLoading]       = useState(true);
+    const [loading, setLoading] = useState(true);
     const [allSeasons, setAllSeasons] = useState<Season[]>([]);
 
     useEffect(() => {
@@ -1331,7 +1330,7 @@ export default function AdminSeasonWorkspace() {
 
     const statusColor = season.status === 'ONGOING' ? 'text-green-400 border-green-500/30 bg-green-500/5'
         : season.status === 'FINISHED' ? 'text-gray-400 border-white/10 bg-white/3'
-        : 'text-blue-400 border-blue-500/30 bg-blue-500/5';
+            : 'text-blue-400 border-blue-500/30 bg-blue-500/5';
 
     return (
         <div className="space-y-5">

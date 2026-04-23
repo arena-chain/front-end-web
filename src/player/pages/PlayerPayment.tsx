@@ -123,45 +123,9 @@ const CheckoutForm = ({ amount, onPaymentSuccess }: { amount: number; onPaymentS
 export default function PlayerPayment() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { planId, billingCycle } = location.state || { planId: 'pro', billingCycle: 'monthly' };
+    const [isProcessing, setIsProcessing] = useState(false);
 
-    // Check if we're paying for a ticket or a subscription
-    const isTicket = location.state?.type === 'ticket';
-    const ticketData = location.state?.ticketData;
-    const subscriptionData = location.state || { planId: 'pro', billingCycle: 'monthly' };
-    const hasValidTicketData = Boolean(
-        ticketData?.tournamentId &&
-        ticketData?.tournamentName &&
-        ticketData?.ticketName &&
-        typeof ticketData?.price === 'number'
-    );
-
-    if (isTicket && !hasValidTicketData) {
-        return (
-            <div className="min-h-[80vh] flex items-center justify-center p-6">
-                <div className="max-w-md w-full bg-[#1A1D21] border border-white/10 rounded-2xl p-6 text-center space-y-4">
-                    <h2 className="text-xl font-bold text-white">Invalid payment session</h2>
-                    <p className="text-sm text-text-muted">
-                        Ticket information is missing. Please go back and start payment again.
-                    </p>
-                    <Button onClick={() => navigate('/player/tournaments')} className="w-full">
-                        Back to Tournaments
-                    </Button>
-                </div>
-            </div>
-        );
-    }
-
-    const getDetails = () => {
-        if (isTicket) {
-            return {
-                name: `${ticketData.ticketName} Pass`,
-                subtext: ticketData.tournamentName,
-                price: ticketData.price,
-                type: 'Ticket Purchase'
-            };
-        }
-        
-        const { planId, billingCycle } = subscriptionData;
         if (planId === 'elite') {
             return {
                 name: 'Elite Plan',
@@ -187,6 +151,9 @@ export default function PlayerPayment() {
             toast.error('Payment validation failed. Ticket will not be created.');
             return;
         }
+    const plan = getPlanDetails();
+    const tax = plan.price * 0.1; // 10% tax
+    const total = plan.price + tax;
 
         try {
             await paymentService.confirmPayment({
@@ -237,13 +204,13 @@ export default function PlayerPayment() {
                         onClick={() => navigate(-1)}
                         className="flex items-center text-text-muted hover:text-white transition-colors mb-4 group"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> 
+                        <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
                         Back
                     </button>
 
                     <div className="bg-[#1A1D21] border border-white/5 rounded-[2rem] p-8 space-y-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-                        
+
                         <div>
                             <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-black mb-2 block">
                                 Transaction_Summary
@@ -295,8 +262,8 @@ export default function PlayerPayment() {
                         </div>
 
                         <Elements stripe={stripePromise}>
-                            <CheckoutForm 
-                                amount={total} 
+                            <CheckoutForm
+                                amount={total}
                                 onPaymentSuccess={handleSuccess}
                             />
                         </Elements>

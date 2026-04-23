@@ -68,7 +68,7 @@ export const streamService = {
         return parseResponse<StreamRecord[]>(response);
     },
 
-    async createStream(payload: StreamPayload): Promise<StreamRecord> {
+    async create(payload: StreamPayload): Promise<StreamRecord> {
         const response = await fetch(`${API_URL}/stream`, {
             method: 'POST',
             headers: authHeaders(),
@@ -77,7 +77,7 @@ export const streamService = {
         return parseResponse<StreamRecord>(response);
     },
 
-    async updateStream(id: string, payload: Partial<StreamPayload>): Promise<StreamRecord> {
+    async update(id: string, payload: Partial<StreamPayload>): Promise<StreamRecord> {
         const response = await fetch(`${API_URL}/stream/${id}`, {
             method: 'PATCH',
             headers: authHeaders(),
@@ -86,7 +86,7 @@ export const streamService = {
         return parseResponse<StreamRecord>(response);
     },
 
-    async startStream(id: string): Promise<StreamRecord> {
+    async start(id: string): Promise<StreamRecord> {
         const response = await fetch(`${API_URL}/stream/${id}/start`, {
             method: 'PATCH',
             headers: authHeaders(),
@@ -102,7 +102,7 @@ export const streamService = {
         return parseResponse<StreamRecord>(response);
     },
 
-    async deleteStream(id: string): Promise<StreamRecord> {
+    async delete(id: string): Promise<StreamRecord> {
         const response = await fetch(`${API_URL}/stream/${id}`, {
             method: 'DELETE',
             headers: authHeaders(),
@@ -128,5 +128,20 @@ export const streamService = {
             },
         });
         return parseResponse<StreamRecord[]>(response);
+    },
+
+    async uploadThumbnail(file: File): Promise<string> {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${API_URL}/stream/upload/thumbnail`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+            body: formData,
+        });
+        const result = await parseResponse<{ url: string }>(response);
+        return result.url;
     },
 };

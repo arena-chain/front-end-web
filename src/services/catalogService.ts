@@ -105,12 +105,17 @@ class CatalogService {
 
             const response = await fetch(API_BASE_URL, {
                 method: 'POST',
-                headers: { ...headers, ...getAuthHeaders() },
                 body: isFormData ? data : JSON.stringify(data),
             });
 
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
+                let errorMessage = response.statusText;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || JSON.stringify(errorData);
+                } catch (e) {
+                    // Response is not JSON
+                }
                 throw new Error(`Failed to create game: ${errorMessage}`);
             }
             return await response.json();
@@ -139,7 +144,13 @@ class CatalogService {
             });
 
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
+                let errorMessage = response.statusText;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || JSON.stringify(errorData);
+                } catch (e) {
+                    // Response is not JSON
+                }
                 throw new Error(`Failed to update game: ${errorMessage}`);
             }
             return await response.json();

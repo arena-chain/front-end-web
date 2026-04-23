@@ -18,6 +18,7 @@ export interface ChannelRecord extends ChannelPayload {
         nickname?: string;
     };
     subscriberCount: number;
+    subscribers?: string[];
     isActive: boolean;
     createdAt?: string;
     updatedAt?: string;
@@ -89,6 +90,24 @@ export const channelService = {
             headers: {
                 'Content-Type': 'application/json',
             },
+        });
+
+        return parseResponse<ChannelRecord>(response);
+    },
+
+    async subscribe(id: string): Promise<ChannelRecord> {
+        const response = await fetch(`${API_URL}/channel/${id}/subscribe`, {
+            method: 'POST',
+            headers: authHeaders(),
+        });
+
+        return parseResponse<ChannelRecord>(response);
+    },
+
+    async unsubscribe(id: string): Promise<ChannelRecord> {
+        const response = await fetch(`${API_URL}/channel/${id}/unsubscribe`, {
+            method: 'POST',
+            headers: authHeaders(),
         });
 
         return parseResponse<ChannelRecord>(response);

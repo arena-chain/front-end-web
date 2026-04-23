@@ -10,24 +10,24 @@ import { checkInService, type CheckIn, type CheckInStatus } from '../../../servi
 interface Toast { msg: string; ok: boolean }
 
 const STATUS_META: Record<CheckInStatus, { label: string; cls: string; icon: React.ReactNode }> = {
-    OPEN:        { label: 'Open',        cls: 'bg-blue-500/20 text-blue-300 border-blue-500/30',      icon: <Clock className="w-3.5 h-3.5" /> },
-    BOTH_READY:  { label: 'Both Ready',  cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    TEAM1_MISSED:{ label: 'T1 Missed',   cls: 'bg-red-500/20 text-red-300 border-red-500/30',         icon: <XCircle className="w-3.5 h-3.5" /> },
-    TEAM2_MISSED:{ label: 'T2 Missed',   cls: 'bg-orange-500/20 text-orange-300 border-orange-500/30', icon: <XCircle className="w-3.5 h-3.5" /> },
-    BOTH_MISSED: { label: 'Both Missed', cls: 'bg-red-700/20 text-red-300 border-red-600/30',         icon: <XCircle className="w-3.5 h-3.5" /> },
-    CANCELLED:   { label: 'Cancelled',   cls: 'bg-slate-700/60 text-slate-400 border-slate-600/40',   icon: <Ban className="w-3.5 h-3.5" /> },
+    OPEN: { label: 'Open', cls: 'bg-blue-500/20 text-blue-300 border-blue-500/30', icon: <Clock className="w-3.5 h-3.5" /> },
+    BOTH_READY: { label: 'Both Ready', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    TEAM1_MISSED: { label: 'T1 Missed', cls: 'bg-red-500/20 text-red-300 border-red-500/30', icon: <XCircle className="w-3.5 h-3.5" /> },
+    TEAM2_MISSED: { label: 'T2 Missed', cls: 'bg-orange-500/20 text-orange-300 border-orange-500/30', icon: <XCircle className="w-3.5 h-3.5" /> },
+    BOTH_MISSED: { label: 'Both Missed', cls: 'bg-red-700/20 text-red-300 border-red-600/30', icon: <XCircle className="w-3.5 h-3.5" /> },
+    CANCELLED: { label: 'Cancelled', cls: 'bg-slate-700/60 text-slate-400 border-slate-600/40', icon: <Ban className="w-3.5 h-3.5" /> },
 };
 
 export default function CheckInsPage() {
-    const [leagues, setLeagues]       = useState<League[]>([]);
-    const [seasons, setSeasons]       = useState<Season[]>([]);
-    const [checkIns, setCheckIns]     = useState<CheckIn[]>([]);
-    const [selLeague, setSelLeague]   = useState('');
-    const [selSeason, setSelSeason]   = useState('');
-    const [loading, setLoading]       = useState(false);
-    const [toast, setToast]           = useState<Toast | null>(null);
-    const [showForm, setShowForm]     = useState(false);
-    const [form, setForm]             = useState({ matchId: '', deadline: '' });
+    const [leagues, setLeagues] = useState<League[]>([]);
+    const [seasons, setSeasons] = useState<Season[]>([]);
+    const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+    const [selLeague, setSelLeague] = useState('');
+    const [selSeason, setSelSeason] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState<Toast | null>(null);
+    const [showForm, setShowForm] = useState(false);
+    const [form, setForm] = useState({ matchId: '', deadline: '' });
     const [submitting, setSubmitting] = useState(false);
     const [filterStatus, setFilterStatus] = useState<CheckInStatus | 'ALL'>('ALL');
     const [processing, setProcessing] = useState(false);
@@ -37,11 +37,11 @@ export default function CheckInsPage() {
         setTimeout(() => setToast(null), 3500);
     };
 
-    useEffect(() => { leagueService.getAllLeagues().then(setLeagues).catch(() => {}); }, []);
+    useEffect(() => { leagueService.getAllLeagues().then(setLeagues).catch(() => { }); }, []);
 
     useEffect(() => {
         if (!selLeague) { setSeasons([]); setSelSeason(''); return; }
-        seasonService.getByLeague(selLeague).then(setSeasons).catch(() => {});
+        seasonService.getByLeague(selLeague).then(setSeasons).catch(() => { });
         setSelSeason('');
     }, [selLeague]);
 
@@ -51,7 +51,7 @@ export default function CheckInsPage() {
             setLoading(true);
             setCheckIns(await checkInService.getBySeason(selSeason));
         } catch { notify('Failed to load check-ins', false); }
-        finally   { setLoading(false); }
+        finally { setLoading(false); }
     }, [selSeason]);
 
     useEffect(() => { load(); }, [load]);
@@ -66,7 +66,7 @@ export default function CheckInsPage() {
             setForm({ matchId: '', deadline: '' });
             load();
         } catch { notify('Create failed', false); }
-        finally  { setSubmitting(false); }
+        finally { setSubmitting(false); }
     };
 
     const handleCancel = async (ci: CheckIn) => {
@@ -87,7 +87,7 @@ export default function CheckInsPage() {
             notify(`Processed ${r.processed} expired check-in(s)`);
             load();
         } catch { notify('Process failed', false); }
-        finally  { setProcessing(false); }
+        finally { setProcessing(false); }
     };
 
     const visible = checkIns.filter(ci => filterStatus === 'ALL' || ci.status === filterStatus);
@@ -193,7 +193,7 @@ export default function CheckInsPage() {
             ) : (
                 <div className="space-y-3">
                     {visible.map(ci => {
-                        const meta    = STATUS_META[ci.status];
+                        const meta = STATUS_META[ci.status];
                         const expired = isExpired(ci);
                         return (
                             <div key={ci._id}

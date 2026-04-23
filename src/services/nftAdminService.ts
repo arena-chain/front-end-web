@@ -77,6 +77,8 @@ export interface NftItem {
     transactionHash?: string;
     edition: number;
     status: 'OWNED' | 'EQUIPPED' | 'LISTED' | 'TRANSFERRED' | 'BURNED';
+    listPrice: number;
+    isFeatured: boolean;
     acquiredAt: string;
     acquiredVia: 'MINTED' | 'PURCHASED' | 'REWARD' | 'TRANSFER' | 'AIRDROP';
     metadata: Record<string, unknown>;
@@ -233,6 +235,20 @@ export const nftCoreService = {
 
     getStats: (): Promise<NftStats> =>
         axios.get(`${API}/nft/stats`, auth()).then(r => r.data),
+};
+
+export const nftMarketplaceService = {
+    getAdminListings: (): Promise<NftItem[]> =>
+        axios.get(`${API}/nft/admin/marketplace`, auth()).then(r => r.data),
+
+    getStats: (): Promise<any> =>
+        axios.get(`${API}/nft/admin/marketplace/stats`, auth()).then(r => r.data),
+
+    toggleFeatured: (itemId: string): Promise<NftItem> =>
+        axios.post(`${API}/nft/${itemId}/feature`, {}, auth()).then(r => r.data),
+
+    forceUnlist: (itemId: string): Promise<NftItem> =>
+        axios.post(`${API}/nft/${itemId}/force-unlist`, {}, auth()).then(r => r.data),
 };
 
 export const nftAttributeService = {

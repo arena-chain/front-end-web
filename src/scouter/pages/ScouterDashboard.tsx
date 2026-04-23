@@ -72,9 +72,9 @@ export default function ScouterDashboard() {
         scoutingService.listReportsByScouter(scouterId).then((r) => {
             setReports(r);
             setReportsCount(r.length);
-        }).catch(() => {});
-        scoutingService.listProspects().then((p) => setProspectsCount(p.length)).catch(() => {});
-        scoutingService.listRecommendationsByScouter(scouterId).then((r) => setRecommendationsCount(r.length)).catch(() => {});
+        }).catch(() => { });
+        scoutingService.listProspects().then((p) => setProspectsCount(p.length)).catch(() => { });
+        scoutingService.listRecommendationsByScouter(scouterId).then((r) => setRecommendationsCount(r.length)).catch(() => { });
     }, [scouterId]);
 
     useEffect(() => {
@@ -177,7 +177,9 @@ export default function ScouterDashboard() {
                             ))}
                         </div>
                     ) : epicClips.length === 0 ? (
-                        <p className="py-2 text-xs text-zinc-500">No public highlight clips yet.</p>
+                        <p className="text-xs text-white/40 py-2">
+                            No public highlight clips yet.
+                        </p>
                     ) : (
                         <div className="flex gap-6 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory sm:gap-7 scrollbar-thin [scrollbar-color:rgba(167,139,250,0.35)_transparent] [-webkit-overflow-scrolling:touch]">
                             {epicClips.map((h) => (

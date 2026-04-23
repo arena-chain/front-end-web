@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
+import NotificationBell from '../../components/ui/NotificationBell';
 
 // ─── Nav Structure ────────────────────────────────────────────────────────────
 
@@ -40,18 +41,29 @@ const NAV_GROUPS = [
         label: 'NFT Studio',
         items: [
             { to: '/admin/nft-manager', icon: Wand2, label: 'Studio' },
+            { to: '/admin/analytics/tournaments', icon: LayoutDashboard, label: 'Tournament Stats' },
+            { to: '/admin/analytics/revenue', icon: Gem, label: 'Revenue & Prizes' },
+            { to: '/admin/analytics/engagement', icon: Zap, label: 'Engagement Metrics' },
         ],
     },
     {
         label: 'Inventory',
         items: [
             { to: '/admin/nft-inventory', icon: Archive, label: 'NFT Inventory' },
+            { to: '/admin/settings', icon: Settings, label: 'Hub Configuration' },
+            { to: '/admin/games', icon: Gamepad2, label: 'Games & Modes' },
+            { to: '/admin/settings/api', icon: Box, label: 'API Keys' },
         ],
     },
     {
         label: 'System',
+        label: 'Marketplace & NFTs',
         items: [
             { to: '/admin/settings', icon: Settings, label: 'Settings' },
+            { to: '/admin/trading', icon: Zap, label: 'Trading Floor' },
+            { to: '/admin/nft-manager', icon: Box, label: 'Marketplace Manager' },
+            { to: '/admin/nft-avatars', icon: Users, label: 'Avatar Studio' },
+            { to: '/admin/nft-collections', icon: Layers, label: 'Collections' },
         ],
     },
 ];
@@ -160,7 +172,54 @@ export default function AdminLayout() {
                             <Menu size={18} />
                         </button>
 
-                        <div className="flex items-center gap-3">
+                        {/* Admin Stats Badges */}
+                        <div className="hidden lg:flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff88] opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ff88]"></span>
+                                </span>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase text-[#00ff88] leading-none mb-0.5">Active</span>
+                                    <span className="text-xs font-bold text-white leading-none">0</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-[#3b82f6]"></span>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase text-[#3b82f6] leading-none mb-0.5">Upcoming</span>
+                                    <span className="text-xs font-bold text-white leading-none">0</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-[#ff6b35]"></span>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase text-[#ff6b35] leading-none mb-0.5">Pending</span>
+                                    <span className="text-xs font-bold text-white leading-none">0</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-[#6b7280]"></span>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase text-[#6b7280] leading-none mb-0.5">Completed</span>
+                                    <span className="text-xs font-bold text-white leading-none">0</span>
+                                </div>
+                            </div>
+
+                            <div className="h-8 w-px bg-white/5 mx-2" />
+
+                            <div className="flex flex-col items-center">
+                                <span className="text-[10px] font-black uppercase text-white/40 leading-none mb-0.5">Total Users</span>
+                                <span className="text-xs font-bold text-white leading-none">0</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <NotificationBell />
+
                             <div className="flex flex-col items-end">
                                 <span className="text-sm font-bold text-white">Admin User</span>
                                 <span className="text-[11px] text-primary font-bold">Super Admin</span>

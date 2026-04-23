@@ -209,7 +209,8 @@ export default function Login() {
                             Register now
                         </Link>
                     </p>
-                </section>
+                </div>
+            </section>
 
                 {/* Right — LoL splash image */}
                 <div className="relative hidden md:block">

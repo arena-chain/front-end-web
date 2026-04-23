@@ -1,23 +1,37 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Globe, Search, ExternalLink } from 'lucide-react';
-import { Select } from '../../components/ui/core';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Plus, Search, Trophy, ShieldOff, ShieldCheck, Trash2, XCircle, ChevronRight, Users, DollarSign, Calendar, Check, X } from 'lucide-react';
+import { Button, Input } from '../../components/ui/core';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
-import type { Tournament } from '../../models/tournament';
+import SuccessModal from '../../components/ui/SuccessModal';
+import type { Tournament, CreateTournamentDto } from '../../models/tournament';
 import { TournamentStatus } from '../../models/tournament';
 import tournamentService from '../../services/tournamentService';
+import CreateTournamentWizard from '../components/tournaments/CreateTournamentWizard';
+import { toast } from 'sonner';
 
 export default function Tournaments() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
+    // Modals
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    // Auto-open modal based on route
+    useEffect(() => {
+        if (location.pathname === '/admin/tournaments/create') {
+            setIsCreateModalOpen(true);
+        }
+    }, [location.pathname]);
+
     // Confirmation Modal State
     const [confirmation, setConfirmation] = useState<{
         isOpen: boolean;
-        type: 'delete' | 'cancel' | null;
+        type: 'delete' | 'cancel' | 'block' | 'unblock' | null;
         id: string | null;
         title: string;
         message: string;
@@ -58,6 +72,25 @@ export default function Tournaments() {
         }
     };
 
+    const handleCreateTournament = async (data: CreateTournamentDto) => {
+        try {
+            const createdTournament = await tournamentService.createTournament(data);
+
+            await fetchTournaments();
+            setIsCreateModalOpen(false);
+
+            // Show success message
+            setSuccessModal({
+                isOpen: true,
+                title: '🎉 Tournament Created!',
+                message: `"${createdTournament.name}" has been successfully created and is now live.`,
+            });
+        } catch (error) {
+            console.error('Failed to create tournament:', error);
+            throw error;
+        }
+    };
+
     const handleDeleteClick = (id: string) => {
         const tournament = tournaments.find(t => t._id === id);
         setConfirmation({
@@ -80,6 +113,19 @@ export default function Tournaments() {
         });
     };
 
+    const handleBlockClick = (id: string, isBlocked: boolean) => {
+        const tournament = tournaments.find(t => t._id === id);
+        setConfirmation({
+            isOpen: true,
+            type: isBlocked ? 'unblock' : 'block',
+            id,
+            title: isBlocked ? 'Unblock Tournament' : 'Block Tournament',
+            message: isBlocked
+                ? `Unblock "${tournament?.name}"? It will be visible again but marked as Cancelled.`
+                : `Block "${tournament?.name}"? Registration will close and the tournament will be suspended.`,
+        });
+    };
+
     const handleConfirmAction = async () => {
         if (!confirmation.id || !confirmation.type) return;
 
@@ -91,10 +137,18 @@ export default function Tournaments() {
                 await tournamentService.updateTournament(confirmation.id, {
                     status: TournamentStatus.CANCELLED
                 });
+            } else if (confirmation.type === 'block') {
+                await tournamentService.blockTournament(confirmation.id);
+            } else if (confirmation.type === 'unblock') {
+                await tournamentService.unblockTournament(confirmation.id);
             }
             await fetchTournaments();
+            toast.success(`Tournament ${confirmation.type}ed successfully!`);
         } catch (error) {
             console.error(`Failed to ${confirmation.type} tournament:`, error);
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            toast.error(`Error: ${msg}`);
+            alert(`Failed to ${confirmation.type} tournament: ${msg}`);
         } finally {
             setIsConfirming(false);
             setConfirmation(prev => ({ ...prev, isOpen: false }));
@@ -104,13 +158,6 @@ export default function Tournaments() {
     // Navigate to details page
     const handleTournamentClick = (tournament: Tournament) => {
         navigate(`/admin/tournaments/${tournament._id}`);
-    };
-
-    const formatMoney = (value: number) => {
-        if (!Number.isFinite(value) || value <= 0) return '$0';
-        if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-        if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-        return `$${value.toFixed(0)}`;
     };
 
     // Filter tournaments
@@ -128,133 +175,255 @@ export default function Tournaments() {
     });
 
     return (
-        <div className="animate-fade-in-up text-zinc-300">
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-8">
-                <div>
-                    <h1 className="text-5xl md:text-6xl font-black italic text-white uppercase tracking-tighter leading-none mb-4">
-                        Tournament <span className="text-[#00FF00]">Management</span>
-                    </h1>
-                    <p className="text-zinc-500 font-medium max-w-2xl">
-                        Oversee the entire competitive ecosystem. Configure parameters, monitor registration yields, and deploy live brackets.
-                    </p>
+        <div className="space-y-6 animate-fade-in-up">
+            {/* Hero Header */}
+            <div className="relative overflow-hidden bg-[#141419] border border-white/5 rounded-2xl p-8 mb-8">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#00ff88]/5 to-transparent pointer-events-none" />
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <h1 className="text-4xl font-black uppercase tracking-tighter text-white mb-2 italic">Start Your Competitive Journey</h1>
+                        <p className="text-text-muted max-w-lg">Create professional tournaments, manage brackets, and compete for prizes in the ultimate eSports arena.</p>
+                    </div>
+                    <Button
+                        className="gap-2 bg-[#00ff88] text-black hover:bg-[#00ff88]/90 font-black h-12 px-8 rounded-xl shadow-[0_0_20px_rgba(0,255,136,0.3)] transition-all hover:scale-105"
+                        onClick={() => setIsCreateModalOpen(true)}
+                    >
+                        <Plus className="w-5 h-5" />
+                        CREATE TOURNAMENT
+                    </Button>
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl mb-8">
-                <div className="flex-1">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                        <input
-                            placeholder="QUERY SYSTEM..."
+            {/* Filters & Controls */}
+            <div className="flex flex-col xl:flex-row gap-6 items-center justify-between bg-[#141419] p-4 rounded-3xl border border-white/5 mb-10 shadow-2xl">
+                <div className="flex bg-black/40 p-1.5 rounded-2xl w-full xl:w-auto overflow-x-auto no-scrollbar scroll-smooth">
+                    {['all', 'PENDING_APPROVAL', 'ONGOING', 'OPEN_REGISTRATION', 'UPCOMING', 'COMPLETED', 'REJECTED', 'BLOCKED'].map((status) => (
+                        <button
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 whitespace-nowrap ${statusFilter === status
+                                ? status === 'BLOCKED' || status === 'REJECTED'
+                                    ? 'bg-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.4)] scale-105'
+                                    : status === 'PENDING_APPROVAL'
+                                        ? 'bg-amber-500 text-white shadow-[0_0_25px_rgba(245,158,11,0.4)] scale-105'
+                                        : 'bg-[#00ff88] text-black shadow-[0_0_25px_rgba(0,255,136,0.4)] scale-105'
+                                : 'text-white/40 hover:text-white/60 hover:bg-white/5'
+                                }`}
+                        >
+                            {status === 'all' ? 'All Units'
+                                : status === 'OPEN_REGISTRATION' ? 'Open Access'
+                                    : status === 'ONGOING' ? 'Live Engagement'
+                                        : status === 'BLOCKED' ? '🔒 Blocked'
+                                            : status === 'PENDING_APPROVAL' ? '⏳ Pending'
+                                                : status === 'REJECTED' ? '❌ Rejected'
+                                                    : status.replace('_', ' ')}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-4 w-full xl:w-auto">
+                    <div className="relative flex-1 xl:w-96">
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                        <Input
+                            placeholder="Search battlefield..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-11 bg-zinc-900/50 border border-zinc-800 rounded-lg py-2 pl-11 pr-4 text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-[#00FF00]/50 text-white"
+                            className="pl-14 bg-black/30 border-white/5 h-14 rounded-2xl focus:border-[#00ff88]/50 text-white font-black uppercase tracking-tight"
                         />
                     </div>
-                </div>
-                <div className="w-full md:w-48">
-                    <Select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="h-11 bg-zinc-900/50 border-zinc-800 text-white"
+                    <Button
+                        className="h-14 px-8 bg-white/5 border border-white/10 text-white font-black hover:bg-[#00ff88] hover:text-black transition-all duration-500 rounded-2xl flex items-center gap-3 group shadow-[0_5px_15px_rgba(0,0,0,0.3)]"
+                        onClick={() => setIsCreateModalOpen(true)}
                     >
-                        <option value="all">All Status</option>
-                        <option value={TournamentStatus.DRAFT}>Draft</option>
-                        <option value={TournamentStatus.OPEN_REGISTRATION}>Open Registration</option>
-                        <option value={TournamentStatus.ONGOING}>Ongoing</option>
-                        <option value={TournamentStatus.COMPLETED}>Completed</option>
-                        <option value={TournamentStatus.CANCELLED}>Cancelled</option>
-                    </Select>
+                        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+                        <span className="hidden md:inline uppercase tracking-widest text-[10px]">Initialize New</span>
+                    </Button>
                 </div>
             </div>
 
-            {loading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-zinc-900/40 border border-zinc-800 rounded-xl h-80 animate-pulse" />
+            {/* ── Status badge helper ─────────────────────────────────────── */}
+            {/* Content Area - List/Table View */}
+            <div className="bg-[#141419] border border-white/5 rounded-2xl overflow-hidden">
+                {/* Table Header */}
+                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-white/5 bg-black/20">
+                    {['Tournament', 'Game', 'Format', 'Status', 'Teams', 'Prize', 'Start Date', ''].map((h) => (
+                        <span key={h} className="text-[9px] font-black uppercase tracking-[0.2em] text-white/25">{h}</span>
                     ))}
                 </div>
-            ) : filteredTournaments.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {filteredTournaments.map((tournament) => (
-                        <div
-                            key={tournament._id}
-                            className="bg-zinc-900/40 border border-zinc-800 rounded-xl overflow-hidden hover:border-[#00FF00]/50 transition-all duration-300 group"
-                        >
-                            <div className="relative h-48 overflow-hidden">
-                                <img
-                                    src={tournament.bannerImageUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800'}
-                                    alt={tournament.name}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
-                                {tournament.status === TournamentStatus.ONGOING && (
-                                    <div className="absolute top-4 left-4 bg-[#00FF00] text-black text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 bg-black rounded-full animate-pulse" />
-                                        ONGOING
-                                    </div>
-                                )}
-                                {tournament.status === TournamentStatus.OPEN_REGISTRATION && (
-                                    <div className="absolute top-4 left-4 bg-zinc-800/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded border border-zinc-700">
-                                        OPEN REGISTRATION
-                                    </div>
-                                )}
+
+                {loading ? (
+                    <div className="divide-y divide-white/5">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-4 animate-pulse">
+                                {[160, 80, 90, 70, 60, 60, 90, 40].map((w, j) => (
+                                    <div key={j} className="h-3 rounded bg-white/5" style={{ width: w }} />
+                                ))}
                             </div>
+                        ))}
+                    </div>
+                ) : filteredTournaments.length > 0 ? (
+                    <div className="divide-y divide-white/[0.04]">
+                        {filteredTournaments.map((tournament) => {
+                            const gameTitle = typeof tournament.gameId === 'object' && tournament.gameId?.title
+                                ? tournament.gameId.title : '—';
+                            const isBlocked = tournament.status === TournamentStatus.BLOCKED;
+                            const statusColors: Record<string, string> = {
+                                ONGOING: 'text-red-400 bg-red-400/10 border-red-400/20',
+                                OPEN_REGISTRATION: 'text-[#00ff88] bg-[#00ff88]/10 border-[#00ff88]/20',
+                                UPCOMING: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+                                COMPLETED: 'text-white/40 bg-white/5 border-white/10',
+                                BLOCKED: 'text-red-500 bg-red-500/10 border-red-500/20',
+                                DRAFT: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+                                CANCELLED: 'text-white/30 bg-white/5 border-white/10',
+                                PENDING_APPROVAL: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+                                REJECTED: 'text-red-500 bg-red-500/10 border-red-500/20',
+                            };
+                            const fill = tournament.maxTeams > 0 ? Math.round((tournament.currentTeams / tournament.maxTeams) * 100) : 0;
 
-                            <div className="p-6">
-                                <h3 className="text-2xl font-black italic text-white mb-1 uppercase tracking-tight">{tournament.name}</h3>
-                                <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-6">
-                                    OFFICIAL • {(tournament.status || 'UNKNOWN').replace('_', ' ')}
-                                </p>
-
-                                <div className="grid grid-cols-3 gap-4 mb-8">
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Revenue Est.</p>
-                                        <p className="text-[#00FF00] font-black italic">{formatMoney(Number(tournament.prizePool || 0))}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Slots Filled</p>
-                                        <p className="text-white font-black italic">{tournament.currentTeams || 0} / {tournament.maxTeams || 0}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Ticketing</p>
-                                        <p className="text-white font-black italic">{Array.isArray(tournament.ticketTypes) ? tournament.ticketTypes.length : 0} Tiers</p>
-                                    </div>
-                                </div>
-
-                                <button
-                                    className="w-full flex items-center justify-between group/btn text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:text-[#00FF00] transition-colors"
+                            return (
+                                <div
+                                    key={tournament._id}
+                                    className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-4 items-center hover:bg-white/[0.02] transition-colors group cursor-pointer"
                                     onClick={() => handleTournamentClick(tournament)}
                                 >
-                                    <span>Manage Core Node</span>
-                                    <ExternalLink size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-16 bg-zinc-900/40 rounded-xl border border-zinc-800 border-dashed">
-                    <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Globe className="w-10 h-10 text-zinc-500" />
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2">No Tournaments Found</h3>
-                    <p className="text-zinc-500 mb-2">
-                        {searchQuery || statusFilter !== 'all'
-                            ? 'Try adjusting your filters'
-                            : 'No tournament data available yet'
-                        }
-                    </p>
-                </div>
-            )}
+                                    {/* Name */}
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-black text-white uppercase tracking-tight truncate group-hover:text-[#00ff88] transition-colors">
+                                            {tournament.name}
+                                        </span>
+                                        <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-0.5">
+                                            {tournament.format?.replace('_', ' ') || '—'}
+                                        </span>
+                                    </div>
 
-            <div className="mt-10 pt-6 border-t border-zinc-900 flex justify-between items-center text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
-                <div className="flex gap-8">
-                    <span>Network Latency: <span className="text-[#00FF00]">12ms Optimal</span></span>
-                    <span>Active Admins: <span className="text-white">4 Online</span></span>
-                </div>
-                <span>KINETIC.DASH_BORD_SYSTEMS_V2</span>
+                                    {/* Game */}
+                                    <span className="text-xs font-bold text-white/50 uppercase truncate">{gameTitle}</span>
+
+                                    {/* Format */}
+                                    <span className="text-[10px] font-black text-white/30 uppercase tracking-widest truncate">
+                                        {tournament.format?.replace('_', ' ') || '—'}
+                                    </span>
+
+                                    {/* Status */}
+                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border w-fit ${statusColors[tournament.status] ?? statusColors.DRAFT}`}>
+                                        {tournament.status?.replace('_', ' ')}
+                                    </span>
+
+                                    {/* Teams */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-white/50">
+                                            <Users size={11} className="text-[#00ff88]" />
+                                            {tournament.currentTeams}/{tournament.maxTeams}
+                                        </div>
+                                        <div className="h-1 w-full max-w-[60px] bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-[#00ff88] rounded-full" style={{ width: `${fill}%` }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Prize */}
+                                    <div className="flex items-center gap-1 text-xs font-bold text-white/50">
+                                        <DollarSign size={11} className="text-[#00ff88]" />
+                                        {tournament.prizePool ?? 0}
+                                    </div>
+
+                                    {/* Start Date */}
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-white/40">
+                                        <Calendar size={11} className="text-white/20" />
+                                        {new Date(tournament.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                        {tournament.status === TournamentStatus.PENDING_APPROVAL && (
+                                            <>
+                                                <button
+                                                    title="Approve"
+                                                    onClick={async () => {
+                                                        if (window.confirm(`Approve "${tournament.name}"?`)) {
+                                                            try {
+                                                                await tournamentService.updateTournamentStatus(tournament._id, TournamentStatus.OPEN_REGISTRATION);
+                                                                fetchTournaments();
+                                                                toast.success('Approved!');
+                                                            } catch (e) { toast.error('Failed'); }
+                                                        }
+                                                    }}
+                                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#00ff88] hover:bg-[#00ff88]/10 transition-all font-bold"
+                                                >
+                                                    <Check size={16} />
+                                                </button>
+                                                <button
+                                                    title="Reject"
+                                                    onClick={async () => {
+                                                        if (window.confirm(`Reject "${tournament.name}"?`)) {
+                                                            try {
+                                                                await tournamentService.updateTournamentStatus(tournament._id, TournamentStatus.REJECTED);
+                                                                fetchTournaments();
+                                                                toast.success('Rejected');
+                                                            } catch (e) { toast.error('Failed'); }
+                                                        }
+                                                    }}
+                                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-all font-bold"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </>
+                                        )}
+                                        <button
+                                            title={isBlocked ? 'Unblock' : 'Block'}
+                                            onClick={() => handleBlockClick(tournament._id, isBlocked)}
+                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${isBlocked ? 'text-[#00ff88] hover:bg-[#00ff88]/10' : 'text-red-400 hover:bg-red-400/10'}`}
+                                        >
+                                            {isBlocked ? <ShieldCheck size={14} /> : <ShieldOff size={14} />}
+                                        </button>
+                                        <button
+                                            title="Cancel"
+                                            onClick={() => handleCancelClick(tournament._id)}
+                                            className="w-7 h-7 rounded-lg flex items-center justify-center text-yellow-400 hover:bg-yellow-400/10 transition-all"
+                                        >
+                                            <XCircle size={14} />
+                                        </button>
+                                        <button
+                                            title="Delete"
+                                            onClick={() => handleDeleteClick(tournament._id)}
+                                            className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                        <ChevronRight size={14} className="text-white/20 ml-1" />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="w-16 h-16 bg-[#00ff88]/5 rounded-2xl flex items-center justify-center mb-4 border border-[#00ff88]/10">
+                            <Trophy className="w-8 h-8 text-[#00ff88]/50" />
+                        </div>
+                        <p className="text-sm font-black text-white/30 uppercase tracking-widest">No Tournaments Found</p>
+                        <p className="text-xs text-white/20 mt-1">
+                            {searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first tournament'}
+                        </p>
+                        {!searchQuery && statusFilter === 'all' && (
+                            <Button onClick={() => setIsCreateModalOpen(true)} className="mt-6 gap-2 bg-[#00ff88] text-black hover:bg-[#00ff88]/90 font-black px-6">
+                                <Plus className="w-4 h-4" /> CREATE
+                            </Button>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* Modals */}
+            <CreateTournamentWizard
+                isOpen={isCreateModalOpen}
+                onClose={() => {
+                    setIsCreateModalOpen(false);
+                    if (location.pathname === '/admin/tournaments/create') {
+                        navigate('/admin/tournaments');
+                    }
+                }}
+                onSubmit={handleCreateTournament}
+            />
 
             <ConfirmationModal
                 isOpen={confirmation.isOpen}
@@ -262,9 +431,21 @@ export default function Tournaments() {
                 onConfirm={handleConfirmAction}
                 title={confirmation.title}
                 message={confirmation.message}
-                confirmText={confirmation.type === 'delete' ? 'Delete' : 'Cancel Tournament'}
-                variant={confirmation.type === 'delete' ? 'danger' : 'warning'}
+                confirmText={
+                    confirmation.type === 'delete' ? 'Delete' :
+                        confirmation.type === 'block' ? '🔒 Block Tournament' :
+                            confirmation.type === 'unblock' ? '🔓 Unblock Tournament' :
+                                'Cancel Tournament'
+                }
+                variant={confirmation.type === 'delete' || confirmation.type === 'block' ? 'danger' : 'warning'}
                 isLoading={isConfirming}
+            />
+
+            <SuccessModal
+                isOpen={successModal.isOpen}
+                onClose={() => setSuccessModal(prev => ({ ...prev, isOpen: false }))}
+                title={successModal.title}
+                message={successModal.message}
             />
         </div>
     );

@@ -26,6 +26,23 @@ export default function ChannelDetailPage() {
     const [activeTab, setActiveTab] = useState<'videos' | 'community' | 'about'>('videos');
     const [channelUploads, setChannelUploads] = useState<VideoRecord[]>([]);
 
+    const storedUser = useMemo(() => {
+        const raw = localStorage.getItem('user');
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw) as { nickname?: string; role?: string };
+        } catch {
+            return null;
+        }
+    }, []);
+
+    const isSubscribed = useMemo(() => {
+        if (!storedUser || !channel || !channel.subscribers) return false;
+        const userId = (storedUser as any)._id || (storedUser as any).id;
+        if (!userId) return false;
+        return channel.subscribers.some((id) => String(id) === String(userId));
+    }, [storedUser, channel]);
+
     useEffect(() => {
         void loadData();
     }, [channelId]);
@@ -64,6 +81,28 @@ export default function ChannelDetailPage() {
             toast.error(error instanceof Error ? error.message : 'Failed to load channel details');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function toggleSubscription() {
+        if (!storedUser) {
+            toast.error('Vous devez être connecté pour vous abonner');
+            return;
+        }
+        if (!channel) return;
+
+        try {
+            if (isSubscribed) {
+                const updated = await channelService.unsubscribe(channel._id);
+                setChannel(updated);
+                toast.success('Désabonnement réussi');
+            } else {
+                const updated = await channelService.subscribe(channel._id);
+                setChannel(updated);
+                toast.success('Abonnement réussi !');
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Une erreur est survenue');
         }
     }
 
@@ -160,7 +199,7 @@ export default function ChannelDetailPage() {
                                 </div>
 
                                 {/* Tags Row */}
-                                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                                     {(channel.categories ?? []).map((cat) => (
                                         <Badge key={cat} variant="secondary" className="bg-white/5 border-white/5 text-[9px] font-black px-4 py-1 uppercase tracking-widest transition-colors hover:border-primary/40 hover:text-primary">
                                             {cat}
@@ -182,11 +221,23 @@ export default function ChannelDetailPage() {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <Button size="lg" className="rounded-2xl px-10 h-14 shadow-2xl shadow-primary/20 bg-primary text-black hover:bg-primary/80 transition-all font-black uppercase tracking-widest text-xs italic">
-                                    S'abonner
+                                <Button
+                                    size="lg"
+                                    onClick={toggleSubscription}
+                                    className={cn(
+                                        "rounded-2xl px-10 h-14 shadow-2xl font-black uppercase tracking-widest text-xs italic transition-all",
+                                        isSubscribed
+                                            ? "bg-white/10 text-white hover:bg-white/20 shadow-white/5"
+                                            : "bg-primary text-black hover:bg-primary/80 shadow-primary/20"
+                                    )}
+                                >
+                                    {isSubscribed ? 'Abonné' : "S'abonner"}
                                 </Button>
                                 <Button variant="outline" size="lg" className="rounded-2xl h-14 px-6 border-white/10 hover:bg-white/5 transition-all group/btn">
-                                    <Heart className="w-5 h-5 group-hover/btn:fill-rose-500 group-hover/btn:text-rose-500 transition-colors" />
+                                    <Heart className={cn(
+                                        "w-5 h-5 transition-colors",
+                                        isSubscribed ? "fill-primary text-primary" : "group-hover/btn:fill-rose-500 group-hover/btn:text-rose-500"
+                                    )} />
                                 </Button>
                                 <Link to={`/watch/${channel._id}`}>
                                     <Button variant="outline" size="lg" className="rounded-2xl h-14 px-6 border-white/10 hover:bg-white/5 font-black uppercase tracking-widest text-[10px] italic">

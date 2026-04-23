@@ -13,10 +13,13 @@ export type TournamentFormat = typeof TournamentFormat[keyof typeof TournamentFo
 
 export const TournamentStatus = {
     DRAFT: 'DRAFT',
+    PENDING_APPROVAL: 'PENDING_APPROVAL',
     OPEN_REGISTRATION: 'OPEN_REGISTRATION',
     ONGOING: 'ONGOING',
     COMPLETED: 'COMPLETED',
     CANCELLED: 'CANCELLED',
+    REJECTED: 'REJECTED',
+    BLOCKED: 'BLOCKED',
 } as const;
 export type TournamentStatus = typeof TournamentStatus[keyof typeof TournamentStatus];
 
@@ -39,6 +42,26 @@ export const PhaseStatus = {
 } as const;
 export type PhaseStatus = typeof PhaseStatus[keyof typeof PhaseStatus];
 
+export const TournamentRegion = {
+    GLOBAL: 'GLOBAL',
+    EUROPE: 'EUROPE',
+    NORTH_AMERICA: 'NORTH_AMERICA',
+    ASIA: 'ASIA',
+    SOUTH_AMERICA: 'SOUTH_AMERICA',
+    MIDDLE_EAST: 'MIDDLE_EAST',
+} as const;
+export type TournamentRegion = typeof TournamentRegion[keyof typeof TournamentRegion];
+
+export const GameMode = {
+    SOLO: '1v1 (SOLO)',
+    DUO: '2v2 (DUO)',
+    SQUAD_3: '3v3 (TRIO)',
+    SQUAD_4: '4v4 (SQUAD)',
+    SQUAD_5: '5v5 (PRO)',
+    BATTLE_ROYALE: 'BATTLE ROYALE',
+} as const;
+export type GameMode = typeof GameMode[keyof typeof GameMode];
+
 export interface TournamentPhase {
     name: PhaseName;
     status: PhaseStatus;
@@ -57,7 +80,11 @@ export interface Game {
 export interface Organizer {
     _id: string;
     username: string;
+    name?: string;
+    avatarUrl?: string;
     email: string;
+    bio?: string;
+    verified?: boolean;
 }
 
 export interface Tournament {
@@ -66,6 +93,8 @@ export interface Tournament {
     description?: string;
     gameId: Game;
     organizerId: Organizer;
+    region: TournamentRegion;
+    gameMode: GameMode;
     startDate: string;
     endDate: string;
     registrationStart?: string;
@@ -94,6 +123,8 @@ export interface CreateTournamentDto {
     description?: string;
     gameId: string;
     organizerId: string;
+    region: TournamentRegion;
+    gameMode: GameMode;
     startDate: Date;
     endDate: Date;
     registrationStart?: Date;
@@ -112,6 +143,8 @@ export interface CreateTournamentDto {
 export interface UpdateTournamentDto {
     name?: string;
     description?: string;
+    region?: TournamentRegion;
+    gameMode?: GameMode;
     startDate?: Date;
     endDate?: Date;
     registrationStart?: Date;

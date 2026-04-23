@@ -11,23 +11,16 @@ import { getApiBase } from '../lib/apiBase';
 // Backend controller path (intentional spelling: `tournements`)
 const API_BASE_URL = `${getApiBase()}/tournements`;
 
-function getAuthHeaders(): HeadersInit {
+/** Returns JSON + Bearer token headers. */
+function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
     const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...extra,
+    };
 }
 
-async function buildErrorMessage(response: Response, fallback: string): Promise<string> {
-    try {
-        const payload = await response.json();
-        const message = payload?.message;
-        if (Array.isArray(message)) return message.join(', ');
-        if (typeof message === 'string' && message.trim()) return message;
-        if (typeof payload?.error === 'string' && payload.error.trim()) return payload.error;
-    } catch {
-        // Ignore JSON parsing errors and use fallback
-    }
-    return fallback;
-}
 
 class TournamentService {
     /**
@@ -68,20 +61,26 @@ class TournamentService {
     async createTournament(data: CreateTournamentDto | FormData): Promise<Tournament> {
         try {
             const isFormData = data instanceof FormData;
-            const headers: HeadersInit = {};
-
-            if (!isFormData) {
-                headers['Content-Type'] = 'application/json';
-            }
 
             const response = await fetch(API_BASE_URL, {
                 method: 'POST',
-                headers: { ...headers, ...getAuthHeaders() },
+                headers: isFormData ? ((): Record<string, string> => {
+                    const token = localStorage.getItem('token');
+                    return token ? { Authorization: `Bearer ${token}` } : {};
+                })() : getAuthHeaders(),
                 body: isFormData ? data : JSON.stringify(data),
             });
 
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
+                // Try to get error details from response
+                let errorMessage = response.statusText;
+                try {
+                    const errorData = await response.json();
+                    console.error('Backend error details:', errorData);
+                    errorMessage = errorData.message || JSON.stringify(errorData);
+                } catch (e) {
+                    // Response is not JSON
+                }
                 throw new Error(`Failed to create tournament: ${errorMessage}`);
             }
             return await response.json();
@@ -98,15 +97,12 @@ class TournamentService {
         try {
             const response = await fetch(`${API_BASE_URL}/${id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeaders(),
-                },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(data),
             });
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
-                throw new Error(`Failed to update tournament: ${errorMessage}`);
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Failed to update tournament: ${response.statusText}`);
             }
             return await response.json();
         } catch (error) {
@@ -125,8 +121,7 @@ class TournamentService {
                 headers: getAuthHeaders(),
             });
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
-                throw new Error(`Failed to delete tournament: ${errorMessage}`);
+                throw new Error(`Failed to delete tournament: ${response.statusText}`);
             }
             return await response.json();
         } catch (error) {
@@ -144,13 +139,11 @@ class TournamentService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...getAuthHeaders(),
                 },
                 body: JSON.stringify({ teamId }),
             });
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
-                throw new Error(`Failed to register team: ${errorMessage}`);
+                throw new Error(`Failed to register team: ${response.statusText}`);
             }
             return await response.json();
         } catch (error) {
@@ -166,11 +159,9 @@ class TournamentService {
         try {
             const response = await fetch(`${API_BASE_URL}/${tournamentId}/unregister-team/${teamId}`, {
                 method: 'DELETE',
-                headers: getAuthHeaders(),
             });
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
-                throw new Error(`Failed to unregister team: ${errorMessage}`);
+                throw new Error(`Failed to unregister team: ${response.statusText}`);
             }
             return await response.json();
         } catch (error) {
@@ -188,13 +179,11 @@ class TournamentService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...getAuthHeaders(),
                 },
                 body: JSON.stringify(phase),
             });
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
-                throw new Error(`Failed to add phase: ${errorMessage}`);
+                throw new Error(`Failed to add phase: ${response.statusText}`);
             }
             return await response.json();
         } catch (error) {
@@ -216,13 +205,11 @@ class TournamentService {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...getAuthHeaders(),
                 },
                 body: JSON.stringify(data),
             });
             if (!response.ok) {
-                const errorMessage = await buildErrorMessage(response, response.statusText);
-                throw new Error(`Failed to update phase status: ${errorMessage}`);
+                throw new Error(`Failed to update phase status: ${response.statusText}`);
             }
             return await response.json();
         } catch (error) {
@@ -236,6 +223,20 @@ class TournamentService {
      */
     async updateTournamentStatus(id: string, status: typeof import('../models/tournament').TournamentStatus[keyof typeof import('../models/tournament').TournamentStatus]): Promise<Tournament> {
         return this.updateTournament(id, { status });
+    }
+
+    /**
+     * Block a tournament (admin action) — sets status to BLOCKED and closes registration
+     */
+    async blockTournament(id: string): Promise<Tournament> {
+        return this.updateTournament(id, { status: 'BLOCKED' as any, registrationOpen: false });
+    }
+
+    /**
+     * Unblock a tournament (admin action) — reverts status to CANCELLED so it stays visible but not active
+     */
+    async unblockTournament(id: string): Promise<Tournament> {
+        return this.updateTournament(id, { status: 'CANCELLED' as any });
     }
 }
 

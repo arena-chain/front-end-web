@@ -12,37 +12,39 @@ import {
 interface Toast { msg: string; ok: boolean }
 
 const STATUS_META: Record<DisputeStatus, { label: string; cls: string }> = {
-    PENDING:      { label: 'Pending',      cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+    PENDING: { label: 'Pending', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
     UNDER_REVIEW: { label: 'Under Review', cls: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-    ACCEPTED:     { label: 'Accepted',     cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-    REJECTED:     { label: 'Rejected',     cls: 'bg-red-500/20 text-red-300 border-red-500/30' },
+    ACCEPTED: { label: 'Accepted', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+    REJECTED: { label: 'Rejected', cls: 'bg-red-500/20 text-red-300 border-red-500/30' },
 };
 
+
+
 export default function DisputesPage() {
-    const [leagues, setLeagues]     = useState<League[]>([]);
-    const [seasons, setSeasons]     = useState<Season[]>([]);
-    const [disputes, setDisputes]   = useState<MatchDispute[]>([]);
+    const [leagues, setLeagues] = useState<League[]>([]);
+    const [seasons, setSeasons] = useState<Season[]>([]);
+    const [disputes, setDisputes] = useState<MatchDispute[]>([]);
     const [selLeague, setSelLeague] = useState('');
     const [selSeason, setSelSeason] = useState('');
-    const [loading, setLoading]     = useState(false);
-    const [toast, setToast]         = useState<Toast | null>(null);
-    const [search, setSearch]       = useState('');
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState<Toast | null>(null);
+    const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState<DisputeStatus | 'ALL'>('ALL');
     const [resolving, setResolving] = useState<MatchDispute | null>(null);
     const [resolveForm, setResolveForm] = useState<{ status: 'ACCEPTED' | 'REJECTED'; adminNote: string }>({ status: 'REJECTED', adminNote: '' });
     const [submitting, setSubmitting] = useState(false);
-    const [expanded, setExpanded]   = useState<string | null>(null);
+    const [expanded, setExpanded] = useState<string | null>(null);
 
     const notify = (msg: string, ok = true) => {
         setToast({ msg, ok });
         setTimeout(() => setToast(null), 3500);
     };
 
-    useEffect(() => { leagueService.getAllLeagues().then(setLeagues).catch(() => {}); }, []);
+    useEffect(() => { leagueService.getAllLeagues().then(setLeagues).catch(() => { }); }, []);
 
     useEffect(() => {
         if (!selLeague) { setSeasons([]); setSelSeason(''); return; }
-        seasonService.getByLeague(selLeague).then(setSeasons).catch(() => {});
+        seasonService.getByLeague(selLeague).then(setSeasons).catch(() => { });
         setSelSeason('');
     }, [selLeague]);
 
@@ -52,7 +54,7 @@ export default function DisputesPage() {
             setLoading(true);
             setDisputes(await matchDisputeService.getBySeason(selSeason));
         } catch { notify('Failed to load disputes', false); }
-        finally   { setLoading(false); }
+        finally { setLoading(false); }
     }, [selSeason]);
 
     useEffect(() => { load(); }, [load]);
@@ -72,7 +74,7 @@ export default function DisputesPage() {
             setResolving(null);
             load();
         } catch { notify('Resolve failed', false); }
-        finally  { setSubmitting(false); }
+        finally { setSubmitting(false); }
     };
 
     const visible = disputes.filter(d => {
@@ -179,8 +181,8 @@ export default function DisputesPage() {
             ) : (
                 <div className="space-y-3">
                     {visible.map(d => {
-                        const meta  = STATUS_META[d.status];
-                        const open  = expanded === d._id;
+                        const meta = STATUS_META[d.status];
+                        const open = expanded === d._id;
                         return (
                             <div key={d._id} className="bg-slate-800/60 border border-slate-700/40 rounded-xl overflow-hidden">
                                 <div className="flex items-center justify-between px-5 py-4">

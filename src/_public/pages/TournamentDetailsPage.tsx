@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Trophy, Users, ArrowLeft, Shield, Ticket, Share2 } from 'lucide-react';
+import { Calendar, MapPin, Trophy, Users, ArrowLeft, Shield, Ticket, Share2, LockKeyhole } from 'lucide-react';
 import { Button } from '../../components/ui/core';
 import { TopNavbar } from '../common/top_navbar';
 import { BottomNavbar } from '../common/bottom_navbar';
@@ -8,6 +8,8 @@ import { MOCK_TOURNAMENTS } from '../data/tournamentData';
 import tournamentService from '../../services/tournamentService';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
 import { placeholderImage } from '../../lib/placeholderImage';
+import type { Tournament as _ApiTournament } from '../../models/tournament';
+
 // Helper to bridge types if needed, though we'll try to use API type primarily
 interface TournamentDisplay {
     _id: string; // API uses _id, Mock uses id (we'll coerce mock id to string)
@@ -135,6 +137,17 @@ export default function TournamentDetailsPage() {
         <div className="min-h-screen bg-background text-white flex flex-col">
             <TopNavbar />
 
+            {/* BLOCKED Banner */}
+            {tournament.status === 'BLOCKED' && (
+                <div className="w-full bg-red-600 border-b-2 border-red-800 py-4 px-6 flex items-center justify-center gap-3 sticky top-0 z-50 shadow-[0_4px_30px_rgba(220,38,38,0.4)]">
+                    <LockKeyhole className="w-5 h-5 text-white shrink-0" />
+                    <p className="text-white font-black uppercase tracking-wider text-sm text-center">
+                        This tournament has been <span className="underline">suspended by an administrator</span>. Registration and participation are currently unavailable.
+                    </p>
+                    <LockKeyhole className="w-5 h-5 text-white shrink-0" />
+                </div>
+            )}
+
             <main className="flex-grow">
                 {/* 1. Hero Section */}
                 <div className="relative h-[60vh] min-h-[500px] overflow-hidden group">
@@ -188,14 +201,21 @@ export default function TournamentDetailsPage() {
 
                             {/* Call to Action Buttons */}
                             <div className="flex gap-4 mb-2">
-                                <Button
-                                    size="lg"
-                                    className="bg-primary text-black hover:bg-primary/90 font-black uppercase tracking-wide px-8 py-6 text-lg shadow-[0_0_30px_-5px_rgba(0,255,136,0.4)]"
-                                    onClick={handleBookTickets}
-                                >
-                                    <Ticket className="w-5 h-5 mr-2" />
-                                    Get Tickets
-                                </Button>
+                                {tournament.status !== 'BLOCKED' ? (
+                                    <Button
+                                        size="lg"
+                                        className="bg-primary text-black hover:bg-primary/90 font-black uppercase tracking-wide px-8 py-6 text-lg shadow-[0_0_30px_-5px_rgba(0,255,136,0.4)]"
+                                        onClick={handleBookTickets}
+                                    >
+                                        <Ticket className="w-5 h-5 mr-2" />
+                                        Get Tickets
+                                    </Button>
+                                ) : (
+                                    <div className="flex items-center gap-2 px-6 py-3 bg-red-500/20 border border-red-500/40 rounded-xl text-red-400 font-bold text-sm">
+                                        <LockKeyhole className="w-4 h-4" />
+                                        Tournament Suspended
+                                    </div>
+                                )}
                                 <Button
                                     size="lg"
                                     variant="outline"

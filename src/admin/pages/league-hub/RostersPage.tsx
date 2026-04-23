@@ -10,16 +10,16 @@ import { seasonRosterService, type SeasonRoster, type RosterPlayer } from '../..
 interface Toast { msg: string; ok: boolean }
 
 export default function RostersPage() {
-    const [leagues, setLeagues]         = useState<League[]>([]);
-    const [seasons, setSeasons]         = useState<Season[]>([]);
-    const [rosters, setRosters]         = useState<SeasonRoster[]>([]);
-    const [selLeague, setSelLeague]     = useState('');
-    const [selSeason, setSelSeason]     = useState('');
-    const [loading, setLoading]         = useState(false);
-    const [toast, setToast]             = useState<Toast | null>(null);
-    const [showCreate, setShowCreate]   = useState(false);
-    const [createForm, setCreateForm]   = useState({ teamId: '', playerIds: '' });
-    const [submitting, setSubmitting]   = useState(false);
+    const [leagues, setLeagues] = useState<League[]>([]);
+    const [seasons, setSeasons] = useState<Season[]>([]);
+    const [rosters, setRosters] = useState<SeasonRoster[]>([]);
+    const [selLeague, setSelLeague] = useState('');
+    const [selSeason, setSelSeason] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState<Toast | null>(null);
+    const [showCreate, setShowCreate] = useState(false);
+    const [createForm, setCreateForm] = useState({ teamId: '', playerIds: '' });
+    const [submitting, setSubmitting] = useState(false);
     const [addingPlayer, setAddingPlayer] = useState<{ rosterId: string; playerId: string } | null>(null);
 
     const notify = (msg: string, ok = true) => {
@@ -28,12 +28,12 @@ export default function RostersPage() {
     };
 
     useEffect(() => {
-        leagueService.getAllLeagues().then(setLeagues).catch(() => {});
+        leagueService.getAllLeagues().then(setLeagues).catch(() => { });
     }, []);
 
     useEffect(() => {
         if (!selLeague) { setSeasons([]); setSelSeason(''); return; }
-        seasonService.getByLeague(selLeague).then(setSeasons).catch(() => {});
+        seasonService.getByLeague(selLeague).then(setSeasons).catch(() => { });
         setSelSeason('');
     }, [selLeague]);
 
@@ -43,7 +43,7 @@ export default function RostersPage() {
             setLoading(true);
             setRosters(await seasonRosterService.getBySeason(selSeason));
         } catch { notify('Failed to load rosters', false); }
-        finally   { setLoading(false); }
+        finally { setLoading(false); }
     }, [selSeason]);
 
     useEffect(() => { loadRosters(); }, [loadRosters]);
@@ -59,7 +59,7 @@ export default function RostersPage() {
             setCreateForm({ teamId: '', playerIds: '' });
             loadRosters();
         } catch { notify('Create failed', false); }
-        finally  { setSubmitting(false); }
+        finally { setSubmitting(false); }
     };
 
     const handleLock = async (r: SeasonRoster) => {
@@ -160,9 +160,9 @@ export default function RostersPage() {
             ) : (
                 <div className="space-y-4">
                     {rosters.map(roster => {
-                        const team    = resolveTeam(roster);
+                        const team = resolveTeam(roster);
                         const players = resolvePlayers(roster);
-                        const locked  = roster.status === 'LOCKED';
+                        const locked = roster.status === 'LOCKED';
                         return (
                             <div key={roster._id} className="bg-slate-800/60 border border-slate-700/40 rounded-xl overflow-hidden">
                                 <div className="flex items-center justify-between px-5 py-4">
