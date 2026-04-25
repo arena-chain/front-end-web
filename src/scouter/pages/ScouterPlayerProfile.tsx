@@ -21,7 +21,7 @@ import {
     Sparkles,
     Play,
 } from 'lucide-react';
-import { scouterService, type ScoutedPlayerProfile, type PlayerMatchSummary } from '../../services/scouterService';
+import { scouterService, type ScoutedPlayerProfile, type PlayerMatchSummary, type RiotMatchSummary } from '../../services/scouterService';
 import { getDemoProfile, type PlayerHighlight, type StreamerInfo } from '../data/staticPlayerProfile';
 import type { LeaderboardEntry } from '../../services/scouterService';
 import {
@@ -138,6 +138,8 @@ export default function ScouterPlayerProfile() {
     const location = useLocation();
     const [profile, setProfile] = useState<ScoutedPlayerProfile | null>(null);
     const [matches, setMatches] = useState<PlayerMatchSummary[]>([]);
+    const [riotMatches, setRiotMatches] = useState<RiotMatchSummary[]>([]);
+    const [riotLinked, setRiotLinked] = useState(false);
     const [highlights, setHighlights] = useState<PlayerHighlight[]>([]);
     const [playerHighlightClips, setPlayerHighlightClips] = useState<HighlightRecord[]>([]);
     const [clipsLoading, setClipsLoading] = useState(false);
@@ -183,10 +185,16 @@ export default function ScouterPlayerProfile() {
         if (!playerUserId) return;
         setLoading(true);
         setProfileFromApi(true);
-        Promise.all([scouterService.getPlayerProfile(playerUserId), scouterService.getPlayerMatches(playerUserId)])
-            .then(([p, m]) => {
+        Promise.all([
+            scouterService.getPlayerProfile(playerUserId),
+            scouterService.getPlayerMatches(playerUserId),
+            scouterService.getPlayerRiotMatches(playerUserId),
+        ])
+            .then(([p, m, rm]) => {
                 setProfile(p);
                 setMatches(Array.isArray(m) ? m : []);
+                setRiotLinked(Boolean(rm?.linked));
+                setRiotMatches(Array.isArray(rm?.matches) ? rm.matches.slice(0, 8) : []);
                 setHighlights([]);
                 setStreamer(null);
                 setTeam(undefined);
@@ -205,6 +213,8 @@ export default function ScouterPlayerProfile() {
                 if (demo) {
                     setProfile(demo.profile);
                     setMatches(demo.matches);
+                    setRiotLinked(false);
+                    setRiotMatches([]);
                     setHighlights(demo.highlights);
                     setStreamer(demo.streamer);
                     setTeam(demo.team);
@@ -214,6 +224,8 @@ export default function ScouterPlayerProfile() {
                 } else {
                     setProfile(minimalProfile(playerUserId));
                     setMatches([]);
+                    setRiotLinked(false);
+                    setRiotMatches([]);
                     setHighlights([]);
                     setStreamer(null);
                     setTeam(undefined);
@@ -809,7 +821,77 @@ export default function ScouterPlayerProfile() {
                     <h2 className="text-sm font-black uppercase tracking-widest text-primary/90">Last matches</h2>
                 </div>
                 <div className="divide-y divide-white/5">
-                    {matches.length === 0 ? (
+                    {riotLinked ? (
+                        riotMatches.length === 0 ? (
+                            <div className="px-6 py-12 text-center text-white/40 text-sm">No Riot match history yet.</div>
+                        ) : (
+                            riotMatches.slice(0, 8).map((m, idx) => (
+                                <div
+                                    key={m.matchId ?? `riot-${idx}`}
+                                    className="px-6 py-4"
+                                >
+                                    <div className="rounded-2xl border border-white/10 bg-[#090f1f]/70 px-5 py-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <ChampionAvatar
+                                                championId={Number.isFinite(Number(m.championId)) ? Number(m.championId) : null}
+                                                championName={m.championName || 'Unknown Champion'}
+                                            />
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xl font-bold tracking-tight text-white truncate">{m.championName || 'Unknown Champion'}</p>
+                                                    <span
+                                                        className={`h-5 min-w-5 px-1.5 inline-flex items-center justify-center rounded-md text-[11px] font-black ${
+                                                            m.win ? 'bg-[#00d37f]/20 text-[#00ff9a]' : 'bg-[#ff4654]/20 text-[#ff6b79]'
+                                                        }`}
+                                                    >
+                                                        {m.win ? 'W' : 'L'}
+                                                    </span>
+                                                    <span className="h-5 px-2 inline-flex items-center justify-center rounded-md text-[11px] font-black bg-[#00bcd4]/20 text-[#21d4fd]">
+                                                        {normalizeRiotMode(m.gameMode)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-white/35">
+                                                    {formatDurationLabel(Number(m.duration ?? 0))} • {formatAgoLabel(m.gameCreation)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="shrink-0 text-right">
+                                            <p className="text-3xl font-extrabold tracking-tight text-white">
+                                                {Number(m.kills ?? 0)}/{Number(m.deaths ?? 0)}/{Number(m.assists ?? 0)}
+                                            </p>
+                                            <p className="text-sm text-white/35">
+                                                KDA {typeof m.kda === 'string' ? m.kda : formatKdaLabel(Number(m.kills ?? 0), Number(m.deaths ?? 0), Number(m.assists ?? 0))}
+                                            </p>
+                                        </div>
+
+                                        <div className="shrink-0 flex items-center gap-1.5">
+                                            {Array.isArray(m.items) && m.items.filter((v) => Number(v) > 0).length > 0 ? (
+                                                m.items
+                                                    .map((v) => Number(v))
+                                                    .filter((v) => Number.isFinite(v) && v > 0)
+                                                    .slice(0, 7)
+                                                    .map((itemId, itemIdx) => (
+                                                        <img
+                                                            key={`${m.matchId ?? idx}-${itemId}-${itemIdx}`}
+                                                            src={itemIconUrl(itemId)}
+                                                            alt={`item-${itemId}`}
+                                                            className="h-8 w-8 rounded-md border border-white/10 bg-[#0a1022]"
+                                                            loading="lazy"
+                                                            onError={(e) => {
+                                                                e.currentTarget.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    ))
+                                            ) : (
+                                                <div className="text-xs text-white/30">No item data</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )
+                    ) : matches.length === 0 ? (
                         <div className="px-6 py-12 text-center text-white/40 text-sm">No match history yet.</div>
                     ) : (
                         matches.map((m) => (
@@ -1222,6 +1304,69 @@ export default function ScouterPlayerProfile() {
                     </div>
                 </form>
             </Modal>
+        </div>
+    );
+}
+
+function formatDurationLabel(totalSeconds: number): string {
+    if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0m 00s';
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins}m ${String(secs).padStart(2, '0')}s`;
+}
+
+function formatAgoLabel(gameCreation?: number): string {
+    if (!gameCreation || !Number.isFinite(Number(gameCreation))) return 'recent';
+    const deltaMs = Date.now() - Number(gameCreation);
+    const days = Math.floor(deltaMs / (1000 * 60 * 60 * 24));
+    if (days > 0) return `${days}d ago`;
+    const hours = Math.floor(deltaMs / (1000 * 60 * 60));
+    if (hours > 0) return `${hours}h ago`;
+    const mins = Math.max(1, Math.floor(deltaMs / (1000 * 60)));
+    return `${mins}m ago`;
+}
+
+function normalizeRiotMode(mode?: string): string {
+    const raw = typeof mode === 'string' ? mode.trim().toUpperCase() : '';
+    if (!raw) return 'RANKED';
+    if (raw.includes('ARAM')) return 'ARAM';
+    if (raw.includes('CLASSIC') || raw.includes('RANKED')) return 'RANKED';
+    return raw;
+}
+
+function formatKdaLabel(k: number, d: number, a: number): string {
+    const ratio = d === 0 ? k + a : (k + a) / d;
+    return `${ratio.toFixed(2)}:1`;
+}
+
+function championIconUrl(championId: number): string {
+    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`;
+}
+
+function itemIconUrl(itemId: number): string {
+    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/items/${itemId}/icon.png`;
+}
+
+function ChampionAvatar({
+    championId,
+    championName,
+}: {
+    championId: number | null;
+    championName: string;
+}) {
+    if (championId) {
+        return (
+            <img
+                src={championIconUrl(championId)}
+                alt={championName}
+                className="h-14 w-14 rounded-xl border border-[#00ffa3]/35 bg-[#0a1022] object-cover"
+                loading="lazy"
+            />
+        );
+    }
+    return (
+        <div className="h-14 w-14 rounded-xl border border-white/15 bg-[#0a1022] flex items-center justify-center text-sm font-black text-white/50">
+            ?
         </div>
     );
 }

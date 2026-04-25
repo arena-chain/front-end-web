@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
     Swords, Clock, Zap, Target,
     Flame, Activity,
@@ -29,6 +30,7 @@ interface RecentMatch {
     map: string;
     score: string;
     ago: string;
+    status?: string;
 }
 interface MatchApiRecord {
     _id?: string;
@@ -36,6 +38,22 @@ interface MatchApiRecord {
     team2GamesWon?: number | string;
     scheduledStart?: string;
     mapName?: string;
+    status?: string;
+}
+interface RiotMatchHistoryResponse {
+    linked?: boolean;
+    matches?: RiotMatchApiRecord[];
+}
+interface RiotMatchApiRecord {
+    matchId?: string;
+    gameType?: string;
+    win?: boolean;
+    roundsWon?: number | string;
+    roundsLost?: number | string;
+    gameCreation?: number | string;
+    gameMode?: string;
+    map?: string;
+    championName?: string;
 }
 interface PlayerProfileApiRecord {
     userId?: string | { _id?: string };
@@ -72,6 +90,20 @@ interface ChannelListEntry {
 }
 
 type AppModalType = 'match' | 'scrims' | null;
+type RiotLinkStatus = 'unlinked' | 'pending_verification' | 'verified';
+
+interface RiotLinkState {
+    status: RiotLinkStatus;
+    riotGameName: string | null;
+    riotTagLine: string | null;
+    riotRegion: string | null;
+}
+
+interface LinkAccountForm {
+    gameName: string;
+    tagLine: string;
+    region: string;
+}
 
 export default function PlayerDashboard() {
     const navigate = useNavigate();
@@ -84,6 +116,14 @@ export default function PlayerDashboard() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [playerProfilesByUser, setPlayerProfilesByUser] = useState<Record<string, { elo: number; rank: string }>>({});
     const presenceSocketRef = useRef<ReturnType<typeof createPresenceSocket> | null>(null);
+    const [riotLinkState, setRiotLinkState] = useState<RiotLinkState | null>(null);
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+    const [isLinkActionLoading, setIsLinkActionLoading] = useState(false);
+    const [linkAccountForm, setLinkAccountForm] = useState<LinkAccountForm>({
+        gameName: '',
+        tagLine: '',
+        region: 'euw1',
+    });
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -132,22 +172,60 @@ export default function PlayerDashboard() {
                 setCurrentUserId(myUserId ? String(myUserId) : null);
                 if (myUserId) {
                     try {
-                        const matchesRes = await axios.get(`${API}/scouter/players/${myUserId}/matches`, { headers });
-                        const matches = Array.isArray(matchesRes.data) ? matchesRes.data.slice(0, 5) : [];
-                        const mapped: RecentMatch[] = matches.map((m: MatchApiRecord) => {
-                            const t1 = Number(m.team1GamesWon ?? 0);
-                            const t2 = Number(m.team2GamesWon ?? 0);
-                            const result: 'W' | 'L' = t1 >= t2 ? 'W' : 'L';
-                            const ago = m.scheduledStart ? `${Math.max(1, Math.floor((Date.now() - new Date(m.scheduledStart).getTime()) / 3600000))}h ago` : 'recent';
-                            return {
-                                id: String(m._id),
-                                result,
-                                map: typeof m.mapName === 'string' ? m.mapName : 'Match',
-                                score: `${t1} – ${t2}`,
-                                ago,
-                            };
-                        });
-                        setRecentMatches(mapped);
+                        const [riotHistoryRes, playerMatchesRes] = await Promise.allSettled([
+                            axios.get(`${API}/riot-api/match-history`, { headers, params: { game: 'all', start: 0, count: 5 } }),
+                            axios.get(`${API}/scouter/players/${myUserId}/matches`, { headers }),
+                        ]);
+
+                        const riotHistoryData =
+                            riotHistoryRes.status === 'fulfilled' ? (riotHistoryRes.value.data as RiotMatchHistoryResponse) : null;
+                        const riotMatches = Array.isArray(riotHistoryData?.matches) ? riotHistoryData?.matches : [];
+
+                        if (riotHistoryData?.linked && riotMatches.length > 0) {
+                            setRecentMatches(
+                                riotMatches.slice(0, 5).map((m) => {
+                                    const roundsWon = Number(m.roundsWon ?? 0);
+                                    const roundsLost = Number(m.roundsLost ?? 0);
+                                    const timestamp = Number(m.gameCreation ?? 0);
+                                    const gameLabel = typeof m.gameType === 'string' ? m.gameType.toUpperCase() : 'GAME';
+                                    return {
+                                        id: String(m.matchId || `${gameLabel}-${timestamp}`),
+                                        result: m.win ? 'W' : 'L',
+                                        map: m.map || m.gameMode || m.championName || gameLabel,
+                                        score:
+                                            Number.isFinite(roundsWon) && Number.isFinite(roundsLost)
+                                                ? `${roundsWon} – ${roundsLost}`
+                                                : gameLabel,
+                                        ago: timestamp > 0
+                                            ? `${Math.max(1, Math.floor((Date.now() - timestamp) / 3600000))}h ago`
+                                            : 'recent',
+                                        status: gameLabel,
+                                    };
+                                }),
+                            );
+                        } else {
+                            const matches =
+                                playerMatchesRes.status === 'fulfilled' && Array.isArray(playerMatchesRes.value.data)
+                                    ? playerMatchesRes.value.data.slice(0, 5)
+                                    : [];
+                            const mapped: RecentMatch[] = matches.map((m: MatchApiRecord) => {
+                                const t1 = Number(m.team1GamesWon ?? 0);
+                                const t2 = Number(m.team2GamesWon ?? 0);
+                                const result: 'W' | 'L' = t1 >= t2 ? 'W' : 'L';
+                                const ago = m.scheduledStart
+                                    ? `${Math.max(1, Math.floor((Date.now() - new Date(m.scheduledStart).getTime()) / 3600000))}h ago`
+                                    : 'recent';
+                                return {
+                                    id: String(m._id),
+                                    result,
+                                    map: typeof m.mapName === 'string' ? m.mapName : 'Match',
+                                    score: `${t1} – ${t2}`,
+                                    ago,
+                                    status: m.status,
+                                };
+                            });
+                            setRecentMatches(mapped);
+                        }
                     } catch {
                         setRecentMatches([]);
                     }
@@ -203,6 +281,33 @@ export default function PlayerDashboard() {
         };
         fetchStats();
     }, [outletCtx?.profile?._id]);
+
+    useEffect(() => {
+        const fetchRiotLinkStatus = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setRiotLinkState(null);
+                return;
+            }
+            const API = getApiBase();
+            try {
+                const res = await axios.get(`${API}/riot-api/link-status`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const data = res.data || {};
+                setRiotLinkState({
+                    status: normalizeRiotLinkStatus(data.status),
+                    riotGameName: typeof data.riotGameName === 'string' ? data.riotGameName : null,
+                    riotTagLine: typeof data.riotTagLine === 'string' ? data.riotTagLine : null,
+                    riotRegion: typeof data.riotRegion === 'string' ? data.riotRegion : null,
+                });
+            } catch {
+                setRiotLinkState(null);
+            }
+        };
+
+        void fetchRiotLinkStatus();
+    }, []);
 
     useEffect(() => {
         if (!currentUserId) {
@@ -317,6 +422,80 @@ export default function PlayerDashboard() {
             };
         });
 
+    const handleInitiateAccountLink = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            toast.error('You need to be logged in to link a game account.');
+            return;
+        }
+        if (!linkAccountForm.gameName.trim() || !linkAccountForm.tagLine.trim()) {
+            toast.error('Game name and tag line are required.');
+            return;
+        }
+        setIsLinkActionLoading(true);
+        try {
+            const API = getApiBase();
+            const res = await axios.post(
+                `${API}/riot-api/link-account`,
+                {
+                    gameName: linkAccountForm.gameName.trim(),
+                    tagLine: linkAccountForm.tagLine.trim(),
+                    region: linkAccountForm.region,
+                },
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            toast.success(res.data?.message || 'Link initiated. Change your icon, then verify.');
+            setRiotLinkState({
+                status: 'pending_verification',
+                riotGameName: linkAccountForm.gameName.trim(),
+                riotTagLine: linkAccountForm.tagLine.trim(),
+                riotRegion: linkAccountForm.region,
+            });
+        } catch (error: unknown) {
+            toast.error(getApiErrorMessage(error, 'Could not initiate account link.'));
+        } finally {
+            setIsLinkActionLoading(false);
+        }
+    };
+
+    const handleVerifyAccountLink = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            toast.error('You need to be logged in to verify a game account.');
+            return;
+        }
+        setIsLinkActionLoading(true);
+        try {
+            const API = getApiBase();
+            const res = await axios.post(
+                `${API}/riot-api/verify-account`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            const verified = Boolean(res.data?.verified);
+            toast[verified ? 'success' : 'info'](
+                res.data?.message || (verified ? 'Game account connected.' : 'Verification is still pending.'),
+            );
+            if (verified) {
+                setRiotLinkState((prev) => ({
+                    status: 'verified',
+                    riotGameName: typeof res.data?.summonerName === 'string'
+                        ? String(res.data.summonerName).split('#')[0] || prev?.riotGameName || null
+                        : prev?.riotGameName || null,
+                    riotTagLine: typeof res.data?.summonerName === 'string'
+                        ? String(res.data.summonerName).split('#')[1] || prev?.riotTagLine || null
+                        : prev?.riotTagLine || null,
+                    riotRegion: prev?.riotRegion || null,
+                }));
+                setIsLinkModalOpen(false);
+            }
+        } catch (error: unknown) {
+            toast.error(getApiErrorMessage(error, 'Could not verify account link.'));
+        } finally {
+            setIsLinkActionLoading(false);
+        }
+    };
+
     return (
         <div className="relative h-full overflow-hidden rounded-[28px]" aria-busy={statsLoading}>
             <div className="relative z-10 flex gap-8 h-full animate-fade-in-up overflow-hidden p-6 lg:p-0">
@@ -344,7 +523,17 @@ export default function PlayerDashboard() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                     <span className="text-[9px] font-black uppercase tracking-widest text-primary italic">System Online</span>
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Protocol Node: 0xF4...A2</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsLinkModalOpen(true)}
+                                    className="h-7 px-3 rounded-md border border-white/15 bg-white/5 text-[9px] font-black uppercase tracking-widest text-white/70 hover:border-primary/40 hover:text-primary transition-all"
+                                >
+                                    {riotLinkState?.status === 'verified'
+                                        ? 'Game Account Connected'
+                                        : riotLinkState?.status === 'pending_verification'
+                                          ? 'Verify Game Account'
+                                          : 'Connect Game Account'}
+                                </button>
                             </div>
 
                             <div className="space-y-2">
@@ -445,9 +634,37 @@ export default function PlayerDashboard() {
                             <button onClick={() => navigate('/player/matches')} className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 hover:text-[#00ff87] transition-all">VIEW ALL</button>
                         </div>
                         <div className="p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-white/25">
-                                {recentMatches.length === 0 ? 'No recent matches available.' : `${recentMatches.length} recent matches loaded.`}
-                            </p>
+                            <div className="space-y-2">
+                                {recentMatches.length === 0 ? (
+                                    <p className="text-[10px] font-bold uppercase tracking-wide text-white/25">
+                                        No recent matches available.
+                                    </p>
+                                ) : (
+                                    recentMatches.map((match) => (
+                                        <div
+                                            key={match.id}
+                                            className="rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 flex items-center justify-between gap-2"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-white truncate">
+                                                    {match.map}
+                                                </p>
+                                                <p className="text-[9px] text-white/45 uppercase tracking-wide">
+                                                    {match.ago}{match.status ? ` • ${match.status}` : ''}
+                                                </p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p
+                                                    className="text-[11px] font-black"
+                                                    style={{ color: match.result === 'W' ? '#00ff87' : '#ff4654' }}
+                                                >
+                                                    {match.result} · {match.score}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -485,8 +702,40 @@ export default function PlayerDashboard() {
             {/* Offline/Online Panel */}
                 <OnlinePanel players={onlinePlayers} onOpenFriends={() => navigate('/player/friends')} />
             </div>
+            {isLinkModalOpen && (
+                <LinkGameAccountModal
+                    linkState={riotLinkState}
+                    form={linkAccountForm}
+                    isLoading={isLinkActionLoading}
+                    onClose={() => setIsLinkModalOpen(false)}
+                    onFormChange={setLinkAccountForm}
+                    onInitiateLink={handleInitiateAccountLink}
+                    onVerifyLink={handleVerifyAccountLink}
+                    onLinkAnother={() => {
+                        setRiotLinkState((prev) => prev ? { ...prev, status: 'unlinked' } : prev);
+                    }}
+                />
+            )}
         </div>
     );
+}
+
+function normalizeRiotLinkStatus(value: unknown): RiotLinkStatus {
+    if (typeof value !== 'string') return 'unlinked';
+    const status = value.toLowerCase();
+    if (status === 'verified') return 'verified';
+    if (status === 'pending_verification') return 'pending_verification';
+    return 'unlinked';
+}
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+    if (axios.isAxiosError(error)) {
+        const data = error.response?.data;
+        if (typeof data === 'string') return data;
+        if (typeof data?.message === 'string') return data.message;
+        if (Array.isArray(data?.message) && data.message.length > 0) return String(data.message[0]);
+    }
+    return fallback;
 }
 
 // ─── Online Players Panel (right) ────────────────────────────────────────────
@@ -763,6 +1012,125 @@ function AppRequiredModal({ type, onClose }: { type: 'match' | 'scrims'; onClose
             </div>
         </div>,
         document.body
+    );
+}
+
+function LinkGameAccountModal({
+    linkState,
+    form,
+    isLoading,
+    onClose,
+    onFormChange,
+    onInitiateLink,
+    onVerifyLink,
+    onLinkAnother,
+}: {
+    linkState: RiotLinkState | null;
+    form: LinkAccountForm;
+    isLoading: boolean;
+    onClose: () => void;
+    onFormChange: React.Dispatch<React.SetStateAction<LinkAccountForm>>;
+    onInitiateLink: () => Promise<void>;
+    onVerifyLink: () => Promise<void>;
+    onLinkAnother: () => void;
+}) {
+    const connectedLabel =
+        linkState?.riotGameName && linkState?.riotTagLine
+            ? `${linkState.riotGameName}#${linkState.riotTagLine}`
+            : null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg" onClick={onClose}>
+            <div
+                className="relative w-full max-w-xl bg-[#060606] border border-white/10 rounded-[36px] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.7)]"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <button onClick={onClose} className="absolute top-6 right-6 text-white/25 hover:text-white transition-colors">
+                    <X size={20} />
+                </button>
+
+                <div className="p-8 md:p-10 space-y-6">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary italic">Account Link Protocol</p>
+                        <h3 className="mt-2 text-2xl md:text-3xl font-black italic uppercase tracking-tight text-white">
+                            Connect Game Account
+                        </h3>
+                        <p className="mt-2 text-xs text-white/45 uppercase tracking-wide">
+                            Link account, change your in-game icon, then verify ownership.
+                        </p>
+                    </div>
+
+                    {linkState?.status === 'verified' && (
+                        <div className="rounded-2xl border border-primary/25 bg-primary/10 p-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Game account connected</p>
+                            <p className="text-sm text-white mt-1">{connectedLabel || 'Linked account'}</p>
+                            <button
+                                type="button"
+                                onClick={onLinkAnother}
+                                className="mt-3 text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-primary"
+                            >
+                                Link another game account
+                            </button>
+                        </div>
+                    )}
+
+                    {linkState?.status !== 'verified' && (
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    value={form.gameName}
+                                    onChange={(e) => onFormChange((prev) => ({ ...prev, gameName: e.target.value }))}
+                                    placeholder="Game name (e.g. Faker)"
+                                    className="h-11 rounded-xl bg-black/50 border border-white/10 px-4 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary/40"
+                                />
+                                <input
+                                    value={form.tagLine}
+                                    onChange={(e) => onFormChange((prev) => ({ ...prev, tagLine: e.target.value }))}
+                                    placeholder="Tag line (e.g. KR1)"
+                                    className="h-11 rounded-xl bg-black/50 border border-white/10 px-4 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary/40"
+                                />
+                            </div>
+                            <select
+                                value={form.region}
+                                onChange={(e) => onFormChange((prev) => ({ ...prev, region: e.target.value }))}
+                                className="h-11 w-full rounded-xl bg-black/50 border border-white/10 px-4 text-sm text-white focus:outline-none focus:border-primary/40"
+                            >
+                                {['euw1', 'eun1', 'na1', 'kr', 'br1', 'jp1', 'la1', 'la2', 'oc1', 'tr1', 'ru'].map((region) => (
+                                    <option key={region} value={region}>
+                                        {region.toUpperCase()}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <div className="flex flex-wrap items-center gap-3 pt-1">
+                                <button
+                                    type="button"
+                                    disabled={isLoading}
+                                    onClick={() => void onInitiateLink()}
+                                    className="h-11 px-5 rounded-xl bg-primary text-black text-[10px] font-black uppercase tracking-[0.2em] disabled:opacity-60"
+                                >
+                                    {isLoading ? 'Processing...' : 'Start Link'}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isLoading || linkState?.status !== 'pending_verification'}
+                                    onClick={() => void onVerifyLink()}
+                                    className="h-11 px-5 rounded-xl border border-white/20 bg-white/5 text-white text-[10px] font-black uppercase tracking-[0.2em] disabled:opacity-50"
+                                >
+                                    Verify Game Account
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-white/35 uppercase tracking-wide">
+                                {linkState?.status === 'pending_verification'
+                                    ? 'Pending verification: change your icon in the client, then verify.'
+                                    : 'Step 1: initiate link. Step 2: change icon. Step 3: verify.'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>,
+        document.body,
     );
 }
 

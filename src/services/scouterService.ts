@@ -39,6 +39,29 @@ export interface PlayerMatchSummary {
     [key: string]: unknown;
 }
 
+export interface RiotMatchSummary {
+    matchId?: string;
+    gameType?: string;
+    championName?: string;
+    championId?: number;
+    kills?: number;
+    deaths?: number;
+    assists?: number;
+    kda?: string;
+    win?: boolean;
+    gameMode?: string;
+    gameCreation?: number;
+    duration?: number;
+    items?: number[];
+}
+
+export interface RiotMatchHistoryPayload {
+    linked?: boolean;
+    game?: string;
+    matches?: RiotMatchSummary[];
+    total?: number;
+}
+
 /** Leaderboard entry for Rankings (by game): ranked players with optional team and origin */
 export interface LeaderboardEntry {
     _id: string;
@@ -94,6 +117,14 @@ export const scouterService = {
     /** GET /scouter/players/:playerUserId/matches – player match history */
     getPlayerMatches: (playerUserId: string): Promise<PlayerMatchSummary[]> =>
         axios.get(`${base}/players/${playerUserId}/matches`, auth()).then(r => (Array.isArray(r.data) ? r.data : r.data?.data ?? r.data?.matches ?? [])),
+
+    /** GET /scouter/players/:playerUserId/riot-matches – player's Riot LoL history (if linked) */
+    getPlayerRiotMatches: (playerUserId: string): Promise<RiotMatchHistoryPayload> =>
+        axios.get(`${base}/players/${playerUserId}/riot-matches`, auth()).then((r) => {
+            const d = r.data;
+            if (d && typeof d === 'object') return d as RiotMatchHistoryPayload;
+            return { linked: false, game: 'lol', matches: [], total: 0 };
+        }),
 
     /** GET leaderboard by game – ranked players (best to worst); optional team logo & origin from user/team */
     getLeaderboard: (gameId: string): Promise<LeaderboardEntry[]> =>
