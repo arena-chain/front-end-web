@@ -9,6 +9,7 @@ import { leagueService } from '../../services/leagueService';
 import { seasonService } from '../../services/seasonService';
 import { leagueHubService } from '../../services/leagueHubService';
 import { teamManagerService } from '../../services/teamManagerService';
+import PlayerLeagueWikiPage from '../../player/pages/PlayerLeagueWikiPage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { League }              from '../../services/leagueService';
@@ -133,7 +134,14 @@ export default function ManagerTournaments() {
             {/* Views */}
             {view.kind === 'leagues' && <LeaguesGrid leagues={visible} loading={loading} search={search} setSearch={setSearch} onSelect={goLeague} />}
             {view.kind === 'seasons' && <SeasonsPanel seasons={seasonsMap[view.league._id] ?? []} onSelect={s => goHub(view.league, s)} />}
-            {view.kind === 'hub'     && <SeasonHub season={view.season} myTeamId={myTeamId} />}
+            {view.kind === 'hub'     && (
+                <PlayerLeagueWikiPage
+                    embeddedLeagueId={view.league._id}
+                    embeddedSeasonId={view.season._id}
+                    backToPath="/manager/tournaments"
+                    backLabel="Back to tournaments"
+                />
+            )}
         </div>
     );
 }

@@ -1,5 +1,6 @@
+import appLogo from '../../assets/logo.png';
 import { Link } from 'react-router-dom';
-import { Gamepad2, Menu, X, LogIn, UserPlus } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 
@@ -40,21 +41,23 @@ export function TopNavbar() {
 
                     {/* ── Logo ───────────────────────────────────────── */}
                     <Link to="/" onClick={() => window.scrollTo(0, 0)}
-                        className="flex items-center gap-2.5 shrink-0 group">
-                        <div className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105"
-                            style={{ background: 'rgba(0,255,0,0.1)', border: '1px solid rgba(0,255,0,0.3)' }}
-                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 0 22px rgba(0,255,0,0.45)'}
-                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'none'}>
-                            <Gamepad2 className="w-[18px] h-[18px]" style={{ color: '#00ff00' }} />
-                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
-                                style={{ background: '#00ff00', boxShadow: '0 0 8px rgba(0,255,0,0.55)' }} />
-                        </div>
-                        <div className="flex flex-col leading-none">
-                            <span className="text-[18px] font-black tracking-tighter uppercase italic text-white leading-none">
-                                Arena<span style={{ color: '#00ff00' }}>Chain</span>
-                            </span>
-                            <span className="text-[7px] font-black uppercase tracking-[0.3em] leading-none mt-0.5" style={{ color: 'rgba(255,255,255,0.2)' }}>Esports Platform</span>
-                        </div>
+                        className="flex items-center shrink-0 group">
+                        <span
+                            className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border transition-all duration-300 group-hover:scale-[1.05]"
+                            style={{
+                                background: 'linear-gradient(145deg, rgba(9,17,8,0.92), rgba(8,12,10,0.92))',
+                                borderColor: 'rgba(0,255,0,0.26)',
+                                boxShadow: '0 0 20px rgba(0,255,0,0.24), inset 0 0 14px rgba(0,255,0,0.08)',
+                            }}
+                        >
+                            <img
+                                src={appLogo}
+                                alt="Arena Chain"
+                                className="h-full w-full rounded-2xl object-cover"
+                                loading="eager"
+                                decoding="async"
+                            />
+                        </span>
                     </Link>
 
                     <div className="hidden lg:block flex-1 min-w-0" aria-hidden />

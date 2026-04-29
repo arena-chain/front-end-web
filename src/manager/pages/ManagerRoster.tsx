@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Users, UserPlus, X, Check, AlertCircle,
-    Shield, Pencil, Trash2, Search, RefreshCw, Settings,
+    Shield, Pencil, Trash2, Search, RefreshCw, Settings, ExternalLink,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { teamManagerService, type TeamMember, type PlayerSearchResult } from '../../services/teamManagerService';
+import { teamManagerService, type TeamMember, type PlayerSearchResult, type TeamJoinRequest } from '../../services/teamManagerService';
 import { AuthService } from '../../services/auth.service';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -87,8 +87,10 @@ export default function ManagerRoster() {
     const [members,    setMembers]    = useState<TeamMember[]>([]);
     const [meta,       setMetaState]  = useState<Record<string, RoleMeta>>(() => loadMeta(userId));
     const [teamExists, setTeamExists] = useState<boolean | null>(null); // null = loading
+    const [teamId,      setTeamId]     = useState<string | null>(null);
     const [teamName,    setTeamName]   = useState<string | null>(null);
     const [managerStatus, setManagerStatus] = useState<string | null>(null);
+    const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
     const [loading,    setLoading]    = useState(true);
     const [tab,        setTab]        = useState<PlayerStatus | 'ALL'>('ALL');
     const [toast,      setToast]      = useState<Toast | null>(null);
@@ -99,6 +101,18 @@ export default function ManagerRoster() {
     const notify = (msg: string, ok = true) => {
         setToast({ msg, ok });
         setTimeout(() => setToast(null), 3000);
+    };
+    const loadJoinRequests = async (activeTeamId?: string | null) => {
+        if (!activeTeamId) {
+            setJoinRequests([]);
+            return;
+        }
+        try {
+            const list = await teamManagerService.getTeamJoinRequests();
+            setJoinRequests(Array.isArray(list) ? list : []);
+        } catch {
+            setJoinRequests([]);
+        }
     };
 
     // ── Load team + members ──────────────────────────────────────────────────
@@ -115,19 +129,26 @@ export default function ManagerRoster() {
                 if (!t) {
                     setTeamExists(false);
                     setMembers([]);
+                    setTeamId(null);
                     setTeamName(null);
                     setManagerStatus(null);
+                    setJoinRequests([]);
                 } else {
                     setTeamExists(true);
+                    const resolvedTeamId = t._id ?? null;
+                    setTeamId(resolvedTeamId);
                     setMembers(t.members ?? []);
                     setTeamName(t.name ?? null);
                     setManagerStatus(t.managerStatus ?? null);
+                    void loadJoinRequests(resolvedTeamId);
                 }
             } catch {
                 setTeamExists(false);
                 setMembers([]);
+                setTeamId(null);
                 setTeamName(null);
                 setManagerStatus(null);
+                setJoinRequests([]);
             } finally {
                 setLoading(false);
             }
@@ -141,6 +162,19 @@ export default function ManagerRoster() {
         const next = { ...meta, [id]: { ...existing, ...patch } };
         setMetaState(next);
         saveMeta(userId, next);
+    };
+    const handleJoinRequest = async (request: TeamJoinRequest, action: 'accept' | 'reject') => {
+        if (!teamId) return;
+        const player = request.playerUserId;
+        const nickname = typeof player === 'object' && player?.nickname ? player.nickname : 'Player';
+        try {
+            await teamManagerService.respondToTeamJoinRequest(request._id, action);
+            notify(action === 'accept' ? `${nickname} accepted` : `${nickname} rejected`);
+            loadTeam();
+            await loadJoinRequests(teamId);
+        } catch {
+            notify('Could not update join request', false);
+        }
     };
 
     // ── Remove player ─────────────────────────────────────────────────────────
@@ -161,6 +195,7 @@ export default function ManagerRoster() {
 
     // ── Build display list ────────────────────────────────────────────────────
     const roster: TeamPlayer[] = members.map(m => toPlayer(m, meta[m._id]));
+    const pendingJoinRequests = joinRequests.filter((r) => r.status === 'pending');
 
     const filtered = roster.filter(p => {
         const matchTab    = tab === 'ALL' || p.status === tab;
@@ -230,18 +265,74 @@ export default function ManagerRoster() {
                         )}
                     </p>
                 </div>
-                <button type="button" onClick={() => !isRejected && setInviteOpen(true)}
-                    disabled={isRejected}
-                    title={isRejected ? 'Application rejected — recruiting disabled' : (canInvite ? 'Search and invite players' : 'Browse players (invites unlock after admin approval)')}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    style={{ background: isRejected ? 'rgba(255,255,255,0.15)' : '#00ff00', color: isRejected ? 'rgba(255,255,255,0.6)' : '#000' }}>
-                    <UserPlus className="w-4 h-4" /> {canInvite ? 'Invite Player' : 'Find players'}
-                </button>
+                <div className="flex items-center gap-2">
+                    {teamId && (
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/manager/teams/${teamId}`)}
+                            className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white/80 transition-all hover:text-white"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            Team Profile
+                        </button>
+                    )}
+                    <button type="button" onClick={() => !isRejected && setInviteOpen(true)}
+                        disabled={isRejected}
+                        title={isRejected ? 'Application rejected — recruiting disabled' : (canInvite ? 'Search and invite players' : 'Browse players (invites unlock after admin approval)')}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        style={{ background: isRejected ? 'rgba(255,255,255,0.15)' : '#00ff00', color: isRejected ? 'rgba(255,255,255,0.6)' : '#000' }}>
+                        <UserPlus className="w-4 h-4" /> {canInvite ? 'Invite Player' : 'Find players'}
+                    </button>
+                </div>
             </div>
 
             {pendingApproval && (
                 <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', color: 'rgba(253,230,138,0.95)' }}>
                     Your manager request is <strong>pending</strong>. Open <strong>Find players</strong> to search the roster pool; <strong>Invite</strong> stays off until an admin approves you under Manager requests.
+                </div>
+            )}
+            {pendingJoinRequests.length > 0 && (
+                <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0d0d0d] p-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-black uppercase tracking-wider text-white">Join Requests</h2>
+                        <span className="rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                            {pendingJoinRequests.length} pending
+                        </span>
+                    </div>
+                    <div className="space-y-2">
+                        {pendingJoinRequests.map((request) => (
+                            <div key={request._id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/35 px-3 py-2.5">
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-bold text-white">
+                                        {typeof request.playerUserId === 'object' && request.playerUserId?.nickname
+                                            ? request.playerUserId.nickname
+                                            : 'Player'}
+                                    </p>
+                                    <p className="truncate text-[11px] text-white/35">
+                                        {typeof request.playerUserId === 'object' && request.playerUserId?.email
+                                            ? request.playerUserId.email
+                                            : (typeof request.playerUserId === 'string' ? request.playerUserId : '')}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleJoinRequest(request, 'accept')}
+                                        className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary"
+                                    >
+                                        Accept
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleJoinRequest(request, 'reject')}
+                                        className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-400"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 

@@ -298,9 +298,20 @@ export default function ChannelDetailPage() {
                                             <div className="aspect-video bg-[#0f1115] relative rounded-[2rem] overflow-hidden border border-white/5 shadow-xl transition-all duration-500 group-hover:border-primary/30 group-hover:shadow-primary/5">
                                                 {stream.thumbnailUrl ? (
                                                     <img src={stream.thumbnailUrl} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                ) : stream.playbackUrl || stream.streamUrl ? (
+                                                    <video
+                                                        src={resolveBackendAssetUrl(stream.playbackUrl || stream.streamUrl || '')}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                                        muted
+                                                        playsInline
+                                                        autoPlay
+                                                        loop
+                                                        preload="metadata"
+                                                    />
                                                 ) : (
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-white/5 to-transparent">
-                                                        <PlayCircle className="w-12 h-12 text-white/5 group-hover:text-primary/20 transition-all" />
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#161a22] via-[#11151e] to-[#0b0e14]">
+                                                        <PlayCircle className="w-12 h-12 text-white/25 group-hover:text-primary/60 transition-all" />
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/35">No Thumbnail</p>
                                                     </div>
                                                 )}
                                                 {stream.isLive && (

@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { Award, Clapperboard, Film, Gamepad2, History, LogOut, Sparkles, Ticket, Trophy, Users, Wallet } from 'lucide-react';
+import { Award, Clapperboard, Film, Gamepad2, History, LogOut, Package, Sparkles, Ticket, Trophy, Users, Wallet } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const PRIMARY_NAV_LINKS: { to: string; label: string; icon: LucideIcon }[] = [
@@ -10,6 +10,7 @@ const PRIMARY_NAV_LINKS: { to: string; label: string; icon: LucideIcon }[] = [
     { to: '/player/tickets', label: 'My Tickets', icon: Ticket },
     { to: '/player/matches', label: 'Match History', icon: History },
     { to: '/player/leagues', label: 'Leagues', icon: Award },
+    { to: '/admin/nft-inventory', label: 'NFT Inventory', icon: Package },
     { to: '/player/channel', label: 'Studio & clips', icon: Clapperboard },
     { to: '/player/my-videos', label: 'My videos', icon: Film },
     { to: '/player/highlights', label: 'Highlights', icon: Sparkles },

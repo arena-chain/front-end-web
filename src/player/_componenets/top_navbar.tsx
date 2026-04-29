@@ -1,12 +1,14 @@
 import { NavLink } from 'react-router-dom';
-import { Bell, ChevronDown, Circle, Crown, DollarSign, LogOut, Newspaper, Radio, Search, Store, User, Users } from 'lucide-react';
+import { Bell, Building2, ChevronDown, Circle, Crown, DollarSign, LogOut, Newspaper, Radio, Search, Store, User, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import PlayerGameTokenBalance from '../components/PlayerGameTokenBalance';
+import appLogo from '../../assets/logo.png';
 
 const TOP_NAV_LINKS = [
     { to: '/player/go-live', label: 'Go Live', icon: <Radio size={16} /> },
     { to: '/player/all-lives', label: 'Lives', icon: <Users size={16} /> },
     { to: '/player/marketplace', label: 'Marketplace', icon: <Store size={16} /> },
+    { to: '/player/clubs', label: 'Clubs', icon: <Building2 size={16} /> },
     { to: '/player/market', label: 'Get Tickets', icon: <DollarSign size={16} /> },
     { to: '/player/rankings', label: 'Rankings', icon: <Crown size={16} /> },
     { to: '/player/news', label: 'News', icon: <Newspaper size={16} /> },
@@ -39,8 +41,14 @@ export default function TopNavbar({
             >
                 <div className="flex h-full w-full flex-row items-center justify-center gap-1 px-1">
                     <NavLink to="/player/dashboard" className="shrink-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-base font-black text-black shadow-[0_0_20px_rgba(0,255,136,0.3)] transition-all hover:scale-105">
-                            A
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl transition-all hover:scale-105">
+                            <img
+                                src={appLogo}
+                                alt="Arena Chain"
+                                className="h-12 w-12 rounded-xl object-cover"
+                                loading="eager"
+                                decoding="async"
+                            />
                         </div>
                     </NavLink>
                 </div>

@@ -102,7 +102,7 @@ export default function PlayerAmbientBackground() {
                     <mask id={glowMask}>
                         <rect width="100%" height="100%" fill={`url(#${glowPattern})`} />
                     </mask>
-                    
+
                     <filter id={`hex-soft-${uid}`} x="-12%" y="-12%" width="124%" height="124%">
                         <feGaussianBlur stdDeviation="1.5" />
                     </filter>

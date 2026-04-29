@@ -86,7 +86,19 @@ export default function LeaguesPage() {
     };
 
     const goLeague = async (league: League) => {
-        await loadSeasons(league._id);
+        const cached = seasonsMap[league._id];
+        const seasons = cached ?? await seasonService.getByLeague(league._id).catch(() => [] as Season[]);
+        if (!cached) {
+            setSeasonsMap(prev => ({ ...prev, [league._id]: seasons }));
+        }
+
+        const targetSeason = seasons.find((s) => s.status === 'ONGOING') ?? seasons[0];
+        if (targetSeason) {
+            navigate(`/leagues/${league._id}/seasons/${targetSeason._id}`);
+            return;
+        }
+
+        // Fallback if league has no seasons yet.
         setView({ kind: 'seasons', league });
     };
 

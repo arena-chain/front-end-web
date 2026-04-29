@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input } from '../components/ui/core';
-import { Gamepad2, ArrowLeft, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import appLogo from '../assets/logo.png';
 import lolLoginFallback from '../assets/lol.jpg';
 import AuthLeagueBackdrop from '../components/auth/AuthLeagueBackdrop';
 import { AuthService } from '../services/auth.service';
@@ -126,10 +127,14 @@ export default function Login() {
                         <span className="text-zinc-500 text-sm group-hover:text-zinc-300 transition-colors">Back to Home</span>
                     </Link>
 
-                    <div className="flex items-center gap-4 mb-7">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary/10 border border-primary/30 shadow-[0_0_24px_rgba(0,255,0,0.1)] shrink-0">
-                            <Gamepad2 className="w-6 h-6 text-primary" />
-                        </div>
+                    <div className="flex items-center gap-5 mb-7">
+                        <img
+                            src={appLogo}
+                            alt="Arena Chain"
+                            className="h-16 w-16 object-contain shrink-0"
+                            loading="eager"
+                            decoding="async"
+                        />
                         <div>
                             <h1 className="text-3xl font-black uppercase tracking-tight text-white leading-tight">
                                 Welcome <span className="text-primary">Back</span>

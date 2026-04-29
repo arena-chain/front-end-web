@@ -122,6 +122,24 @@ export const teamManagerService = {
         return res.data;
     },
 
+    /** Player sends join request to a team manager organization. */
+    requestJoinOrganization: async (teamId: string) => {
+        const res = await axios.post(`${API_URL}/team-manager/team-join-requests`, { teamId }, auth());
+        return res.data;
+    },
+
+    /** Manager receives pending/processed player join requests for own team. */
+    getTeamJoinRequests: async () => {
+        const res = await axios.get(`${API_URL}/team-manager/me/team/join-requests`, auth());
+        return (Array.isArray(res.data) ? res.data : []) as TeamJoinRequest[];
+    },
+
+    /** Manager accepts or rejects a player join request. */
+    respondToTeamJoinRequest: async (requestId: string, action: 'accept' | 'reject') => {
+        const res = await axios.patch(`${API_URL}/team-manager/me/team/join-requests/${requestId}`, { action }, auth());
+        return res.data;
+    },
+
     // ── Legacy shim (kept so old callers don't break) ──────────────────────────
     updateProfile: async (_userId: string, payload: UpdateProfilePayload) => {
         const res = await axios.patch(`${API_URL}/team-manager/me`, payload, auth());
@@ -149,6 +167,14 @@ export interface TeamMember {
     nickname: string;
     avatar?: string;
     email: string;
+}
+
+export interface TeamJoinRequest {
+    _id: string;
+    teamId: string;
+    playerUserId: string | { _id?: string; nickname?: string; email?: string; avatar?: string };
+    status: 'pending' | 'accepted' | 'rejected';
+    createdAt?: string;
 }
 
 export interface TeamData {

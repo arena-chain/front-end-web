@@ -1,8 +1,125 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Trophy, Users, ArrowRight, MapPin } from 'lucide-react';
 import { MOCK_TOURNAMENTS } from '../data/tournamentData';
+import { leagueService, type League } from '../../services/leagueService';
+import { seasonService } from '../../services/seasonService';
+
+type HomeCompetitionCard = {
+    id: string;
+    title: string;
+    game: string;
+    date: string;
+    location: string;
+    image: string;
+    color: string;
+    prize: string;
+    teamsCount: number | null;
+    href: string;
+};
+
+const LEAGUE_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop';
+
+function inferLeagueStyle(league: League): { game: string; color: string } {
+    const gameText = String(league.gameId || '').toLowerCase();
+    const nameText = String(league.name || '').toLowerCase();
+    const source = `${gameText} ${nameText}`;
+
+    if (source.includes('valorant')) {
+        return { game: 'Valorant', color: 'from-rose-500 to-red-600' };
+    }
+    if (source.includes('league') || source.includes('lol')) {
+        return { game: 'League of Legends', color: 'from-blue-500 to-indigo-600' };
+    }
+    if (source.includes('cs2') || source.includes('counter')) {
+        return { game: 'Counter-Strike 2', color: 'from-yellow-400 to-orange-500' };
+    }
+    return { game: 'Esports League', color: 'from-emerald-500 to-green-600' };
+}
+
+function formatLeagueDate(createdAt?: string): string {
+    if (!createdAt) return 'Date TBA';
+    const d = new Date(createdAt);
+    if (Number.isNaN(d.getTime())) return 'Date TBA';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export function HomeTournaments() {
+    const [latestLeagues, setLatestLeagues] = useState<League[]>([]);
+    const [seasonHrefByLeagueId, setSeasonHrefByLeagueId] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        let cancelled = false;
+        void leagueService.getAllLeagues()
+            .then((leagues) => {
+                if (cancelled) return;
+                const latest = [...leagues]
+                    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+                    .slice(0, 3);
+                setLatestLeagues(latest);
+            })
+            .catch(() => {
+                if (!cancelled) setLatestLeagues([]);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        if (latestLeagues.length === 0) {
+            setSeasonHrefByLeagueId({});
+            return;
+        }
+        void Promise.all(
+            latestLeagues.map(async (league) => {
+                try {
+                    const seasons = await seasonService.getByLeague(league._id);
+                    const selected = seasons.find((s) => s.status === 'ONGOING') || seasons[0];
+                    return [league._id, selected ? `/leagues/${league._id}/seasons/${selected._id}` : `/league/${league._id}`] as const;
+                } catch {
+                    return [league._id, `/league/${league._id}`] as const;
+                }
+            }),
+        ).then((rows) => {
+            if (cancelled) return;
+            setSeasonHrefByLeagueId(Object.fromEntries(rows));
+        });
+        return () => { cancelled = true; };
+    }, [latestLeagues]);
+
+    const competitionCards = useMemo<HomeCompetitionCard[]>(() => {
+        if (latestLeagues.length > 0) {
+            return latestLeagues.map((league) => {
+                const style = inferLeagueStyle(league);
+                return {
+                    id: league._id,
+                    title: league.name,
+                    game: style.game,
+                    date: formatLeagueDate(league.createdAt),
+                    location: league.level || 'Global',
+                    image: league.logoUrl || LEAGUE_FALLBACK_IMAGE,
+                    color: style.color,
+                    prize: 'TBA',
+                    teamsCount: null,
+                    href: seasonHrefByLeagueId[league._id] || `/league/${league._id}`,
+                };
+            });
+        }
+
+        return MOCK_TOURNAMENTS.slice(0, 3).map((tournament) => ({
+            id: String(tournament.id),
+            title: tournament.title,
+            game: tournament.game,
+            date: tournament.date,
+            location: tournament.location,
+            image: tournament.image,
+            color: tournament.color,
+            prize: tournament.prize,
+            teamsCount: tournament.teams.length,
+            href: `/tournaments/${tournament.id}`,
+        }));
+    }, [latestLeagues, seasonHrefByLeagueId]);
+
     return (
         <section id="tournaments" className="min-h-screen flex flex-col justify-center py-24 bg-background relative overflow-hidden">
             {/* Background Gradients */}
@@ -26,9 +143,9 @@ export function HomeTournaments() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {MOCK_TOURNAMENTS.map((tournament) => (
+                    {competitionCards.map((tournament) => (
                         <Link
-                            to={`/tournaments/${tournament.id}`}
+                            to={tournament.href}
                             key={tournament.id}
                             className="block group relative h-[500px] rounded-3xl overflow-hidden cursor-pointer"
                         >
@@ -66,7 +183,7 @@ export function HomeTournaments() {
                                         </div>
                                         <div className="flex items-center gap-3 text-sm text-gray-300">
                                             <Users className="w-4 h-4 text-primary" />
-                                            <span>{tournament.teams.length > 0 ? `${tournament.teams.length} Teams` : 'TBA'}</span>
+                                            <span>{tournament.teamsCount != null && tournament.teamsCount > 0 ? `${tournament.teamsCount} Teams` : 'TBA'}</span>
                                         </div>
                                     </div>
 

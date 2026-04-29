@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import '@google/model-viewer';
 import type { ModelViewerElement } from '@google/model-viewer';
 import {
@@ -108,7 +108,7 @@ const GAME_DEFS: Record<GameId, GameDef> = {
 };
 
 /** Keep definitions in code, but hide from selector for now. */
-const HIDDEN_STUDIO_GAMES: GameId[] = ['cs2', 'dota2'];
+const HIDDEN_STUDIO_GAMES: GameId[] = ['dota2'];
 
 const AGENT_MODEL_CATALOG: AgentModelEntry[] = [
     {
@@ -133,6 +133,7 @@ export default function NftManager() {
     const [searchParams] = useSearchParams();
     const collectionFilter = searchParams.get('collectionId') || '';
     const location = useLocation();
+    const navigate = useNavigate();
 
     const [nfts, setNfts] = useState<Nft[]>([]);
     const [collections, setCollections] = useState<NftCollection[]>([]);
@@ -151,6 +152,9 @@ export default function NftManager() {
     const [activeView, setActiveView] = useState<'studio' | 'inventory'>(
         location.pathname.includes('nft-inventory') ? 'inventory' : 'studio'
     );
+    useEffect(() => {
+        setActiveView(location.pathname.includes('nft-inventory') ? 'inventory' : 'studio');
+    }, [location.pathname]);
     const [selectedGame, setSelectedGame] = useState<GameId>('valorant');
     const [selectedItemType, setSelectedItemType] = useState<GameItemId>('agent');
     const visibleGameEntries = useMemo(
@@ -302,13 +306,13 @@ export default function NftManager() {
                 <div className="flex items-center gap-2 flex-wrap lg:justify-end">
                     <div className="bg-surface border border-white/10 rounded-xl p-1 flex items-center gap-1">
                         <button
-                            onClick={() => setActiveView('studio')}
+                            onClick={() => navigate('/admin/nft-manager')}
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'studio' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white'}`}
                         >
                             Studio
                         </button>
                         <button
-                            onClick={() => setActiveView('inventory')}
+                            onClick={() => navigate('/admin/nft-inventory')}
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'inventory' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white'}`}
                         >
                             NFT Inventory

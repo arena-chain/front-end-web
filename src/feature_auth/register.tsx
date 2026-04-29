@@ -35,7 +35,6 @@ export default function Register() {
         confirmPassword: '',
         nickname: '',
         region: 'EUROPE',
-        organizationName: '',
         teamId: '',
         scouterLevel: 'REGIONAL',
         notes: '',
@@ -106,7 +105,6 @@ export default function Register() {
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
-                    organizationName: formData.organizationName,
                     teamId: formData.teamId.trim(),
                     region: formData.region,
                 });
@@ -270,10 +268,6 @@ export default function Register() {
                                 {teams.length > 0 && (
                                     <p className="text-[11px] text-text-muted">{teams.length} team{teams.length !== 1 ? 's' : ''} available. Pending until an admin approves.</p>
                                 )}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-text-muted ml-1">Organization Name</label>
-                                <Input name="organizationName" value={formData.organizationName} onChange={handleChange} placeholder="e.g. Cloud9, Team Liquid" required />
                             </div>
                         </div>
                     )}

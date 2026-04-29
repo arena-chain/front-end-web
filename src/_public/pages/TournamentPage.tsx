@@ -16,7 +16,6 @@ import {
     type AdminRound, type AdminMatch, type StandingEntry, type AdminBracket,
 } from '../../services/adminLeagueService';
 import {
-    LiquipediaParticipantCard,
     buildTeamNameMapFromRows,
     teamNameFromMap,
 } from '../../components/leagues/LiquipediaParticipantCard';
@@ -253,23 +252,6 @@ function OverviewTab({ season, stages, teams, matches }: { season: Season; stage
                     </div>
                 </div>
             </div>
-        </div>
-    );
-}
-
-// ─── Participants Tab ─────────────────────────────────────────────────────────
-function ParticipantsTab({ rows }: { rows: SeasonTeamWithPlayersRow[] }) {
-    if (!rows.length) return (
-        <div className="text-center py-16 text-slate-500">
-            <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>Participants will be announced soon.</p>
-        </div>
-    );
-    return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-3">
-            {rows.map((row) => (
-                <LiquipediaParticipantCard key={row.registration._id} row={row} />
-            ))}
         </div>
     );
 }
@@ -749,13 +731,42 @@ export default function TournamentPage() {
                 </div>
             </div>
 
-            {/* ── Liquipedia 2-column layout ────────────────────────────── */}
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 items-start">
+            {/* ── Liquipedia 3-column layout ────────────────────────────── */}
+            <div className="max-w-[1680px] mx-auto px-4 lg:px-6 py-8">
+                <div className="grid grid-cols-1 xl:grid-cols-[250px_minmax(0,1.45fr)_280px] gap-5 items-start">
+                    {/* LEFT: participants list */}
+                    <div className="xl:sticky xl:top-6">
+                        <PublicSection icon={<Users className="w-4 h-4" />} title={`Participants (${participantRows.length})`}>
+                            {participantRows.length === 0 ? (
+                                <p className="text-sm text-slate-500">Participants will be announced soon.</p>
+                            ) : (
+                                <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+                                    {participantRows.map((row) => {
+                                        const team = row.team;
+                                        const name = team?.name || 'Team';
+                                        const logo = team?.logo;
+                                        return (
+                                            <div key={row.registration._id} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5">
+                                                <div className="w-9 h-9 rounded-lg bg-[#00ff00]/10 border border-[#00ff00]/20 flex items-center justify-center overflow-hidden shrink-0">
+                                                    {logo ? <img src={logo} alt={name} className="w-full h-full object-cover" /> : <Shield className="w-4 h-4 text-[#00ff00]/40" />}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-bold text-white">{name}</p>
+                                                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">{row.registration.status}</p>
+                                                </div>
+                                                {typeof row.registration.seed === 'number' && (
+                                                    <span className="text-xs font-black text-[#00ff00]/80">#{row.registration.seed}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </PublicSection>
+                    </div>
 
-                    {/* LEFT: main sections (scrollable) */}
+                    {/* MIDDLE: core liquipedia content */}
                     <div className="space-y-5">
-
                         {/* About — Overview */}
                         <PublicSection icon={<Star className="w-4 h-4" />} title="About">
                             <OverviewTab season={season} stages={stages} teams={teams} matches={matches} />
@@ -767,11 +778,6 @@ export default function TournamentPage() {
                                 <PrizeTab prize={prize} />
                             </PublicSection>
                         )}
-
-                        {/* Participants */}
-                        <PublicSection icon={<Users className="w-4 h-4" />} title="Participants">
-                            <ParticipantsTab rows={participantRows} />
-                        </PublicSection>
 
                         {/* Group Stage */}
                         {groupStage && (
@@ -796,9 +802,8 @@ export default function TournamentPage() {
                         </PublicSection>
                     </div>
 
-                    {/* RIGHT: sidebar */}
+                    {/* RIGHT: tournament info */}
                     <div className="space-y-4 xl:sticky xl:top-6">
-                        {/* Tournament info card */}
                         <div className="bg-[#13161e] border border-white/8 rounded-2xl overflow-hidden text-sm">
                             <div className="px-4 py-2.5 border-b border-white/5 bg-white/[0.015]">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-[#00ff00]/60">Tournament Info</span>
@@ -807,7 +812,7 @@ export default function TournamentPage() {
                                 {([
                                     ['Series', league.name],
                                     ['Season', season.name],
-                                    ['Organizer', (league as unknown as Record<string,string>).organizerName ?? league.name],
+                                    ['Organizer', (league as unknown as Record<string, string>).organizerName ?? league.name],
                                     ['Start Date', fmt(season.startDate)],
                                     ['End Date', fmt(season.endDate)],
                                     ['Teams', String(teams.length)],
@@ -825,32 +830,11 @@ export default function TournamentPage() {
                             </div>
                         </div>
 
-                        {/* Prize summary card */}
-                        {prize && (
-                            <div className="bg-[#13161e] border border-white/8 rounded-2xl overflow-hidden text-sm">
-                                <div className="px-4 py-2.5 border-b border-white/5 bg-white/[0.015]">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-[#00ff00]/60">Prize Pool</span>
-                                </div>
-                                <div className="px-4 py-3">
-                                    <p className="text-xl font-black text-white">{prize.currency} {prize.totalAmount.toLocaleString()}</p>
-                                    <div className="mt-2 space-y-1">
-                                        {prize.distribution.slice(0, 4).map(d => (
-                                            <div key={d.rank} className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-400">{d.rank === 1 ? '🥇' : d.rank === 2 ? '🥈' : d.rank === 3 ? '🥉' : `${d.rank}th`}</span>
-                                                <span className="text-white font-bold">{prize.currency} {d.amount.toLocaleString()}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* League level badge */}
                         <div className="bg-[#13161e] border border-white/8 rounded-2xl overflow-hidden text-sm">
                             <div className="px-4 py-3 text-center">
                                 <Globe className="w-5 h-5 text-[#00ff00]/40 mx-auto mb-1" />
                                 <p className="text-[10px] text-slate-500 uppercase tracking-wider">{league.level ?? 'Amateur'} League</p>
-                                <p className="text-xs text-white font-bold mt-0.5">{(league as unknown as Record<string,string>).regionId ?? 'Global'}</p>
+                                <p className="text-xs text-white font-bold mt-0.5">{(league as unknown as Record<string, string>).regionId ?? 'Global'}</p>
                             </div>
                         </div>
                     </div>

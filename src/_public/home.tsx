@@ -101,7 +101,7 @@ export default function Home() {
                     LIVE TICKER
                 ══════════════════════════════════════════════════════ */}
                 <div className="relative overflow-hidden py-3" style={{ background: 'rgba(0,255,0,0.05)', borderTop: '1px solid rgba(0,255,0,0.12)', borderBottom: '1px solid rgba(0,255,0,0.12)' }}>
-                    <div className="flex gap-12 whitespace-nowrap" style={{ animation: 'marquee 30s linear infinite' }}>
+                    <div className="flex gap-12 whitespace-nowrap overflow-x-auto no-scrollbar px-4">
                         {[...TICKER, ...TICKER].map((t, i) => (
                             <span key={i} className="text-[11px] font-black uppercase tracking-widest shrink-0" style={{ color: 'rgba(0,255,0,0.7)' }}>
                                 {t}
@@ -340,53 +340,14 @@ const GAME_PARTNERS: GamePartner[] = [
     { title: 'Riot Games',        image: riotLogo,      type: 'logo',  glow: 'rgba(211,41,54,0.6)',   category: 'Publisher' },
     { title: 'Valorant',          image: valorantCover, type: 'cover', glow: 'rgba(255,70,85,0.55)',  category: 'FPS'       },
     { title: 'League of Legends', image: lolCover,      type: 'cover', glow: 'rgba(180,145,0,0.55)',  category: 'MOBA'      },
-    { title: 'Steam',             image: steamLogo,     type: 'logo',  glow: 'rgba(100,180,255,0.5)', category: 'Platform'  },
-    { title: 'Epic Games',        image: si('epicgames','ffffff'),    type: 'logo', glow: 'rgba(255,255,255,0.35)', category: 'Platform'  },
-    { title: 'EA Sports',         image: si('ea','ff4747'),           type: 'logo', glow: 'rgba(255,71,71,0.5)',   category: 'Publisher' },
-    { title: 'Ubisoft',           image: si('ubisoft','ffffff'),      type: 'logo', glow: 'rgba(255,255,255,0.3)', category: 'Publisher' },
-    { title: 'Blizzard',          image: si('battledotnet','148eff'), type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
-    { title: 'Discord',           image: si('discord','5865f2'),      type: 'logo', glow: 'rgba(88,101,242,0.6)',  category: 'Community' },
-    // duplicates for seamless loop
-    { title: 'Riot Games',        image: riotLogo,      type: 'logo',  glow: 'rgba(211,41,54,0.6)',   category: 'Publisher' },
-    { title: 'Valorant',          image: valorantCover, type: 'cover', glow: 'rgba(255,70,85,0.55)',  category: 'FPS'       },
-    { title: 'League of Legends', image: lolCover,      type: 'cover', glow: 'rgba(180,145,0,0.55)',  category: 'MOBA'      },
-    { title: 'Steam',             image: steamLogo,     type: 'logo',  glow: 'rgba(100,180,255,0.5)', category: 'Platform'  },
-    { title: 'Epic Games',        image: si('epicgames','ffffff'),    type: 'logo', glow: 'rgba(255,255,255,0.35)', category: 'Platform'  },
-    { title: 'EA Sports',         image: si('ea','ff4747'),           type: 'logo', glow: 'rgba(255,71,71,0.5)',   category: 'Publisher' },
-    { title: 'Ubisoft',           image: si('ubisoft','ffffff'),      type: 'logo', glow: 'rgba(255,255,255,0.3)', category: 'Publisher' },
-    { title: 'Blizzard',          image: si('battledotnet','148eff'), type: 'logo', glow: 'rgba(20,142,255,0.55)', category: 'Publisher' },
-    { title: 'Discord',           image: si('discord','5865f2'),      type: 'logo', glow: 'rgba(88,101,242,0.6)',  category: 'Community' },
 ];
 
-const BRAND_PARTNERS: BrandPartner[] = [
-    { title: 'Alienware',   logo: si('alienware','00baff'),   color: '#00baff', bg: 'rgba(0,186,255,0.07)',  category: 'Gaming PCs'    },
-    { title: 'ASUS ROG',    logo: si('asus','cc0000'),        color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Hardware'      },
-    { title: 'Razer',       logo: si('razer','44d62c'),       color: '#44d62c', bg: 'rgba(68,214,44,0.07)',  category: 'Peripherals'   },
-    { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
-    { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
-    { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'HyperX',        logo: si('hyperx','e20813'),     color: '#e20813', bg: 'rgba(226,8,19,0.07)',   category: 'Peripherals'   },
-    { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
-    { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
-    { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
-    // duplicates
-    { title: 'Alienware',   logo: si('alienware','00baff'),   color: '#00baff', bg: 'rgba(0,186,255,0.07)',  category: 'Gaming PCs'    },
-    { title: 'ASUS ROG',    logo: si('asus','cc0000'),        color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Hardware'      },
-    { title: 'Razer',       logo: si('razer','44d62c'),       color: '#44d62c', bg: 'rgba(68,214,44,0.07)',  category: 'Peripherals'   },
-    { title: 'NVIDIA',      logo: si('nvidia','76b900'),      color: '#76b900', bg: 'rgba(118,185,0,0.07)',  category: 'GPU'           },
-    { title: 'Intel',       logo: si('intel','0068b5'),       color: '#0068b5', bg: 'rgba(0,104,181,0.07)',  category: 'CPU'           },
-    { title: 'AMD',         logo: si('amd','ed1c24'),         color: '#ed1c24', bg: 'rgba(237,28,36,0.07)',  category: 'CPU / GPU'     },
-    { title: 'HyperX',        logo: si('hyperx','e20813'),     color: '#e20813', bg: 'rgba(226,8,19,0.07)',   category: 'Peripherals'   },
-    { title: 'SteelSeries', logo: si('steelseries','ff6600'), color: '#ff6600', bg: 'rgba(255,102,0,0.07)',  category: 'Peripherals'   },
-    { title: 'Corsair',     logo: si('corsair','ffd700'),     color: '#ffd700', bg: 'rgba(255,215,0,0.07)',  category: 'Hardware'      },
-    { title: 'Kingston',    logo: si('kingstontechnology','cc0000'),    color: '#cc0000', bg: 'rgba(204,0,0,0.07)',    category: 'Memory'        },
-];
+const BRAND_PARTNERS: BrandPartner[] = [];
 
 // ─── Partners carousel ────────────────────────────────────────────────────────
 
 function PartnersCarousel() {
-    const [pausedTop, setPausedTop]       = useState(false);
-    const [pausedBottom, setPausedBottom] = useState(false);
+    const slidingPartners = [...GAME_PARTNERS, ...GAME_PARTNERS];
 
     return (
         <section className="relative py-24 overflow-hidden" style={{ background: '#060606' }}>
@@ -415,44 +376,46 @@ function PartnersCarousel() {
             {/* ── Row 1: Game publishers — scrolls LEFT ── */}
             <div className="relative mb-5">
                 <div
-                    className="flex gap-5 px-5"
-                    onMouseEnter={() => setPausedTop(true)}
-                    onMouseLeave={() => setPausedTop(false)}
+                    className="partners-marquee-track no-scrollbar"
                     style={{
-                        width: 'max-content',
-                        animationName: 'mc-left',
-                        animationDuration: '38s',
-                        animationTimingFunction: 'linear',
-                        animationIterationCount: 'infinite',
-                        animationPlayState: pausedTop ? 'paused' : 'running',
+                        width: '100%',
                     }}
                 >
-                    {GAME_PARTNERS.map((p, i) => <GameCard key={i} {...p} />)}
+                    {slidingPartners.map((p, i) => <GameCard key={`${p.title}-${i}`} {...p} />)}
                 </div>
             </div>
 
             {/* ── Row 2: Hardware brands — scrolls RIGHT ── */}
-            <div className="relative">
-                <div
-                    className="flex gap-4 px-5"
-                    onMouseEnter={() => setPausedBottom(true)}
-                    onMouseLeave={() => setPausedBottom(false)}
-                    style={{
-                        width: 'max-content',
-                        animationName: 'mc-right',
-                        animationDuration: '30s',
-                        animationTimingFunction: 'linear',
-                        animationIterationCount: 'infinite',
-                        animationPlayState: pausedBottom ? 'paused' : 'running',
-                    }}
-                >
-                    {BRAND_PARTNERS.map((p, i) => <BrandCard key={i} {...p} />)}
+            {BRAND_PARTNERS.length > 0 && (
+                <div className="relative">
+                    <div
+                        className="flex gap-4 px-5 overflow-x-auto no-scrollbar"
+                        style={{
+                            width: '100%',
+                        }}
+                    >
+                        {BRAND_PARTNERS.map((p, i) => <BrandCard key={i} {...p} />)}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <style>{`
-                @keyframes mc-left  { from { transform: translateX(0); }    to { transform: translateX(-50%); } }
-                @keyframes mc-right { from { transform: translateX(-50%); } to { transform: translateX(0); }    }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .partners-marquee-track {
+                    display: flex;
+                    gap: 20px;
+                    width: max-content;
+                    padding: 0 20px;
+                    animation: partners-marquee-left 30s linear infinite;
+                }
+                .partners-marquee-track:hover {
+                    animation-play-state: paused;
+                }
+                @keyframes partners-marquee-left {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(calc(-50% - 10px)); }
+                }
             `}</style>
         </section>
     );
@@ -478,9 +441,9 @@ function GameCard({ title, image, type, glow, category }: GamePartner) {
             {/* Bg image/logo */}
             <div className="absolute inset-0" style={{ transform: hovered ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.5s ease' }}>
                 {type === 'cover'
-                    ? <img src={image} alt={title} className="w-full h-full object-cover" style={{ opacity: hovered ? 0.9 : 0.4, transition: 'opacity 0.4s' }} />
+                    ? <img src={image} alt={title} loading="lazy" decoding="async" className="w-full h-full object-cover" style={{ opacity: hovered ? 0.9 : 0.4, transition: 'opacity 0.4s' }} />
                     : <div className="w-full h-full flex items-center justify-center p-10">
-                        <img src={image} alt={title} className="w-full h-full object-contain" style={{ opacity: hovered ? 0.95 : 0.4, transition: 'opacity 0.4s', filter: 'brightness(1.1)' }} />
+                        <img src={image} alt={title} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ opacity: hovered ? 0.95 : 0.4, transition: 'opacity 0.4s', filter: 'brightness(1.1)' }} />
                       </div>
                 }
             </div>
@@ -552,6 +515,8 @@ function BrandCard({ title, logo, color, bg, category }: BrandPartner) {
                 {imgOk
                     ? <img
                         src={logo} alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="object-contain w-full h-full"
                         style={{
                             opacity: hovered ? 1 : 0.5,
