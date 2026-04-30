@@ -1,0 +1,70 @@
+
+> arena-chain@0.0.0 build
+> tsc -b && vite build
+
+src/_public/components/TypewriterText.tsx(2,1): error TS6133: 'cn' is declared but its value is never read.
+src/_public/pages/NewsPage.tsx(3,39): error TS6133: 'X' is declared but its value is never read.
+src/_public/pages/NewsPage.tsx(3,57): error TS6133: 'Filter' is declared but its value is never read.
+src/_public/pages/TournamentDetailsPage.tsx(11,1): error TS6133: 'ApiTournament' is declared but its value is never read.
+src/_public/pages/TournamentDetailsPage.tsx(35,12): error TS6133: 'isApiData' is declared but its value is never read.
+src/admin/pages/Games.tsx(275,33): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/admin/pages/league-hub/AdminSeasonWorkspace.tsx(1200,70): error TS2304: Cannot find name 'Shield'.
+src/admin/pages/league-hub/AdminSeasonWorkspace.tsx(1205,70): error TS2304: Cannot find name 'Shield'.
+src/admin/pages/league-hub/DisputesPage.tsx(4,18): error TS6133: 'Clock' is declared but its value is never read.
+src/admin/pages/league-hub/DisputesPage.tsx(21,7): error TS6133: 'REASONS' is declared but its value is never read.
+src/admin/pages/league-hub/RostersPage.tsx(3,40): error TS6133: 'UserMinus' is declared but its value is never read.
+src/admin/pages/NftManager.tsx(12,10): error TS2305: Module '"../avatar/modelViewerAvatarBridge"' has no exported member 'applyAvatarDynamicConfig'.
+src/admin/pages/NftManager.tsx(13,10): error TS2724: '"../avatar/outfitCatalog"' has no exported member named 'OUTFIT_MODEL_CATALOG'. Did you mean 'OUTFIT_CATALOG'?
+src/admin/pages/NftManager.tsx(13,32): error TS2305: Module '"../avatar/outfitCatalog"' has no exported member 'resolveOutfitModelUrl'.
+src/admin/pages/NftManager.tsx(581,51): error TS7006: Parameter 'o' implicitly has an 'any' type.
+src/App.tsx(130,30): error TS2741: Property 'children' is missing in type '{}' but required in type '{ children: ReactNode; }'.
+src/scouter/pages/ScouterDashboard.tsx(27,10): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'sortPublicHighlights'.
+src/scouter/pages/ScouterDashboard.tsx(27,32): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'highlightCreatorLabel'.
+src/scouter/pages/ScouterDashboard.tsx(27,55): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'rankHighlightsByEngagement'.
+src/scouter/pages/ScouterDashboard.tsx(29,10): error TS2614: Module '"../components/ScouterHighlightDetailModal"' has no exported member 'ScouterHighlightDetailModal'. Did you mean to use 'import ScouterHighlightDetailModal from "../components/ScouterHighlightDetailModal"' instead?
+src/scouter/pages/ScouterDashboard.tsx(383,65): error TS2345: Argument of type '(p: { _id?: string; userId?: { _id?: string; nickname?: string; }; }, i: number) => JSX.Element' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => Element'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type '{ _id?: string | undefined; userId?: { _id?: string | undefined; nickname?: string | undefined; } | undefined; }'.
+src/scouter/pages/ScouterHighlights.tsx(5,10): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'sortPublicHighlights'.
+src/scouter/pages/ScouterHighlights.tsx(5,32): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'highlightCreatorLabel'.
+src/scouter/pages/ScouterHighlights.tsx(5,55): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'rankHighlightsByEngagement'.
+src/scouter/pages/ScouterHighlights.tsx(7,10): error TS2614: Module '"../components/ScouterHighlightDetailModal"' has no exported member 'ScouterHighlightDetailModal'. Did you mean to use 'import ScouterHighlightDetailModal from "../components/ScouterHighlightDetailModal"' instead?
+src/scouter/pages/ScouterPlayerProfile.tsx(40,10): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'highlightCreatorLabel'.
+src/scouter/pages/ScouterPlayerProfile.tsx(40,33): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'highlightCreatorUserId'.
+src/scouter/pages/ScouterPlayerProfile.tsx(40,57): error TS2305: Module '"../lib/scouterHighlightUtils"' has no exported member 'rankHighlightsByEngagement'.
+src/scouter/pages/ScouterPlayerProfile.tsx(42,10): error TS2614: Module '"../components/ScouterHighlightDetailModal"' has no exported member 'ScouterHighlightDetailModal'. Did you mean to use 'import ScouterHighlightDetailModal from "../components/ScouterHighlightDetailModal"' instead?
+src/scouter/pages/ScouterPlayerProfile.tsx(233,31): error TS2322: Type 'ProspectLevel' is not assignable to type '"UNKNOWN"'.
+  Type '"WATCHLIST"' is not assignable to type '"UNKNOWN"'.
+src/scouter/pages/ScouterPlayerProfile.tsx(233,70): error TS2322: Type 'ProspectPriority' is not assignable to type '"MEDIUM"'.
+  Type '"LOW"' is not assignable to type '"MEDIUM"'.
+src/scouter/pages/ScouterPlayerProfile.tsx(525,62): error TS2345: Argument of type '(f: { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }) => { prospectLevel: ProspectLevel; priority: "MEDIUM"; }' is not assignable to parameter of type 'SetStateAction<{ prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }>'.
+  Type '(f: { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }) => { prospectLevel: ProspectLevel; priority: "MEDIUM"; }' is not assignable to type '(prevState: { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }) => { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }'.
+    Call signature return types '{ prospectLevel: ProspectLevel; priority: "MEDIUM"; }' and '{ prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }' are incompatible.
+      The types of 'prospectLevel' are incompatible between these types.
+        Type 'ProspectLevel' is not assignable to type '"UNKNOWN"'.
+          Type '"WATCHLIST"' is not assignable to type '"UNKNOWN"'.
+src/scouter/pages/ScouterPlayerProfile.tsx(537,62): error TS2345: Argument of type '(f: { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }) => { priority: ProspectPriority; prospectLevel: "UNKNOWN"; }' is not assignable to parameter of type 'SetStateAction<{ prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }>'.
+  Type '(f: { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }) => { priority: ProspectPriority; prospectLevel: "UNKNOWN"; }' is not assignable to type '(prevState: { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }) => { prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }'.
+    Call signature return types '{ priority: ProspectPriority; prospectLevel: "UNKNOWN"; }' and '{ prospectLevel: "UNKNOWN"; priority: "MEDIUM"; }' are incompatible.
+      The types of 'priority' are incompatible between these types.
+        Type 'ProspectPriority' is not assignable to type '"MEDIUM"'.
+          Type '"LOW"' is not assignable to type '"MEDIUM"'.
+src/scouter/pages/ScouterPlayerProfile.tsx(986,63): error TS2345: Argument of type '(f: { organizationId: string; recommendationLevel: "STRONGLY_RECOMMEND"; message: string; }) => { recommendationLevel: RecommendationLevel; organizationId: string; message: string; }' is not assignable to parameter of type 'SetStateAction<{ organizationId: string; recommendationLevel: "STRONGLY_RECOMMEND"; message: string; }>'.
+  Type '(f: { organizationId: string; recommendationLevel: "STRONGLY_RECOMMEND"; message: string; }) => { recommendationLevel: RecommendationLevel; organizationId: string; message: string; }' is not assignable to type '(prevState: { organizationId: string; recommendationLevel: "STRONGLY_RECOMMEND"; message: string; }) => { organizationId: string; recommendationLevel: "STRONGLY_RECOMMEND"; message: string; }'.
+    Call signature return types '{ recommendationLevel: RecommendationLevel; organizationId: string; message: string; }' and '{ organizationId: string; recommendationLevel: "STRONGLY_RECOMMEND"; message: string; }' are incompatible.
+      The types of 'recommendationLevel' are incompatible between these types.
+        Type 'RecommendationLevel' is not assignable to type '"STRONGLY_RECOMMEND"'.
+          Type '"CONSIDER"' is not assignable to type '"STRONGLY_RECOMMEND"'.
+src/scouter/pages/ScouterPlayers.tsx(123,54): error TS2345: Argument of type '(p: Record<string, unknown>, i: number) => LeaderboardEntry' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => LeaderboardEntry'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+src/scouter/pages/ScouterPlayers.tsx(144,62): error TS2345: Argument of type '(p: Record<string, unknown>, i: number) => LeaderboardEntry' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => LeaderboardEntry'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+src/scouter/pages/ScouterPlayers.tsx(159,62): error TS2345: Argument of type '(p: Record<string, unknown>, i: number) => LeaderboardEntry' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => LeaderboardEntry'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+src/scouter/pages/ScouterRecommendations.tsx(3,27): error TS6133: 'User' is declared but its value is never read.
+src/university/pages/GoLivePage.tsx(12,71): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/university/pages/GoLivePage.tsx(527,20): error TS6133: 'deleteCurrentStream' is declared but its value is never read.
+src/university/pages/WatchChannelPage.tsx(39,12): error TS6133: 'loading' is declared but its value is never read.
