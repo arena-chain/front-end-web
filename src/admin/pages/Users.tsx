@@ -1,19 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import {
     Search, Shield, Gavel, Crown, Ban, CheckCircle, Trash2, Filter,
-    Users as UsersIcon, User as UserIcon, FileText,
+    Users as UsersIcon, User as UserIcon, FileText, ScanLine,
 } from 'lucide-react';
 import { Button, Input, Modal } from '../../components/ui/core';
 import { UserService, type Profile, type ReportedPlayerRow, type User } from '../../services/userService';
 import { AuthService } from '../../services/auth.service';
 import { fetchPublicTeams, type TeamListItem } from '../../services/teamsPublic.service';
 
-type AdminTab = 'all' | 'player' | 'team_manager' | 'referee' | 'admin' | 'reports' | 'blocked';
+type AdminTab =
+    | 'all'
+    | 'player'
+    | 'team_manager'
+    | 'referee'
+    | 'admin'
+    | 'check_in_agent'
+    | 'reports'
+    | 'blocked';
 
 function normalizeApiRole(r: string | undefined): string {
     if (!r) return 'player';
-    if (r === 'team-manager') return 'team_manager';
-    return r;
+    const s = String(r).toLowerCase().replace(/-/g, '_');
+    if (s === 'team_manager' || s === 'teammanager') return 'team_manager';
+    return s;
 }
 
 function mapUserToProfileRow(u: User): Profile {
@@ -79,11 +88,17 @@ export default function Users() {
         teamId: '',
         level: '',
         adminLevel: 1,
+        region: '',
+        country: '',
     });
     const [teamsForManager, setTeamsForManager] = useState<TeamListItem[]>([]);
 
+    const needsTeamPicker =
+        isAddModalOpen &&
+        (activeTab === 'team_manager' || (activeTab === 'all' && formData.role === 'team-manager'));
+
     useEffect(() => {
-        if (!isAddModalOpen || activeTab !== 'team_manager') return;
+        if (!needsTeamPicker) return;
         fetchPublicTeams()
             .then((list) => {
                 setTeamsForManager(list);
@@ -93,7 +108,7 @@ export default function Users() {
                 }));
             })
             .catch(() => setTeamsForManager([]));
-    }, [isAddModalOpen, activeTab]);
+    }, [needsTeamPicker]);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -118,7 +133,8 @@ export default function Users() {
                     data = await UserService.getTeamManagers();
                     break;
                 case 'referee':
-                case 'admin': {
+                case 'admin':
+                case 'check_in_agent': {
                     const all = await UserService.getAllUsers();
                     const wanted = activeTab;
                     data = all
@@ -127,8 +143,7 @@ export default function Users() {
                     break;
                 }
                 default:
-                    // Fetch all users - you may need to implement this
-                    data = await UserService.getPlayers();
+                    data = [];
             }
             setUsers(data);
         } catch (error) {
@@ -145,6 +160,7 @@ export default function Users() {
             if (activeTab === 'team_manager') role = 'team-manager';
             if (activeTab === 'referee') role = 'referee';
             if (activeTab === 'admin') role = 'admin';
+            if (activeTab === 'check_in_agent') role = 'check_in_agent';
             setFormData(prev => ({ ...prev, role }));
         }
         fetchUsers();
@@ -180,8 +196,22 @@ export default function Users() {
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
+        const role = formData.role;
+
         try {
-            if (activeTab === 'player' || activeTab === 'all') {
+            if (role === 'check_in_agent') {
+                if (formData.password.length < 8) {
+                    alert('Password must be at least 8 characters.');
+                    return;
+                }
+                await UserService.createCheckInAgent({
+                    email: formData.email,
+                    nickname: formData.nickname,
+                    password: formData.password,
+                    region: formData.region || undefined,
+                    country: formData.country || undefined,
+                });
+            } else if (role === 'player') {
                 await AuthService.registerPlayer({
                     email: formData.email,
                     password: formData.password,
@@ -189,7 +219,7 @@ export default function Users() {
                     isPro: false,
                     role: 'player',
                 });
-            } else if (activeTab === 'team_manager') {
+            } else if (role === 'team-manager') {
                 if (!formData.teamId?.trim()) {
                     alert('Select a team for this manager.');
                     return;
@@ -202,7 +232,7 @@ export default function Users() {
                     teamId: formData.teamId.trim(),
                     role: 'team-manager',
                 });
-            } else if (activeTab === 'referee') {
+            } else if (role === 'referee') {
                 await AuthService.registerReferee({
                     email: formData.email,
                     password: formData.password,
@@ -210,27 +240,41 @@ export default function Users() {
                     level: 'Junior',
                     role: 'referee',
                 });
-            } else if (activeTab === 'admin') {
+            } else if (role === 'admin') {
                 await AuthService.registerAdmin({
                     email: formData.email,
                     password: formData.password,
                     nickname: formData.nickname,
-                    adminLevel: 1,
+                    adminLevel: formData.adminLevel ?? 1,
                     permissions: [],
-                    role: 'admin'
+                    role: 'admin',
                 });
             }
 
             setIsAddModalOpen(false);
+            const defaultRole =
+                activeTab === 'all'
+                    ? 'player'
+                    : activeTab === 'team_manager'
+                      ? 'team-manager'
+                      : activeTab === 'referee'
+                        ? 'referee'
+                        : activeTab === 'admin'
+                          ? 'admin'
+                          : activeTab === 'check_in_agent'
+                            ? 'check_in_agent'
+                            : 'player';
             setFormData({
                 email: '',
                 password: '',
                 nickname: '',
-                role: 'player',
+                role: defaultRole,
                 organizationName: '',
                 teamId: '',
                 level: '',
                 adminLevel: 1,
+                region: '',
+                country: '',
             });
             fetchUsers();
         } catch (error: unknown) {
@@ -273,7 +317,9 @@ export default function Users() {
                 ? 'Add New Referee'
                 : activeTab === 'admin'
                   ? 'Add New Admin'
-                  : 'Add New Player';
+                  : activeTab === 'check_in_agent'
+                    ? 'Add Check-in Agent'
+                    : 'Add New Player';
 
     return (
         <div className="space-y-6 animate-fade-in-up">
@@ -325,6 +371,12 @@ export default function Users() {
                         onClick={() => setActiveTab('admin')}
                         icon={<Crown size={16} />}
                         label="Admins"
+                    />
+                    <TabButton
+                        active={activeTab === 'check_in_agent'}
+                        onClick={() => setActiveTab('check_in_agent')}
+                        icon={<ScanLine size={16} />}
+                        label="Check-in Agents"
                     />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -541,6 +593,28 @@ export default function Users() {
             {/* Add User Modal */}
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={addModalTitle}>
                 <form onSubmit={handleAddUser} className="space-y-4 p-6">
+                    {activeTab === 'all' && (
+                        <div>
+                            <label className="block text-sm font-medium text-text-muted mb-1">Role</label>
+                            <select
+                                value={formData.role}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        role: e.target.value,
+                                    })
+                                }
+                                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-sm"
+                            >
+                                <option value="player">Player</option>
+                                <option value="team-manager">Team Manager</option>
+                                <option value="referee">Referee</option>
+                                <option value="admin">Admin</option>
+                                <option value="check_in_agent">Check-in Agent</option>
+                            </select>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-sm font-medium text-text-muted mb-1">Email</label>
                         <Input
@@ -563,12 +637,17 @@ export default function Users() {
                         <Input
                             required
                             type="password"
+                            minLength={formData.role === 'check_in_agent' ? 8 : undefined}
                             value={formData.password}
                             onChange={e => setFormData({ ...formData, password: e.target.value })}
                         />
+                        {formData.role === 'check_in_agent' && (
+                            <p className="text-xs text-text-muted mt-1">Minimum 8 characters.</p>
+                        )}
                     </div>
 
-                    {activeTab === 'team_manager' && (
+                    {(activeTab === 'team_manager' ||
+                        (activeTab === 'all' && formData.role === 'team-manager')) && (
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-text-muted mb-1">Team</label>
@@ -597,6 +676,31 @@ export default function Users() {
                                     required
                                     value={formData.organizationName}
                                     onChange={e => setFormData({ ...formData, organizationName: e.target.value })}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {(activeTab === 'check_in_agent' || formData.role === 'check_in_agent') && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-text-muted mb-1">
+                                    Region <span className="text-white/40 font-normal">(optional)</span>
+                                </label>
+                                <Input
+                                    placeholder="e.g. EUROPE"
+                                    value={formData.region}
+                                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-muted mb-1">
+                                    Country <span className="text-white/40 font-normal">(optional)</span>
+                                </label>
+                                <Input
+                                    placeholder="e.g. TUNISIA"
+                                    value={formData.country}
+                                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                                 />
                             </div>
                         </>

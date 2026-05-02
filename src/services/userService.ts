@@ -99,7 +99,14 @@ function unwrapUserArray(data: unknown): User[] {
     return [];
 }
 
-/** Normalized row for reported players (admin moderation). Backend: GET /users/reported */
+export interface CreateCheckInAgentPayload {
+    email: string;
+    nickname: string;
+    password: string;
+    region?: string;
+    country?: string;
+}
+
 export interface ReportedPlayerRow {
     _id: string;
     userId: User;
@@ -253,6 +260,39 @@ export const UserService = {
         if (!response.ok) {
             throw new Error('Failed to unblock user');
         }
+    },
+
+    /** Admin-only: POST /admin/check-in-agents */
+    async createCheckInAgent(payload: CreateCheckInAgentPayload): Promise<User> {
+        const body: Record<string, string> = {
+            email: payload.email.trim(),
+            nickname: payload.nickname.trim(),
+            password: payload.password,
+        };
+        const region = payload.region?.trim();
+        const country = payload.country?.trim();
+        if (region) body.region = region;
+        if (country) body.country = country;
+
+        const response = await fetch(`${API_URL}/admin/check-in-agents`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(body),
+        });
+
+        const data = (await response.json().catch(() => ({}))) as User & { message?: string };
+
+        if (response.status === 401) {
+            throw new Error('Session expired. Please sign in again.');
+        }
+        if (response.status === 403) {
+            throw new Error(data.message || 'You do not have permission to create check-in agents.');
+        }
+        if (!response.ok) {
+            throw new Error(data.message || `Failed to create check-in agent (${response.status})`);
+        }
+
+        return data as User;
     },
 
     async deleteUser(id: string): Promise<void> {
