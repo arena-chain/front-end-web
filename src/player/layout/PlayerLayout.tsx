@@ -152,6 +152,15 @@ export default function PlayerLayout() {
     }
 
     const primaryNavWidthClass = 'w-[54px]';
+    const isFullBleedRoute = location.pathname.startsWith('/player/reels');
+
+    if (isFullBleedRoute) {
+        return (
+            <div className="h-screen w-screen overflow-hidden bg-black font-sans text-text">
+                <Outlet context={{ profile }} />
+            </div>
+        );
+    }
 
     return (
             <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-text">

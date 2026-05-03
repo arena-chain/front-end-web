@@ -85,6 +85,7 @@ const ChannelStudioPage = lazy(() => import('./university/pages/ChannelStudioPag
 const PlayerVideoHighlightsPage = lazy(() => import('./player/pages/PlayerVideoHighlightsPage'));
 const PlayerMyVideosPage = lazy(() => import('./player/pages/PlayerMyVideosPage'));
 const PlayerHighlightsHubPage = lazy(() => import('./player/pages/PlayerHighlightsHubPage'));
+const PlayerReelsPage = lazy(() => import('./player/pages/PlayerReelsPage'));
 const PlayerClubs = lazy(() => import('./player/pages/PlayerClubs'));
 const TeamProfilePage = lazy(() => import('./shared/pages/TeamProfilePage'));
 const GoLivePage = lazy(() => import('./university/pages/GoLivePage'));
@@ -233,6 +234,7 @@ function App() {
             <Route path="channel" element={<ChannelStudioPage />} />
             <Route path="my-videos" element={<PlayerMyVideosPage />} />
             <Route path="videos" element={<PlayerMyVideosPage />} />
+            <Route path="reels" element={<PlayerReelsPage />} />
             <Route path="highlights" element={<PlayerHighlightsHubPage />} />
             <Route path="highlights/:videoId" element={<PlayerVideoHighlightsPage />} />
             <Route path="videos/:videoId/highlights" element={<PlayerVideoHighlightsPage />} />
