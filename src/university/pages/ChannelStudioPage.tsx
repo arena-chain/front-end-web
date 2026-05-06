@@ -505,11 +505,19 @@ export default function ChannelStudioPage() {
                         <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                     </div>
                 ) : studioVideos.length === 0 ? (
-                    <div className="py-14 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+                    <div className="space-y-4 py-14 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
                         <p className="text-white/45 text-sm max-w-md mx-auto leading-relaxed">
                             Aucune VOD publique pour l’instant. Les visiteurs ne voient que les vidéos dont la visibilité
-                            chaîne est réglée sur public dans votre bibliothèque (menu joueur).
+                            chaîne est réglée sur <strong className="text-white/70">Public</strong> dans{' '}
+                            <strong className="text-white/70">Mes vidéos</strong> (menu joueur) — utilisez le bouton{' '}
+                            <strong className="text-white/70">Public</strong> à côté de chaque vidéo, ou Modifier.
                         </p>
+                        <Link
+                            to="/player/my-videos"
+                            className="inline-flex items-center justify-center rounded-xl border border-primary/40 bg-primary/15 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-primary transition hover:bg-primary/25"
+                        >
+                            Ouvrir Mes vidéos
+                        </Link>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4 lg:gap-6">

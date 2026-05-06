@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/core';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
-import LevelBadge from '../../components/gamification/LevelBadge';
 import PlayerCreateTournamentModal from '../components/PlayerCreateTournamentModal';
 import { toast } from 'sonner';
 
@@ -108,7 +107,7 @@ export default function PlayerTournaments() {
                         </p>
                     </div>
 
-                    {/* Stats & Level */}
+                    {/* Stats */}
                     <div className="flex flex-col items-end gap-6">
                         <div className="flex items-center gap-6">
                             <div className="flex gap-4">
@@ -121,10 +120,6 @@ export default function PlayerTournaments() {
                                         <span className="text-[9px] font-black uppercase tracking-widest mt-1.5 text-white/30">{s.label}</span>
                                     </div>
                                 ))}
-                            </div>
-                            <div className="h-20 w-px bg-white/10 hidden md:block" />
-                            <div className="hidden md:block">
-                                <LevelBadge level={15} currentXP={750} size="lg" />
                             </div>
                         </div>
 

@@ -152,15 +152,6 @@ export default function PlayerLayout() {
     }
 
     const primaryNavWidthClass = 'w-[54px]';
-    const isFullBleedRoute = location.pathname.startsWith('/player/reels');
-
-    if (isFullBleedRoute) {
-        return (
-            <div className="h-screen w-screen overflow-hidden bg-black font-sans text-text">
-                <Outlet context={{ profile }} />
-            </div>
-        );
-    }
 
     return (
             <div className="h-screen bg-black p-3 flex overflow-hidden font-sans text-text">
@@ -390,7 +381,9 @@ export default function PlayerLayout() {
                                     location.pathname === '/player/channel' ||
                                     location.pathname.startsWith('/player/channel/')
                                     ? 'p-0'
-                                    : 'p-8',
+                                    : location.pathname.startsWith('/player/reels')
+                                      ? 'p-4 md:p-6'
+                                      : 'p-8',
                             )}
                         >
                             <Outlet context={{ profile }} />

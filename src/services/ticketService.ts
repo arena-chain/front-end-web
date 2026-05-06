@@ -1,4 +1,4 @@
-import type { Ticket, UpdateTicketStatusDto, CreateTicketDto } from '../models/ticket';
+import type { Ticket, TicketCategory, UpdateTicketStatusDto, CreateTicketDto } from '../models/ticket';
 import { getApiBase } from '../lib/apiBase';
 
 const API_URL = getApiBase();
@@ -41,15 +41,69 @@ const ticketService = {
         throw new Error('User ID is missing. Please log in again.');
     },
 
+    /**
+     * Player pass flow: creates a league ticket only (no POST /leagues/:id/register rules).
+     */
+    async claimLeaguePass(
+        leagueId: string,
+        category: TicketCategory,
+        typeLabel?: string,
+    ): Promise<Ticket> {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_URL}/tickets/league-pass`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                leagueId,
+                category,
+                ...(typeLabel ? { type: typeLabel } : {}),
+            }),
+        });
+
+        if (!response.ok) {
+            let message = 'Failed to claim league pass';
+            try {
+                const err = await response.json();
+                message = Array.isArray(err?.message)
+                    ? err.message.join(', ')
+                    : (err?.message || message);
+            } catch {
+                // keep default
+            }
+            throw new Error(message);
+        }
+
+        return response.json();
+    },
+
     async getMyTickets(): Promise<Ticket[]> {
         const token = localStorage.getItem('token');
         if (!token) throw new Error('No authentication token found');
 
-        const userId = this.getUserIdForTicketOps(token);
-        const response = await fetch(`${API_URL}/tickets/my-tickets?userId=${userId}`, {
+        const authHeaders = { Authorization: `Bearer ${token}` };
+
+        let response = await fetch(`${API_URL}/tickets/mine`, {
             method: 'GET',
-            headers: { Authorization: `Bearer ${token}` },
+            headers: authHeaders,
         });
+
+        if (response.status === 401) {
+            const text = await response.text();
+            throw new Error(`Error 401: ${text || 'Not authenticated'}`);
+        }
+
+        if (!response.ok) {
+            const userId = this.getUserIdForTicketOps(token ?? undefined);
+            response = await fetch(`${API_URL}/tickets/my-tickets?userId=${encodeURIComponent(userId)}`, {
+                method: 'GET',
+                headers: authHeaders,
+            });
+        }
 
         if (!response.ok) {
             const text = await response.text();
@@ -252,7 +306,7 @@ const ticketService = {
 
     async createNftTicketForCurrentUser(tournamentId: string, ticketName: string, quantity: number): Promise<any[]> {
         const token = localStorage.getItem('token');
-        const userId = this.getUserIdForTicketOps(token);
+        const userId = this.getUserIdForTicketOps(token ?? undefined);
         
         const tickets = [];
         for (let i = 0; i < quantity; i++) {

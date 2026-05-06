@@ -56,6 +56,29 @@ class TournamentService {
     }
 
     /**
+     * Player joins the tournament roster as themselves (no ticket purchase flow).
+     * Expected backend route: POST /tournements/:id/participate — authenticated user is taken from JWT.
+     */
+    async participateAsPlayer(tournamentId: string): Promise<Tournament> {
+        const response = await fetch(`${API_BASE_URL}/${tournamentId}/participate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({}),
+        });
+        if (!response.ok) {
+            let message = response.statusText;
+            try {
+                const err = (await response.json()) as { message?: string };
+                if (typeof err.message === 'string') message = err.message;
+            } catch {
+                /* ignore */
+            }
+            throw new Error(message || `Could not participate (${response.status})`);
+        }
+        return response.json();
+    }
+
+    /**
      * Create a new tournament
      */
     async createTournament(data: CreateTournamentDto | FormData): Promise<Tournament> {

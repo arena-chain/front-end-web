@@ -96,11 +96,11 @@ export default function TicketDetails() {
     });
 
     return (
-        <div className="relative w-full overflow-hidden rounded-3xl border border-white/5 bg-[#0b0d10]/70 p-6 md:p-10">
+        <div className="relative w-full rounded-3xl border border-white/5 bg-[#0b0d10]/70 p-4 sm:p-6 md:p-10">
             <div className="absolute -top-28 -left-16 w-72 h-72 bg-[#00FF00]/10 blur-[120px] rounded-full pointer-events-none" />
             <div className="absolute -bottom-28 -right-16 w-80 h-80 bg-cyan-400/10 blur-[140px] rounded-full pointer-events-none" />
             <div className="absolute inset-0 opacity-[0.06] pointer-events-none [background:radial-gradient(circle_at_20%_20%,rgba(0,255,0,0.16),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(34,211,238,0.12),transparent_35%)]" />
-            <div className="relative mx-auto w-full max-w-sm overflow-hidden bg-zinc-900/40 backdrop-blur-xl border border-[#00FF00]/30 rounded-[2rem] shadow-[0_0_50px_rgba(0,255,0,0.1)] group hover:border-[#00FF00]/60 transition-all duration-500">
+            <div className="relative mx-auto w-full max-w-md overflow-visible bg-zinc-900/40 backdrop-blur-xl border border-[#00FF00]/30 rounded-[2rem] shadow-[0_0_50px_rgba(0,255,0,0.1)] group hover:border-[#00FF00]/60 transition-all duration-500">
                 <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00FF00]/10 blur-[100px] rounded-full" />
                 <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#00FF00]/10 blur-[100px] rounded-full" />
 
@@ -147,38 +147,57 @@ export default function TicketDetails() {
                     <div className="w-full h-full border-t border-dashed border-zinc-800" />
                 </div>
 
-                <div className="p-8 pt-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-white p-2 rounded-lg">
+                <div className="p-6 pt-4 md:p-8 md:pt-4">
+                    <div className="flex flex-col gap-6 sm:flex-row sm:items-stretch sm:gap-4">
+                        {/* Stub body — gate info + meta */}
+                        <div className="flex min-h-0 flex-1 flex-col justify-between sm:pr-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0 space-y-1">
+                                    <p className="text-[10px] font-bold uppercase text-zinc-500">Gate Node</p>
+                                    <p className="text-sm font-black italic text-white">{location}</p>
+                                </div>
+                                <div className="flex shrink-0 flex-col items-end gap-2">
+                                    <div className="flex -space-x-2">
+                                        <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-900 bg-zinc-800">
+                                            <ShieldCheck size={14} className="text-[#00FF00]" />
+                                        </div>
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-800">
+                                            <span className="text-[8px] font-black text-white">V1</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] font-black italic uppercase text-[#00FF00]">{passType}</p>
+                                </div>
+                            </div>
+                            <div className="mt-6 flex flex-wrap justify-between gap-x-4 gap-y-1 text-[8px] font-bold uppercase tracking-widest text-zinc-700 sm:mt-8">
+                                <span className="break-all">ID: {shortId}</span>
+                                <span className="shrink-0">Auth: 0x9f...ff88</span>
+                            </div>
+                        </div>
+
+                        {/* QR rail — edge of ticket, larger target for scanners */}
+                        <div className="flex w-full shrink-0 flex-col items-center justify-center gap-2 border-t border-zinc-800/80 pt-6 sm:w-auto sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-500 sm:hidden">
+                                Scan
+                            </p>
+                            <div className="box-border rounded-2xl bg-white p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-2 ring-white/30 sm:p-3">
                                 {isQrImage ? (
-                                    <img src={qrRawValue} alt={`QR ${ticket.ticketNumber}`} className="w-12 h-12 object-contain" />
+                                    <img
+                                        src={qrRawValue}
+                                        alt={`QR ${ticket.ticketNumber}`}
+                                        className="mx-auto block aspect-square w-[7.5rem] object-contain"
+                                    />
                                 ) : (
-                                    <QRCodeSVG value={qrRawValue || fallbackQrPayload} size={48} className="text-black" />
+                                    <QRCodeSVG
+                                        value={qrRawValue || fallbackQrPayload}
+                                        size={120}
+                                        className="mx-auto block text-black"
+                                    />
                                 )}
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-[10px] text-zinc-500 font-bold uppercase">Gate Node</p>
-                                <p className="text-white font-black text-sm italic">{location}</p>
-                            </div>
+                            <p className="max-w-[11rem] text-center text-[8px] font-bold uppercase leading-snug tracking-widest text-zinc-600">
+                                Present this side to scan
+                            </p>
                         </div>
-
-                        <div className="flex flex-col items-end gap-2">
-                            <div className="flex -space-x-2">
-                                <div className="w-8 h-8 rounded-full border-2 border-zinc-900 bg-zinc-800 flex items-center justify-center overflow-hidden">
-                                    <ShieldCheck size={14} className="text-[#00FF00]" />
-                                </div>
-                                <div className="w-8 h-8 rounded-full border-2 border-zinc-900 bg-zinc-800 flex items-center justify-center">
-                                    <span className="text-[8px] font-black text-white">V1</span>
-                                </div>
-                            </div>
-                            <p className="text-[10px] text-[#00FF00] font-black italic uppercase">{passType}</p>
-                        </div>
-                    </div>
-
-                    <div className="mt-8 flex justify-between items-center text-[8px] font-bold text-zinc-700 uppercase tracking-widest">
-                        <span>ID: {shortId}</span>
-                        <span>Auth: 0x9f...ff88</span>
                     </div>
                 </div>
             </div>

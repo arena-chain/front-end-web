@@ -25,14 +25,19 @@ export default function PlayerTicketSelection() {
             .finally(() => setLoading(false));
     }, [id]);
 
-    const handleSelect = async (category: 'STANDARD' | 'NFT') => {
+    const handleSelect = async (category: 'STANDARD' | 'NFT', typeLabel?: string) => {
         if (!id) return;
-        setProcessing(category);
+        const busyKey = category === 'STANDARD' ? 'STANDARD' : (typeLabel || 'NFT');
+        setProcessing(busyKey);
         try {
-            await leagueService.registerForLeague(id, category);
+            await ticketService.claimLeaguePass(id, category, typeLabel);
             navigate('/player/tickets');
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to secure pass');
+            const msg =
+                err?.message ||
+                err?.response?.data?.message ||
+                'Failed to secure pass';
+            alert(Array.isArray(msg) ? msg.join(', ') : msg);
         } finally {
             setProcessing(null);
         }
@@ -91,7 +96,7 @@ export default function PlayerTicketSelection() {
                                 <div className="text-2xl font-black italic">FREE</div>
                             </div>
                             <button 
-                                onClick={() => handleSelect('STANDARD')}
+                                onClick={() => handleSelect('STANDARD', 'Standard')}
                                 disabled={!!processing}
                                 className="px-6 py-4 rounded-xl bg-white text-black font-black uppercase tracking-widest text-[10px] transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
                             >
@@ -145,7 +150,7 @@ export default function PlayerTicketSelection() {
                                         <div className="text-2xl font-black italic">{type.price || 0}.0 <span className="text-sm font-normal not-italic text-white/30">VEX</span></div>
                                     </div>
                                     <button 
-                                        onClick={() => handleSelect(type.name || type.type || 'NFT')}
+                                        onClick={() => handleSelect(isNft ? 'NFT' : 'STANDARD', type.name || type.type)}
                                         disabled={!!processing}
                                         className="px-6 py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
                                         style={{ backgroundColor: color, color: '#000', boxShadow: `0 0 25px ${color}44` }}
@@ -176,7 +181,7 @@ export default function PlayerTicketSelection() {
                                     <span className="text-[#00FF00] text-[10px] font-black uppercase tracking-widest">Premium Mint</span>
                                     <div className="text-2xl font-black italic">50.0 <span className="text-sm font-normal not-italic text-white/30">VEX</span></div>
                                 </div>
-                                <button onClick={() => handleSelect('NFT')} className="px-6 py-4 rounded-xl bg-[#00FF00] text-black font-black uppercase tracking-widest text-[10px] transition-all hover:scale-110">Mint Now</button>
+                                <button onClick={() => handleSelect('NFT', 'NFT Pass')} className="px-6 py-4 rounded-xl bg-[#00FF00] text-black font-black uppercase tracking-widest text-[10px] transition-all hover:scale-110">Mint Now</button>
                             </div>
                         </div>
                     </div>

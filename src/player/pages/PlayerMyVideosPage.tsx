@@ -18,12 +18,14 @@ export default function PlayerMyVideosPage() {
                             My videos
                         </h1>
                         <p className="text-sm text-white/50 mt-2 max-w-xl leading-relaxed">
-                            Bibliothèque personnelle : modifiez titre et description, réglez la visibilité{' '}
-                            <strong className="text-white/70">chaîne</strong> (public = visible sur votre page chaîne) et ouvrez{' '}
+                            Bibliothèque personnelle : pour qu’une VOD apparaisse dans votre{' '}
+                            <strong className="text-white/70">studio chaîne</strong> (bibliothèque visiteurs), passez-la en{' '}
+                            <strong className="text-primary">Public</strong> avec le sélecteur sur chaque carte ou via{' '}
+                            <strong className="text-white/70">Modifier</strong>. Ouvrez{' '}
                             <Link to="/player/highlights" className="text-primary hover:underline inline-flex items-center gap-1">
                                 <Sparkles size={14} className="inline" /> Highlights
                             </Link>{' '}
-                            pour décrire ou supprimer des clips.
+                            pour vos clips.
                         </p>
                     </div>
                 </div>

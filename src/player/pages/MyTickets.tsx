@@ -18,11 +18,33 @@ import ticketService from '../../services/ticketService';
 import type { Ticket } from '../../models/ticket';
 import { cn } from '../../lib/utils';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import valorantCover from '../../assets/valorant_cover.jpg';
+import homeCover from '../../assets/home_cover.jpg';
+import valorantLogin from '../../assets/valorant_login.png';
+import lolCover from '../../assets/lol.jpg';
+
+/** Bundled art when the league has no `logoUrl` — stable pick per ticket id. */
+const TICKET_HERO_FALLBACKS = [valorantCover, valorantLogin, homeCover, lolCover] as const;
+
+function ticketHeroFallbackSrc(ticketId: string): string {
+    if (!ticketId || ticketId.length < 2) return TICKET_HERO_FALLBACKS[0];
+    const idx = parseInt(ticketId.slice(-2), 16) % TICKET_HERO_FALLBACKS.length;
+    return TICKET_HERO_FALLBACKS[idx] ?? TICKET_HERO_FALLBACKS[0];
+}
+
+function ticketStatusNorm(s: string | undefined): string {
+    return String(s || '').toUpperCase();
+}
+
+function isValidStatus(t: Ticket): boolean {
+    return ticketStatusNorm(t.status) === 'VALID';
+}
 
 export default function MyTickets() {
     const navigate = useNavigate();
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [filter, setFilter] = useState<'ALL' | 'VALID'>('VALID');
@@ -31,16 +53,19 @@ export default function MyTickets() {
         const fetchTickets = async () => {
             try {
                 setLoading(true);
+                setLoadError(null);
                 const data = await ticketService.getMyTickets();
-                const activeTickets = data.filter((ticket) => ticket.status === 'VALID');
-                const sorted = [...activeTickets].sort((a, b) => {
+                const sorted = [...data].sort((a, b) => {
                     const dateA = new Date(a.createdAt || a.purchaseDate || 0).getTime();
                     const dateB = new Date(b.createdAt || b.purchaseDate || 0).getTime();
                     return dateB - dateA;
                 });
                 setTickets(sorted);
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('Failed to fetch tickets:', error);
+                const msg = error instanceof Error ? error.message : 'Could not load tickets';
+                setLoadError(msg);
+                setTickets([]);
             } finally {
                 setLoading(false);
             }
@@ -48,12 +73,17 @@ export default function MyTickets() {
         fetchTickets();
     }, []);
 
-    const filteredTickets = tickets.filter(t => {
-        const matchesSearch =
-            t.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (typeof t.league !== 'string' && t.league?.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredTickets = tickets.filter((t) => {
+        const q = searchQuery.toLowerCase();
+        const num = (t.ticketNumber || '').toLowerCase();
+        const leagueName =
+            typeof t.league !== 'string' && t.league?.name
+                ? String(t.league.name).toLowerCase()
+                : '';
+        const matchesSearch = !q || num.includes(q) || leagueName.includes(q);
 
-        const matchesFilter = filter === 'ALL' || t.status === filter;
+        const matchesFilter =
+            filter === 'ALL' || ticketStatusNorm(t.status) === filter;
 
         return matchesSearch && matchesFilter;
     });
@@ -132,6 +162,13 @@ export default function MyTickets() {
                     </div>
                 </div>
 
+                {loadError && (
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100/90">
+                        <p className="font-bold uppercase tracking-wide text-amber-200">Could not load your tickets</p>
+                        <p className="mt-1 text-xs text-amber-100/70">{loadError}</p>
+                    </div>
+                )}
+
                 {/* Content Area */}
                 <AnimatePresence mode="wait">
                     {loading ? (
@@ -192,6 +229,11 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
     const league = typeof ticket.league === 'string' ? null : ticket.league;
     const isNft = !!ticket.nftTokenId;
     const accessId = ticket._id ? ticket._id.slice(-8).toUpperCase() : ticket.ticketNumber;
+    const rawLogo = typeof league?.logoUrl === 'string' ? league.logoUrl.trim() : '';
+    const hasLeagueLogo = rawLogo.length > 0 && rawLogo !== 'undefined';
+    const heroSrc = hasLeagueLogo
+        ? (rawLogo.startsWith('http') ? rawLogo : resolveBackendAssetUrl(rawLogo))
+        : ticketHeroFallbackSrc(ticket._id);
 
     if (viewMode === 'list') {
         return (
@@ -226,9 +268,9 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                 <div className="flex items-center gap-4 ml-auto">
                     <div className={cn(
                         "px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest",
-                        ticket.status === 'VALID' ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/5 text-white/30 border border-white/10"
+                        isValidStatus(ticket) ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/5 text-white/30 border border-white/10"
                     )}>
-                        {ticket.status}
+                        {ticketStatusNorm(ticket.status) || '—'}
                     </div>
                     <ChevronRight size={18} className="text-white/20 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                 </div>
@@ -252,27 +294,24 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                  }}
             />
 
-            {/* Banner Image */}
-            <div className="h-44 shrink-0 relative overflow-hidden bg-black">
-                {league?.logoUrl && league.logoUrl !== 'undefined' ? (
-                    <img
-                        src={league.logoUrl.startsWith('http') ? league.logoUrl : resolveBackendAssetUrl(league.logoUrl)}
-                        className="w-full h-full object-cover opacity-60 group-hover:scale-110 group-hover:opacity-40 transition-all duration-1000"
-                        alt="Venue"
-                    />
-                ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-black opacity-40" />
-                )}
-
-                <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent" />
+            {/* Banner — league logo or bundled esports art */}
+            <div className="h-44 shrink-0 relative overflow-hidden bg-zinc-950">
+                <img
+                    src={heroSrc}
+                    alt={hasLeagueLogo ? `${league?.name || 'League'} cover` : 'Esports ticket artwork'}
+                    className="absolute inset-0 h-full w-full object-cover opacity-70 transition-all duration-1000 group-hover:scale-105 group-hover:opacity-55"
+                    loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-cyan-500/10 mix-blend-overlay" />
 
                 {/* Status Badge */}
                 <div className="absolute top-4 left-4 z-20">
                     <div className={cn(
                         "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-[0.2em] backdrop-blur-md",
-                        ticket.status === 'VALID' ? "bg-primary/12 text-primary border border-primary/25" : "bg-black/60 text-white/20 border border-white/10"
+                        isValidStatus(ticket) ? "bg-primary/12 text-primary border border-primary/25" : "bg-black/60 text-white/20 border border-white/10"
                     )}>
-                        {ticket.status === 'VALID' ? 'ACTIVE_PASS' : 'ARCHIVED'}
+                        {isValidStatus(ticket) ? 'ACTIVE_PASS' : 'ARCHIVED'}
                     </div>
                 </div>
 
@@ -328,9 +367,9 @@ function TicketCard({ ticket, index, viewMode, onClick }: { ticket: Ticket; inde
                 </div>
             </div>
 
-            {/* Bottom Progress/Deco */}
-            <div className="h-1 w-full bg-white/[0.02]">
-                <div className="h-full bg-primary w-[40%] group-hover:w-full transition-all duration-700" />
+            {/* Bottom accent — full-width track; green grows on hover */}
+            <div className="mt-auto h-1 w-full shrink-0 overflow-hidden bg-white/[0.06]">
+                <div className="h-full w-full origin-left scale-x-[0.42] bg-primary transition-transform duration-700 ease-out group-hover:scale-x-100" />
             </div>
         </motion.div>
     );

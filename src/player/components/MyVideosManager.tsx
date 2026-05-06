@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload } from 'lucide-react';
-import { Badge, Button, Input, Modal, Textarea } from '../../components/ui/core';
+import { Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload } from 'lucide-react';
+import { Button, Input, Modal, Textarea } from '../../components/ui/core';
 import { videoService, type VideoRecord } from '../../services/video.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { resolveBackendAssetUrl } from '../../lib/apiBase';
@@ -24,6 +24,7 @@ export function MyVideosManager() {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [channelBusyId, setChannelBusyId] = useState<string | null>(null);
     const [uploadOpen, setUploadOpen] = useState(false);
     const [editing, setEditing] = useState<VideoRecord | null>(null);
     const [editSaving, setEditSaving] = useState(false);
@@ -122,6 +123,27 @@ export function MyVideosManager() {
             toast.error(e instanceof Error ? e.message : 'Échec de l’upload');
         } finally {
             setUploading(false);
+        }
+    }
+
+    async function patchChannelVisibility(v: VideoRecord, channelVisibility: 'public' | 'private') {
+        if (channelVisLabel(v) === channelVisibility) return;
+        setChannelBusyId(v._id);
+        try {
+            await videoService.update(v._id, { channelVisibility });
+            setVideos((prev) =>
+                prev.map((x) => (x._id === v._id ? { ...x, channelVisibility } : x)),
+            );
+            window.dispatchEvent(new Event('arena-videos-changed'));
+            toast.success(
+                channelVisibility === 'public'
+                    ? 'Vidéo affichée sur votre chaîne (studio + page publique).'
+                    : 'Vidéo retirée de la chaîne publique.',
+            );
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Mise à jour impossible');
+        } finally {
+            setChannelBusyId(null);
         }
     }
 
@@ -269,6 +291,13 @@ export function MyVideosManager() {
 
     return (
         <div className="space-y-6">
+            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-white/60">
+                <strong className="text-primary">Chaîne publique :</strong> seules les VOD en{' '}
+                <strong className="text-white/80">Public</strong> (ci-dessous) apparaissent dans votre studio chaîne et pour
+                les visiteurs. Le réglage <strong className="text-white/80">Privé</strong> garde la vidéo dans votre liste
+                joueur uniquement.
+            </p>
+
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <Button
                     type="button"
@@ -418,13 +447,47 @@ export function MyVideosManager() {
                                                 {new Date(v.createdAt).toLocaleDateString()}
                                             </p>
                                         </div>
-                                        <div className="flex flex-wrap gap-2 shrink-0">
-                                            <Badge
-                                                variant={ch === 'public' ? 'primary' : 'secondary'}
-                                                className="text-[9px] uppercase font-black"
-                                            >
-                                                Chaîne · {ch}
-                                            </Badge>
+                                        <div className="flex flex-col items-stretch gap-2 shrink-0 sm:items-end">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/35">
+                                                Sur la chaîne
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {channelBusyId === v._id ? (
+                                                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                                                ) : null}
+                                                <div
+                                                    className="inline-flex rounded-xl border border-white/15 bg-black/50 p-1"
+                                                    role="group"
+                                                    aria-label="Visibilité sur la chaîne"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        disabled={channelBusyId === v._id}
+                                                        onClick={() => void patchChannelVisibility(v, 'private')}
+                                                        className={cn(
+                                                            'rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wide transition',
+                                                            ch === 'private'
+                                                                ? 'bg-white/15 text-white'
+                                                                : 'text-white/45 hover:text-white/75',
+                                                        )}
+                                                    >
+                                                        Privé
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        disabled={channelBusyId === v._id}
+                                                        onClick={() => void patchChannelVisibility(v, 'public')}
+                                                        className={cn(
+                                                            'rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wide transition',
+                                                            ch === 'public'
+                                                                ? 'bg-primary/25 text-primary'
+                                                                : 'text-white/45 hover:text-white/75',
+                                                        )}
+                                                    >
+                                                        Public
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-white/5">
