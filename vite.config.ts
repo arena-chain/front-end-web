@@ -43,6 +43,8 @@ export default defineConfig(({ mode }) => {
         '/api': { target: apiOrigin, changeOrigin: true },
         '/inventory-files': { target: apiOrigin, changeOrigin: true },
         '/uploads': { target: apiOrigin, changeOrigin: true },
+        // Socket.IO (notifications, presence, etc.) when client uses page origin in dev — see `getSocketIoOrigin()`.
+        '/socket.io': { target: apiOrigin, changeOrigin: true, ws: true },
       },
     },
   }

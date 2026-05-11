@@ -10,6 +10,7 @@ import { io, Socket } from 'socket.io-client';
 import notificationService from '../services/notification.service';
 import type { AppNotification } from '../services/notification.service';
 import { requestFcmToken, onForegroundMessage } from '../services/fcm.service';
+import { getSocketIoOrigin } from '../lib/apiBase';
 import { toast } from 'sonner';
 
 interface NotificationContextValue {
@@ -46,12 +47,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const SOCKET_URL =
-            (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '');
-
-        const socket: Socket = io(`${SOCKET_URL}/notifications`, {
+        const socket: Socket = io(`${getSocketIoOrigin()}/notifications`, {
             auth: { token },
-            transports: ['websocket'],
+            transports: ['websocket', 'polling'],
         });
         socketRef.current = socket;
 

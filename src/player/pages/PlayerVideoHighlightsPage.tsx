@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Sparkles, RefreshCw, Film, Trash2 } from 'lucide-react';
 import { highlightService, type HighlightRecord } from '../../services/highlight.service';
 import { videoService, type VideoRecord } from '../../services/video.service';
-import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import { resolveUploadsUrl } from '../../lib/apiBase';
 import { Button, Textarea } from '../../components/ui/core';
 import { HighlightVisibilityToggle } from '../../components/highlights/HighlightVisibilityToggle';
 import { HighlightEngagement } from '../../components/highlights/HighlightEngagement';
@@ -172,7 +172,7 @@ export default function PlayerVideoHighlightsPage() {
     }
 
     const myId = user?.id ?? '';
-    const sourceSrc = video?.url ? resolveBackendAssetUrl(video.url) : '';
+    const sourceSrc = video?.url ? resolveUploadsUrl(video.url) : '';
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -296,7 +296,7 @@ export default function PlayerVideoHighlightsPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                         {highlights.map((h) => {
                             const mine = Boolean(myId && creatorId(h.creator) === myId);
-                            const src = resolveBackendAssetUrl(h.clipUrl);
+                            const src = resolveUploadsUrl(h.clipUrl);
                             return (
                                 <article
                                     key={h._id}

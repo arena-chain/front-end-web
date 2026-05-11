@@ -111,7 +111,15 @@ export default function PlayerLayout() {
         setLoadingFriends(true);
         try {
             const list = await friendshipPresenceService.getPresenceFriends(String(myId));
-            setFriends(Array.isArray(list) ? list : []);
+            const arr = Array.isArray(list) ? list : [];
+            const seen = new Set<string>();
+            setFriends(
+                arr.filter((f) => {
+                    if (!f.userId || seen.has(f.userId)) return false;
+                    seen.add(f.userId);
+                    return true;
+                }),
+            );
         } catch (error) {
             setFriends([]);
             const message = error instanceof Error ? error.message : 'Failed to load friends';

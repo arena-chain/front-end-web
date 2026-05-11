@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import { getApiBase, getBackendOrigin } from '../lib/apiBase';
+import { getApiBase, getBackendOrigin, getSocketIoOrigin } from '../lib/apiBase';
 import { authHeaders } from '../lib/session';
 
 const API_URL = getApiBase();
@@ -53,10 +53,26 @@ function safeString(value: unknown): string {
     return typeof value === 'string' ? value : '';
 }
 
+/** Handles string ids, Mongo-style `{ $oid }`, and populated `{ _id }` objects from JSON. */
+function normalizeUserId(value: unknown): string {
+    if (typeof value === 'string' && value) return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (!value || typeof value !== 'object') return '';
+    const o = value as Record<string, unknown>;
+    if (typeof o.$oid === 'string') return o.$oid;
+    if (o._id !== undefined) return normalizeUserId(o._id);
+    return '';
+}
+
 function toFriendItem(raw: unknown): FriendItem | null {
     if (!raw || typeof raw !== 'object') return null;
     const obj = raw as Record<string, unknown>;
-    const userId = safeString(obj.userId) || safeString(obj._id);
+    const userId =
+        normalizeUserId(obj.userId) ||
+        normalizeUserId(obj._id) ||
+        normalizeUserId(obj.id) ||
+        safeString(obj.userId) ||
+        safeString(obj._id);
     if (!userId) return null;
     const status = safeString(obj.status) as FriendStatus;
     return {
@@ -75,14 +91,20 @@ function toFriendFromFriendshipRecord(raw: unknown, currentUserId: string): Frie
     const record = raw as Record<string, unknown>;
     const requester = record.requesterId as Record<string, unknown> | string | undefined;
     const recipient = record.recipientId as Record<string, unknown> | string | undefined;
-    const requesterId = typeof requester === 'string' ? requester : safeString(requester?._id);
-    const recipientId = typeof recipient === 'string' ? recipient : safeString(recipient?._id);
+    const requesterId =
+        typeof requester === 'string' ? requester : normalizeUserId(requester) || safeString(requester?._id);
+    const recipientId =
+        typeof recipient === 'string' ? recipient : normalizeUserId(recipient) || safeString(recipient?._id);
     const friendObj = requesterId === currentUserId ? recipient : requester;
     const fallbackId = requesterId === currentUserId ? recipientId : requesterId;
 
     if (friendObj && typeof friendObj === 'object') {
         const obj = friendObj as Record<string, unknown>;
-        const userId = safeString(obj._id) || fallbackId;
+        const userId =
+            normalizeUserId(obj._id) ||
+            normalizeUserId(obj.id) ||
+            normalizeUserId(fallbackId) ||
+            safeString(fallbackId);
         if (!userId) return null;
         return {
             userId,
@@ -215,7 +237,7 @@ export const friendshipPresenceService = {
 
 export function createPresenceSocket(): Socket {
     const token = localStorage.getItem('token');
-    return io(`${BACKEND_ORIGIN}/presence`, {
+    return io(`${getSocketIoOrigin()}/presence`, {
         auth: { token },
         withCredentials: true,
         transports: ['websocket', 'polling'],

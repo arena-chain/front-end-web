@@ -9,10 +9,31 @@ const auth = () => {
 };
 
 function mapUploadError(error: unknown): Error {
-    if (axios.isAxiosError(error) && error.response?.status === 413) {
-        return new Error(
-            'Le fichier est trop volumineux pour le serveur (HTTP 413). Réduisez la taille/qualité de la vidéo ou augmentez la limite côté backend.',
-        );
+    if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const data = error.response?.data as
+            | { message?: string | string[]; error?: string }
+            | undefined;
+
+        // Extract NestJS error message (can be string or array)
+        const serverMsg = Array.isArray(data?.message)
+            ? data.message.join('. ')
+            : data?.message;
+
+        if (status === 413) {
+            return new Error(
+                'Le fichier est trop volumineux pour le serveur (HTTP 413). Réduisez la taille/qualité de la vidéo ou augmentez la limite côté backend.',
+            );
+        }
+        if (status === 400 && serverMsg) {
+            return new Error(serverMsg);
+        }
+        if (status === 503 && serverMsg) {
+            return new Error(`Erreur serveur : ${serverMsg}`);
+        }
+        if (serverMsg) {
+            return new Error(serverMsg);
+        }
     }
     if (error instanceof Error) return error;
     return new Error('Échec de l’upload');

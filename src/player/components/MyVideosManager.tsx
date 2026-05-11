@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload } from 'lucide-react';
+import { Film, Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Button, Input, Modal, Textarea } from '../../components/ui/core';
 import { videoService, type VideoRecord } from '../../services/video.service';
 import { useAuth } from '../../contexts/AuthContext';
-import { resolveBackendAssetUrl } from '../../lib/apiBase';
+import { resolveUploadsUrl } from '../../lib/apiBase';
 import { cn } from '../../lib/utils';
 
 const DEFAULT_MAX_UPLOAD_MB = 2048;
@@ -13,6 +13,32 @@ const maxUploadMb = Number(import.meta.env.VITE_MAX_VIDEO_UPLOAD_MB ?? DEFAULT_M
 
 function channelVisLabel(v: VideoRecord): 'public' | 'private' {
     return v.channelVisibility === 'public' ? 'public' : 'private';
+}
+
+/** Avoid endless loading UI when `/uploads/...` 404s (orphan DB row, deleted file, proxy mismatch). */
+function MyVideoListThumb({ url }: { url: string }) {
+    const [failed, setFailed] = useState(false);
+    const src = resolveUploadsUrl(url);
+    if (failed) {
+        return (
+            <div className="w-full h-full min-h-[140px] flex flex-col items-center justify-center gap-2 bg-white/[0.04] text-white/35 px-4 text-center">
+                <Film className="w-10 h-10 shrink-0 opacity-50" aria-hidden />
+                <span className="text-[10px] font-bold uppercase tracking-wider leading-snug">
+                    Fichier vidéo introuvable
+                </span>
+            </div>
+        );
+    }
+    return (
+        <video
+            src={src}
+            className="w-full h-full object-cover opacity-90 group-hover/thumb:opacity-100 transition-opacity"
+            muted
+            playsInline
+            preload="metadata"
+            onError={() => setFailed(true)}
+        />
+    );
 }
 
 export function MyVideosManager() {
@@ -419,13 +445,7 @@ export function MyVideosManager() {
                                     to={`/player/videos/${v._id}/highlights`}
                                     className="sm:w-72 shrink-0 aspect-video sm:aspect-auto sm:min-h-[200px] bg-black border-b sm:border-b-0 sm:border-r border-white/10 block relative group/thumb"
                                 >
-                                    <video
-                                        src={resolveBackendAssetUrl(v.url)}
-                                        className="w-full h-full object-cover opacity-90 group-hover/thumb:opacity-100 transition-opacity"
-                                        muted
-                                        playsInline
-                                        preload="metadata"
-                                    />
+                                    <MyVideoListThumb url={v.url} />
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
                                             <Sparkles size={14} /> Highlights

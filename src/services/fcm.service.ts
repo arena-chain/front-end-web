@@ -13,9 +13,18 @@ const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
  */
 export async function requestFcmToken(): Promise<string | null> {
     try {
-        const permission = await Notification.requestPermission();
+        if (typeof Notification === 'undefined') {
+            return null;
+        }
+        // Avoid repeated requestPermission() when the user has blocked prompts (Chrome logs warnings).
+        if (Notification.permission === 'denied') {
+            return null;
+        }
+        const permission =
+            Notification.permission === 'granted'
+                ? 'granted'
+                : await Notification.requestPermission();
         if (permission !== 'granted') {
-            console.info('[FCM] Push permission denied by user.');
             return null;
         }
 
